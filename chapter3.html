@@ -2796,5 +2796,135 @@ window.addEventListener('resize', () => {
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
+
+<!-- Mobile touch controls — only activates on coarse-pointer devices. -->
+<script>
+(function(){
+  if (!matchMedia('(pointer: coarse)').matches) return;
+  const ACCENT = '#ff8060', ACCENT_BG = 'rgba(255,128,96,', ACCENT_LIGHT = '#ffb090';
+
+  const style = document.createElement('style');
+  style.textContent = `
+    #mobControls { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+    #joystick { position: absolute; bottom: 26px; left: 26px; width: 120px; height: 120px;
+      background: rgba(0,0,0,0.42); border: 1px solid ${ACCENT_BG}0.45);
+      border-radius: 50%; pointer-events: auto; touch-action: none;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.3); }
+    #joystick .nub { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px;
+      margin: -24px 0 0 -24px; background: ${ACCENT_BG}0.6);
+      border: 2px solid rgba(255,200,180,0.9); border-radius: 50%;
+      box-shadow: 0 0 14px ${ACCENT_BG}0.4); pointer-events: none; }
+    #jumpBtn, #interactBtn { pointer-events: auto; touch-action: none;
+      background: rgba(20,10,8,0.55); border: 1px solid ${ACCENT_BG}0.7);
+      color: ${ACCENT_LIGHT}; font-family: 'SF Mono', ui-monospace, monospace;
+      font-weight: 700; letter-spacing: 2px; border-radius: 50%;
+      box-shadow: 0 0 12px ${ACCENT_BG}0.2); }
+    #jumpBtn { position: absolute; bottom: 160px; left: 38px; width: 68px; height: 68px;
+      font-size: 12px; letter-spacing: 1.5px; }
+    #interactBtn { position: absolute; bottom: 36px; right: 36px; width: 96px; height: 96px;
+      font-size: 15px; letter-spacing: 3px; }
+    #jumpBtn:active, #interactBtn:active { background: ${ACCENT_BG}0.55); color: #fff; }
+    .controls-help { display: none !important; }
+  `;
+  document.head.appendChild(style);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'mobControls';
+  wrap.innerHTML = `<div id="joystick"><div class="nub"></div></div>
+    <button id="jumpBtn" type="button">JUMP</button>
+    <button id="interactBtn" type="button">[ E ]</button>`;
+  document.body.appendChild(wrap);
+
+  const js = document.getElementById('joystick');
+  const nub = js.querySelector('.nub');
+  const jumpBtn = document.getElementById('jumpBtn');
+  const intBtn = document.getElementById('interactBtn');
+
+  Object.defineProperty(document, 'pointerLockElement', {
+    configurable: true, get() { return document.getElementById('canvas'); },
+  });
+  document.dispatchEvent(new Event('pointerlockchange'));
+
+  function sendKey(code, down) {
+    document.dispatchEvent(new KeyboardEvent(down ? 'keydown' : 'keyup', { code, bubbles: true }));
+  }
+
+  const jsState = { w: false, a: false, s: false, d: false };
+  const JS_RADIUS = 48;
+  let jsId = null;
+  function setJsKey(name, down) {
+    if (jsState[name] === down) return;
+    jsState[name] = down;
+    sendKey('Key' + name.toUpperCase(), down);
+  }
+  function jsUpdate(x, y) {
+    const r = js.getBoundingClientRect();
+    let dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d > JS_RADIUS) { dx *= JS_RADIUS / d; dy *= JS_RADIUS / d; }
+    nub.style.transform = `translate(${dx}px, ${dy}px)`;
+    const nx = dx / JS_RADIUS, ny = dy / JS_RADIUS, TH = 0.3;
+    setJsKey('w', ny < -TH); setJsKey('s', ny > TH);
+    setJsKey('a', nx < -TH); setJsKey('d', nx > TH);
+  }
+  function jsEnd() {
+    jsId = null; nub.style.transform = '';
+    setJsKey('w', false); setJsKey('s', false); setJsKey('a', false); setJsKey('d', false);
+  }
+  js.addEventListener('touchstart', (e) => {
+    if (jsId !== null) return;
+    const t = e.changedTouches[0]; jsId = t.identifier;
+    jsUpdate(t.clientX, t.clientY); e.preventDefault();
+  }, { passive: false });
+  js.addEventListener('touchmove', (e) => {
+    if (jsId === null) return;
+    for (const t of e.changedTouches) if (t.identifier === jsId) jsUpdate(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  js.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) if (t.identifier === jsId) { jsEnd(); break; }
+  });
+  js.addEventListener('touchcancel', jsEnd);
+
+  let jumpDown = false;
+  function setJump(down) { if (jumpDown !== down) { jumpDown = down; sendKey('Space', down); } }
+  jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); setJump(true); }, { passive: false });
+  jumpBtn.addEventListener('touchend',   (e) => { e.preventDefault(); setJump(false); }, { passive: false });
+  jumpBtn.addEventListener('touchcancel', () => setJump(false));
+
+  intBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    sendKey('KeyE', true);
+    setTimeout(() => sendKey('KeyE', false), 80);
+  }, { passive: false });
+
+  let camId = null, camX = 0, camY = 0;
+  window.addEventListener('touchstart', (e) => {
+    if (camId !== null) return;
+    const t = e.changedTouches[0], targ = t.target;
+    if (targ.closest('#mobControls') || targ.closest('.click-to-play') ||
+        targ.closest('.mode-buttons') || targ.closest('#dialogScreen') ||
+        targ.tagName === 'BUTTON') return;
+    camId = t.identifier; camX = t.clientX; camY = t.clientY;
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (camId === null) return;
+    for (const t of e.changedTouches) {
+      if (t.identifier !== camId) continue;
+      const dx = t.clientX - camX, dy = t.clientY - camY;
+      camX = t.clientX; camY = t.clientY;
+      const ev = new MouseEvent('mousemove', { bubbles: true });
+      Object.defineProperty(ev, 'movementX', { value: dx });
+      Object.defineProperty(ev, 'movementY', { value: dy });
+      document.dispatchEvent(ev);
+    }
+  }, { passive: true });
+  window.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) if (t.identifier === camId) { camId = null; break; }
+  });
+  window.addEventListener('touchcancel', () => { camId = null; });
+})();
+</script>
+
 </body>
 </html>
