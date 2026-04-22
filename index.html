@@ -518,17 +518,33 @@
      GAME CARDS
      ═══════════════════════════════════════════════════════════════════════ */
   .games {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-    gap: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
     max-width: 1200px;
     margin: 0 auto;
+  }
+  .game-block {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+  .kingdom-label {
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 4px;
+    font-size: 10px; letter-spacing: 4px;
+    color: rgba(255,168,112,0.85);
+    font-weight: 700;
+  }
+  .kingdom-label::before { content: '↳'; font-size: 16px; color: #ffa870; }
+  .kingdom-label::after {
+    content: ''; flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(255,168,112,0.25), transparent);
   }
 
   .game {
     position: relative;
-    padding: 36px;
-    min-height: 460px;
+    padding: 40px 44px;
     border-radius: 14px;
     overflow: hidden;
     display: flex; flex-direction: column;
@@ -840,86 +856,81 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
-     KINGDOMS STRIP — the three biomes of Wounded, Never Wolves
-     ═══════════════════════════════════════════════════════════════════════ -->
-<section>
-  <div class="section-head reveal">
-    <span class="num">01 /</span>
-    <span class="label">THE THREE KINGDOMS</span>
-    <span class="line"></span>
-  </div>
-
-  <div class="kingdoms">
-    <div class="kingdom k1 reveal d1">
-      <div class="roman">I</div>
-      <div class="k-num">KINGDOM · 01</div>
-      <div class="k-name">THE CRASH SITE</div>
-      <div class="k-line">A red desert. Broken rocket. A signal nobody sent for.</div>
-      <div class="k-tag">~6 MIN · TUTORIAL</div>
-    </div>
-    <div class="kingdom k2 reveal d2">
-      <div class="roman">II</div>
-      <div class="k-num">KINGDOM · 02</div>
-      <div class="k-name">THE ARTEFACT</div>
-      <div class="k-line">A crystal valley. A living machine. A village of exiles from both sides.</div>
-      <div class="k-tag">~8 MIN · PUZZLE</div>
-    </div>
-    <div class="kingdom k3 reveal d3">
-      <div class="roman">III</div>
-      <div class="k-num">KINGDOM · 03</div>
-      <div class="k-name">THE WAR</div>
-      <div class="k-line">A valley between two old enemies. A battle stone. A choice you live with.</div>
-      <div class="k-tag">~6 MIN · CHOICE</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════════════════════
-     GAMES
+     GAMES (with kingdoms nested under Wounded, Never Wolves)
      ═══════════════════════════════════════════════════════════════════════ -->
 <section id="games">
   <div class="section-head reveal">
-    <span class="num">02 /</span>
+    <span class="num">01 /</span>
     <span class="label">GAMES</span>
     <span class="line"></span>
   </div>
 
   <div class="games">
 
-    <div class="game g1 reveal d1">
-      <div class="huge-num">I</div>
-      <span class="chip">WAYFARER · I</span>
-      <div class="name">The Wounded,<br>Never Wolves</div>
-      <div class="meta">
-        <span>3 KINGDOMS</span>
-        <span>~20 MIN</span>
-        <span>WEB · DESKTOP + MOBILE</span>
+    <div class="game-block">
+      <div class="game g1 reveal d1">
+        <div class="huge-num">I</div>
+        <span class="chip">WAYFARER · I</span>
+        <div class="name">The Wounded,<br>Never Wolves</div>
+        <div class="meta">
+          <span>3 KINGDOMS</span>
+          <span>~20 MIN</span>
+          <span>WEB · DESKTOP + MOBILE</span>
+        </div>
+        <div class="desc">
+          You crash on a red desert planet and wake to a signal.
+          Follow it through three kingdoms — a wreckage site, a crystal valley
+          around a living artefact, and a battlefield between two old enemies.
+          <em>Both sides claim to be the wounded, never the wolves.</em>
+          Pick a side. Live with it.
+        </div>
+        <a class="play" href="chapter1.html">PLAY</a>
       </div>
-      <div class="desc">
-        You crash on a red desert planet and wake to a signal.
-        Follow it through three kingdoms — a wreckage site, a crystal valley
-        around a living artefact, and a battlefield between two old enemies.
-        <em>Both sides claim to be the wounded, never the wolves.</em>
-        Pick a side. Live with it.
+
+      <div class="kingdom-label reveal">THE THREE KINGDOMS</div>
+
+      <div class="kingdoms">
+        <div class="kingdom k1 reveal d1">
+          <div class="roman">I</div>
+          <div class="k-num">KINGDOM · 01</div>
+          <div class="k-name">THE CRASH SITE</div>
+          <div class="k-line">A red desert. Broken rocket. A signal nobody sent for.</div>
+          <div class="k-tag">~6 MIN · TUTORIAL</div>
+        </div>
+        <div class="kingdom k2 reveal d2">
+          <div class="roman">II</div>
+          <div class="k-num">KINGDOM · 02</div>
+          <div class="k-name">THE ARTEFACT</div>
+          <div class="k-line">A crystal valley. A living machine. A village of exiles from both sides.</div>
+          <div class="k-tag">~8 MIN · PUZZLE</div>
+        </div>
+        <div class="kingdom k3 reveal d3">
+          <div class="roman">III</div>
+          <div class="k-num">KINGDOM · 03</div>
+          <div class="k-name">THE WAR</div>
+          <div class="k-line">A valley between two old enemies. A battle stone. A choice you live with.</div>
+          <div class="k-tag">~6 MIN · CHOICE</div>
+        </div>
       </div>
-      <a class="play" href="chapter1.html">PLAY</a>
     </div>
 
-    <div class="game g2 reveal d2">
-      <div class="huge-num">II</div>
-      <span class="chip">WAYFARER · II</span>
-      <div class="name">Below the Sand</div>
-      <div class="meta">
-        <span>IN DEVELOPMENT</span>
-        <span>WEB</span>
+    <div class="game-block">
+      <div class="game g2 reveal d2">
+        <div class="huge-num">II</div>
+        <span class="chip">WAYFARER · II</span>
+        <div class="name">Below the Sand</div>
+        <div class="meta">
+          <span>IN DEVELOPMENT</span>
+          <span>WEB</span>
+        </div>
+        <div class="desc">
+          Wake on a small dusty planet. Walk all the way around it.
+          Save its shy calculator-rock people. Then watch the ground disappear —
+          <em>the planet was a lid all along</em>, and there's a donut-shaped
+          station humming beneath you.
+        </div>
+        <span class="coming-tag">COMING SOON</span>
       </div>
-      <div class="desc">
-        Wake on a small dusty planet. Walk all the way around it.
-        Save its shy calculator-rock people. Then watch the ground disappear —
-        <em>the planet was a lid all along</em>, and there's a donut-shaped
-        station humming beneath you.
-      </div>
-      <span class="coming-tag">COMING SOON</span>
     </div>
 
   </div>
@@ -950,7 +961,7 @@
      ═══════════════════════════════════════════════════════════════════════ -->
 <section>
   <div class="section-head reveal">
-    <span class="num">03 /</span>
+    <span class="num">02 /</span>
     <span class="label">MANIFESTO</span>
     <span class="line"></span>
   </div>
