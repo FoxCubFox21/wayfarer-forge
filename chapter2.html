@@ -1,0 +1,3146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdom 2 — The Artefact</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: 'SF Mono', monospace; }
+  #canvas { display: block; width: 100%; height: 100%; }
+  .hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.6);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .hud .title { color: #a080ff; font-weight: 700; text-shadow: 0 0 12px rgba(160,128,255,0.5); }
+  .hud .meta { margin-top: 4px; color: rgba(255,255,255,0.35); font-size: 10px; }
+  .controls-help {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    line-height: 1.7;
+  }
+  .controls-help kbd {
+    display: inline-block; padding: 2px 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 3px;
+    font-family: inherit; font-size: 10px; color: #a080ff;
+    margin: 0 2px;
+  }
+  .crosshair {
+    position: fixed; top: 50%; left: 50%; z-index: 10; pointer-events: none;
+    width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 50%;
+  }
+  .click-to-play {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(10,6,20,0.88); cursor: pointer;
+    transition: opacity 0.3s;
+  }
+  .click-to-play.hidden { opacity: 0; pointer-events: none; }
+  .click-to-play div { text-align: center; color: #a080ff; letter-spacing: 4px; font-size: 14px; }
+  .click-to-play .small { color: rgba(255,255,255,0.4); font-size: 10px; margin-top: 12px; letter-spacing: 2px; }
+
+  .story-overlay {
+    position: fixed; inset: 0; z-index: 200; pointer-events: none;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    text-align: center; transition: background 2s;
+  }
+  .story-overlay .text {
+    color: #c0a0ff; font-size: 16px; letter-spacing: 4px; opacity: 0;
+    transition: opacity 1.5s; text-shadow: 0 0 20px rgba(160,128,255,0.6);
+  }
+  .story-overlay .text.show { opacity: 1; }
+  .story-overlay .sub {
+    color: rgba(255,255,255,0.55); font-size: 11px; letter-spacing: 2px;
+    margin-top: 12px; opacity: 0; transition: opacity 1.5s 1s;
+  }
+  .story-overlay .sub.show { opacity: 1; }
+  .story-overlay.fade { background: rgba(0,0,0,1); }
+
+  .interact-prompt {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+    z-index: 60; pointer-events: none; text-align: center;
+    transition: opacity 0.3s; opacity: 0;
+  }
+  .interact-prompt .key { color: #a080ff; font-size: 14px; letter-spacing: 3px; }
+  .interact-prompt .label { color: rgba(255,255,255,0.55); font-size: 10px; letter-spacing: 2px; margin-top: 4px; }
+
+  .dialog-screen {
+    position: fixed; inset: auto 10% 15% 10%; z-index: 250;
+    background: rgba(10,5,25,0.94);
+    border: 1px solid rgba(160,128,255,0.35); border-radius: 4px;
+    padding: 24px 32px; color: #c0b0ff; font-size: 13px;
+    letter-spacing: 1px; line-height: 1.8;
+    display: none; pointer-events: auto;
+    box-shadow: 0 0 40px rgba(120,80,220,0.2), inset 0 0 60px rgba(40,20,80,0.3);
+    max-height: 340px; overflow-y: auto;
+  }
+  .dialog-screen .t-title { color: #d0b8ff; font-size: 13px; letter-spacing: 3px; margin-bottom: 14px; }
+  .dialog-screen .t-close { position: absolute; top: 10px; right: 14px; color: #6050a0; cursor: pointer; font-size: 11px; letter-spacing: 2px; }
+  .dialog-screen .t-close:hover { color: #c0a0ff; }
+
+  .mode-buttons {
+    position: fixed; bottom: 16px; right: 16px; z-index: 10;
+    display: flex; gap: 6px;
+  }
+  .mode-btn {
+    padding: 6px 12px; background: rgba(15,8,30,0.7);
+    border: 1px solid rgba(160,128,255,0.3);
+    color: rgba(255,255,255,0.6);
+    font-family: inherit; font-size: 10px; letter-spacing: 2px;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+  }
+  .mode-btn:hover {
+    background: rgba(30,18,60,0.85); color: #c0a0ff;
+    border-color: rgba(160,128,255,0.55);
+  }
+  .mode-btn.active {
+    background: rgba(160,128,255,0.2); color: #d0b8ff;
+    border-color: rgba(160,128,255,0.7);
+  }
+  body.hide-hud .hud,
+  body.hide-hud .controls-help,
+  body.hide-hud .stats,
+  body.hide-hud .mode-buttons,
+  body.hide-hud .crosshair,
+  body.hide-hud #questLog,
+  body.hide-hud .vignette { display: none !important; }
+  .loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #07041a; color: #a080ff; font-size: 12px; letter-spacing: 3px;
+    transition: opacity 0.5s;
+  }
+  .loading.hidden { opacity: 0; pointer-events: none; }
+  .stats {
+    position: fixed; bottom: 64px; right: 16px; z-index: 10;
+    font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.45);
+    text-align: right; text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .vignette {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(10,4,25,0.5) 100%);
+  }
+  #questLog {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    font-family: 'SF Mono', monospace; font-size: 11px; letter-spacing: 1px;
+    color: rgba(255,255,255,0.7); background: rgba(5,3,15,0.55);
+    padding: 14px 18px; border: 1px solid rgba(160,128,255,0.25);
+    border-radius: 4px; min-width: 260px; backdrop-filter: blur(4px);
+    transition: opacity 0.5s;
+  }
+  #questLog .h { color: #a080ff; font-weight: 700; letter-spacing: 3px; margin-bottom: 10px; font-size: 11px; }
+  #glyphPuzzle {
+    position: fixed; inset: 8% 18%; z-index: 260;
+    background: rgba(8,4,25,0.96);
+    border: 1px solid rgba(160,128,255,0.45); border-radius: 6px;
+    padding: 30px; display: none; overflow-y: auto;
+    box-shadow: 0 0 60px rgba(140,100,255,0.25);
+  }
+  #glyphPuzzle .title {
+    color: #d0b8ff; font-size: 14px; letter-spacing: 4px;
+    margin-bottom: 14px; text-align: center;
+  }
+  #glyphPuzzle .prompt {
+    color: rgba(255,255,255,0.6); font-size: 11px; letter-spacing: 2px;
+    margin-bottom: 22px; text-align: center; line-height: 1.6;
+  }
+  #glyphPuzzle .glyph-row {
+    display: flex; justify-content: center; gap: 10px;
+    flex-wrap: wrap; margin: 12px 0;
+  }
+  #glyphPuzzle .glyph {
+    width: 64px; height: 64px; border: 1px solid rgba(160,128,255,0.4);
+    background: rgba(40,20,80,0.35); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px; color: #c0a0ff; cursor: pointer;
+    transition: all 0.2s; text-shadow: 0 0 10px rgba(160,128,255,0.8);
+  }
+  #glyphPuzzle .glyph:hover { background: rgba(80,40,160,0.55); color: #fff; }
+  #glyphPuzzle .glyph.selected { background: rgba(140,90,240,0.75); color: #fff; border-color: #fff; }
+  #glyphPuzzle .glyph.placed { background: rgba(40,60,120,0.55); color: #80c0ff; }
+  #glyphPuzzle .slots {
+    display: flex; justify-content: center; gap: 14px;
+    margin: 24px 0; padding: 16px; background: rgba(0,0,0,0.35);
+    border: 1px dashed rgba(160,128,255,0.3); border-radius: 4px;
+  }
+  #glyphPuzzle .slot {
+    width: 64px; height: 64px; border: 1px dashed rgba(160,128,255,0.5);
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 34px; color: #80c0ff; background: rgba(0,20,60,0.25);
+    text-shadow: 0 0 8px rgba(128,192,255,0.6);
+  }
+  #glyphPuzzle .hint {
+    color: rgba(255,255,255,0.4); font-size: 10px; letter-spacing: 2px;
+    text-align: center; margin-top: 12px;
+  }
+  #glyphPuzzle .close { position: absolute; top: 10px; right: 16px; color: #6050a0; cursor: pointer; font-size: 11px; letter-spacing: 2px; }
+  #glyphPuzzle .close:hover { color: #c0a0ff; }
+  .barrier-msg {
+    position: fixed; bottom: 180px; left: 50%; transform: translateX(-50%);
+    z-index: 55; color: #e0b8ff; font-size: 11px; letter-spacing: 2px;
+    padding: 8px 16px; background: rgba(20,8,40,0.8);
+    border: 1px solid rgba(160,128,255,0.3); border-radius: 3px;
+    transition: opacity 0.4s; opacity: 0; pointer-events: none;
+    max-width: 500px; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">ARRIVING AT COORDINATES...</div>
+<canvas id="canvas"></canvas>
+<div class="vignette"></div>
+<div class="hud">
+  <div class="title">KINGDOM 2 :: THE_ARTEFACT</div>
+  <div class="meta">UNKNOWN_SYSTEM :: CRYSTAL_WORLD :: SOL_?</div>
+</div>
+<div id="questLog">
+  <div class="h">OBJECTIVES</div>
+  <div id="questItems" style="line-height:1.9;"></div>
+</div>
+<div class="controls-help" id="controlsHelp">
+  <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk &nbsp;·&nbsp; <kbd>SHIFT</kbd> run &nbsp;·&nbsp; <kbd>SPACE</kbd> jump &nbsp;·&nbsp; <kbd>E</kbd> interact<br>
+  mouse to look &nbsp;·&nbsp; <kbd>ESC</kbd> release cursor
+</div>
+<div class="mode-buttons">
+  <button class="mode-btn active" data-mode="walk">WALK</button>
+  <button class="mode-btn" data-mode="freecam">FREE CAM</button>
+  <button class="mode-btn" data-mode="orbit">ORBIT</button>
+</div>
+<div class="crosshair"></div>
+<div class="interact-prompt" id="interactPrompt">
+  <div class="key">[E]</div>
+  <div class="label" id="interactLabel"></div>
+</div>
+<div class="dialog-screen" id="dialogScreen">
+  <div class="t-close" id="dlgClose">[ ESC TO CLOSE ]</div>
+  <div class="t-title" id="dlgTitle"></div>
+  <div id="dlgBody"></div>
+</div>
+<div id="glyphPuzzle">
+  <div class="close" id="puzzleClose">[ ESC TO CLOSE ]</div>
+  <div class="title">ARTEFACT INTERFACE</div>
+  <div class="prompt">Arrange the five glyphs in the order the stone taught you.<br>
+    <span style="color:rgba(255,180,120,0.65);font-size:10px;">Only the stone remembers — you must recall it from memory.</span>
+  </div>
+  <div class="slots" id="puzzleSlots"></div>
+  <div class="glyph-row" id="puzzleGlyphs"></div>
+  <div class="hint" id="puzzleHint">Click a glyph to place it — click a placed glyph to remove</div>
+</div>
+<div class="story-overlay" id="storyOverlay">
+  <div class="text" id="storyText"></div>
+  <div class="sub" id="storySub"></div>
+</div>
+<div class="barrier-msg" id="barrierMsg"></div>
+<div class="click-to-play" id="clickToPlay">
+  <div>CLICK TO BEGIN<br>
+    <div class="small">controls will be captured</div>
+  </div>
+</div>
+<div class="stats">
+  <div id="camDist">—</div>
+  <div id="fps">—</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const canvas = document.getElementById('canvas');
+
+// Seeded RNG
+let seed = 1337;
+function rand() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+
+// Perf detection (Edge gets low-quality mode)
+const IS_EDGE = /Edg\//.test(navigator.userAgent);
+const PERF = {
+  shadowMapSize: IS_EDGE ? 1024 : 2048,
+  pixelRatio: IS_EDGE ? 1 : Math.min(window.devicePixelRatio, 2),
+  bloom: !IS_EDGE,
+  crystalCount: IS_EDGE ? 60 : 140,
+  dustCount: IS_EDGE ? 120 : 260,
+  snowCount: IS_EDGE ? 80 : 180,
+};
+
+// ══════════════════════════════════════════════════════════════════
+// AUDIO — crystal-world palette: chimes, drones, glassy footsteps
+// ══════════════════════════════════════════════════════════════════
+let audioCtx = null, masterGain = null, soundReady = false;
+let musicNodes = [];
+
+function initAudio() {
+  if (soundReady) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.5;
+  masterGain.connect(audioCtx.destination);
+  soundReady = true;
+  startAmbient();
+  startMusic();
+}
+
+function startAmbient() {
+  // Soft wind with filtered noise + subtle shimmer
+  const bufSize = audioCtx.sampleRate * 2;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+  const n = audioCtx.createBufferSource(); n.buffer = buf; n.loop = true; n.start();
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.8;
+  const lfo = audioCtx.createOscillator();
+  lfo.frequency.value = 0.1; lfo.start();
+  const lfoG = audioCtx.createGain(); lfoG.gain.value = 300;
+  lfo.connect(lfoG); lfoG.connect(bp.frequency);
+  const g = audioCtx.createGain(); g.gain.value = 0.04;
+  n.connect(bp); bp.connect(g); g.connect(masterGain);
+}
+
+function startMusic() {
+  // Ethereal 5-note drone — cold minor chord
+  const freqs = [65.4, 98, 130.8, 164.8, 196];  // C2 G2 C3 E3 G3
+  for (const f of freqs) {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine'; o.frequency.value = f;
+    const g = audioCtx.createGain(); g.gain.value = 0.014;
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.04 + Math.random() * 0.1; lfo.start();
+    const lfoG = audioCtx.createGain(); lfoG.gain.value = 0.009;
+    lfo.connect(lfoG); lfoG.connect(g.gain);
+    o.connect(g); g.connect(masterGain);
+    o.start();
+    musicNodes.push({ osc: o, gain: g });
+  }
+}
+
+function playChime() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  // Bell-like tone with overtones — crystal ring
+  const fundamentals = [784, 1175, 1568]; // G5 D6 G6
+  for (let i = 0; i < fundamentals.length; i++) {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine'; o.frequency.value = fundamentals[i];
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, t + i * 0.04);
+    g.gain.linearRampToValueAtTime(0.11 / (i + 1), t + i * 0.04 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.04 + 1.5);
+    o.connect(g); g.connect(masterGain);
+    o.start(t + i * 0.04); o.stop(t + i * 0.04 + 1.6);
+  }
+}
+
+function playInteract() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(660, t);
+  o.frequency.exponentialRampToValueAtTime(1320, t + 0.15);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 1000;
+  o.connect(bp); bp.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 0.28);
+}
+
+function playPuzzleSolve() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  const notes = [523, 659, 784, 988, 1175, 1568];
+  for (let i = 0; i < notes.length; i++) {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine'; o.frequency.value = notes[i];
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, t + i * 0.09);
+    g.gain.linearRampToValueAtTime(0.1, t + i * 0.09 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.8);
+    o.connect(g); g.connect(masterGain);
+    o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.85);
+  }
+}
+
+function playArtefact() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  // Deep swelling voice-like drone
+  const o1 = audioCtx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 98;
+  const o2 = audioCtx.createOscillator(); o2.type = 'sine';     o2.frequency.value = 196.5;
+  const o3 = audioCtx.createOscillator(); o3.type = 'triangle'; o3.frequency.value = 294;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.22, t + 1.5);
+  g.gain.linearRampToValueAtTime(0.18, t + 5);
+  g.gain.linearRampToValueAtTime(0, t + 8);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 800;
+  o1.connect(lp); o2.connect(lp); o3.connect(lp);
+  lp.connect(g); g.connect(masterGain);
+  o1.start(t); o2.start(t); o3.start(t);
+  o1.stop(t + 8); o2.stop(t + 8); o3.stop(t + 8);
+}
+
+let footstepCooldown = 0;
+function playFootstep() {
+  if (!soundReady || footstepCooldown > 0) return;
+  footstepCooldown = 0.34;
+  const t = audioCtx.currentTime;
+  // Sharp glassy tap — two short sine blips
+  const o = audioCtx.createOscillator();
+  o.type = 'triangle'; o.frequency.value = 1800 + Math.random() * 400;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.04, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 0.08);
+  // low thud
+  const bufSize = audioCtx.sampleRate * 0.05;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(bufSize*0.2));
+  const n = audioCtx.createBufferSource(); n.buffer = buf; n.start(t);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 200;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.05;
+  n.connect(lp); lp.connect(g2); g2.connect(masterGain);
+}
+
+function playBeam() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'sine'; o.frequency.setValueAtTime(140, t);
+  o.frequency.linearRampToValueAtTime(2400, t + 2);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.18, t + 0.6);
+  g.gain.linearRampToValueAtTime(0, t + 5);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 5);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SCENE / CAMERA / RENDERER
+// ══════════════════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+
+// Sky shader — cold twilight with crystal reflections
+const skyGeo = new THREE.SphereGeometry(300, 32, 16);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: {
+    topColor: { value: new THREE.Color(0x080418) },
+    midColor: { value: new THREE.Color(0x1a0a3a) },
+    horizonColor: { value: new THREE.Color(0x5a3080) },
+    auroraColor: { value: new THREE.Color(0x40ffd0) },
+  },
+  vertexShader: `
+    varying vec3 vWorldPos;
+    void main() {
+      vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vWorldPos;
+    uniform vec3 topColor, midColor, horizonColor, auroraColor;
+    void main() {
+      vec3 n = normalize(vWorldPos);
+      float h = n.y;
+      vec3 col;
+      if (h > 0.2) col = mix(midColor, topColor, smoothstep(0.2, 0.95, h));
+      else         col = mix(horizonColor, midColor, smoothstep(-0.1, 0.3, h));
+      // Subtle aurora band high in the sky
+      float band = smoothstep(0.5, 0.75, h) - smoothstep(0.75, 0.95, h);
+      float wobble = sin(n.x * 6.0 + n.z * 4.0) * 0.5 + 0.5;
+      col += auroraColor * band * wobble * 0.22;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+scene.fog = new THREE.FogExp2(0x1a0830, 0.010);
+
+const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 600);
+camera.position.set(18, 9, 18);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(PERF.pixelRatio);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ── Lights ── cold purple ambient, cyan fill, warm moon rim
+const ambient = new THREE.AmbientLight(0x8080c0, 0.55);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xc0b0ff, 1.8);
+sun.position.set(40, 45, -20);
+sun.castShadow = true;
+sun.shadow.mapSize.width = PERF.shadowMapSize;
+sun.shadow.mapSize.height = PERF.shadowMapSize;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 250;
+sun.shadow.camera.left = -60;
+sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60;
+sun.shadow.camera.bottom = -60;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+scene.add(sun.target);
+
+const rim = new THREE.DirectionalLight(0x40e0d0, 0.7);
+rim.position.set(-30, 20, 40);
+scene.add(rim);
+
+const rim2 = new THREE.DirectionalLight(0xff60a0, 0.4);
+rim2.position.set(30, 15, 30);
+scene.add(rim2);
+
+// Visible moon disc
+const moonDisc = new THREE.Mesh(
+  new THREE.CircleGeometry(5, 32),
+  new THREE.MeshBasicMaterial({ color: 0xe0d8ff, transparent: true, opacity: 0.85, depthWrite: false })
+);
+moonDisc.position.set(90, 75, -40);
+moonDisc.lookAt(0, 0, 0);
+scene.add(moonDisc);
+
+const moonHalo = new THREE.Mesh(
+  new THREE.CircleGeometry(16, 32),
+  new THREE.MeshBasicMaterial({ color: 0x8080ff, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending })
+);
+moonHalo.position.copy(moonDisc.position);
+moonHalo.lookAt(0, 0, 0);
+scene.add(moonHalo);
+
+// Second smaller moon
+const moon2 = new THREE.Mesh(
+  new THREE.SphereGeometry(1.6, 16, 12),
+  new THREE.MeshStandardMaterial({ color: 0xc0b8d8, roughness: 0.9, flatShading: true })
+);
+moon2.position.set(-70, 55, 80);
+scene.add(moon2);
+
+// Stars
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(500 * 3);
+for (let i = 0; i < 500; i++) {
+  const r = 260 + Math.random() * 30;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(Math.random() * 2 - 1);
+  starPos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+  starPos[i*3+1] = Math.abs(r * Math.cos(phi)) * 0.6;
+  starPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xd0d8ff, size: 0.7, sizeAttenuation: true, transparent: true, opacity: 0.8 })));
+
+// ── Postprocessing ──
+let composer = null;
+if (PERF.bloom) {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.6, 0.2);
+  composer.addPass(bloom);
+}
+
+// Noise helpers
+function noise(x, y) {
+  const a = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return (a - Math.floor(a)) * 2 - 1;
+}
+function smoothNoise(x, y) {
+  const fx = Math.floor(x), fy = Math.floor(y);
+  const dx = x - fx, dy = y - fy;
+  const a = noise(fx, fy), b = noise(fx+1, fy), c = noise(fx, fy+1), d = noise(fx+1, fy+1);
+  const u = dx*dx*(3-2*dx), v = dy*dy*(3-2*dy);
+  return a + (b-a)*u + (c-a)*v + (a+d-b-c)*u*v;
+}
+function fbm(x, y, oct = 4) {
+  let v = 0, amp = 1, f = 1, m = 0;
+  for (let i = 0; i < oct; i++) { v += smoothNoise(x*f, y*f) * amp; m += amp; amp *= 0.5; f *= 2; }
+  return v / m;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CRYSTAL TERRAIN
+// ══════════════════════════════════════════════════════════════════
+const GROUND_SIZE = 500, GROUND_SEGS = 120;
+const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEGS, GROUND_SEGS);
+const gpos = groundGeo.attributes.position;
+const gcol = new Float32Array(gpos.count * 3);
+
+for (let i = 0; i < gpos.count; i++) {
+  const x = gpos.getX(i), y = gpos.getY(i);
+  let h = fbm(x * 0.055, y * 0.055, 4) * 2.2;
+  h += fbm(x * 0.02, y * 0.02, 3) * 1.1;
+  h += fbm(x * 0.18, y * 0.18, 2) * 0.3;
+
+  // Flatten area around artefact (center)
+  const dist = Math.sqrt(x * x + y * y);
+  const flatten = Math.min(1, Math.max(0, (dist - 6) / 10));
+  h *= flatten;
+
+  // Small ridge around the artefact
+  if (dist > 4 && dist < 7.5) h += Math.sin((dist - 4) / 3.5 * Math.PI) * 0.35;
+
+  gpos.setZ(i, h);
+
+  // Color gradient — deep cold purple in valleys, ice blue on peaks
+  const t = (h + 2) / 5;
+  const deep = new THREE.Color(0x1a0a3a);
+  const mid  = new THREE.Color(0x402870);
+  const ice  = new THREE.Color(0xb8b0e8);
+  let c;
+  if (t < 0.5) c = deep.clone().lerp(mid, t * 2);
+  else         c = mid.clone().lerp(ice, (t - 0.5) * 2);
+  gcol[i*3] = c.r; gcol[i*3+1] = c.g; gcol[i*3+2] = c.b;
+}
+gpos.needsUpdate = true;
+groundGeo.setAttribute('color', new THREE.BufferAttribute(gcol, 3));
+groundGeo.computeVertexNormals();
+
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({
+  vertexColors: true, roughness: 0.85, metalness: 0.15, flatShading: true,
+}));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function getGroundHeight(x, z) {
+  const ny = -z;
+  let h = fbm(x * 0.055, ny * 0.055, 4) * 2.2;
+  h += fbm(x * 0.02, ny * 0.02, 3) * 1.1;
+  h += fbm(x * 0.18, ny * 0.18, 2) * 0.3;
+  const dist = Math.sqrt(x * x + z * z);
+  const flatten = Math.min(1, Math.max(0, (dist - 6) / 10));
+  h *= flatten;
+  if (dist > 4 && dist < 7.5) h += Math.sin((dist - 4) / 3.5 * Math.PI) * 0.35;
+  return h;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COLLISION SYSTEM (copied pattern from Ch1)
+// ══════════════════════════════════════════════════════════════════
+const colliders = [];
+const _colliderBox = new THREE.Box3();
+function addCollider(obj, shrinkFrac = 0.85) {
+  obj.updateMatrixWorld(true);
+  _colliderBox.setFromObject(obj);
+  const cx = (_colliderBox.min.x + _colliderBox.max.x) / 2;
+  const cz = (_colliderBox.min.z + _colliderBox.max.z) / 2;
+  const w = _colliderBox.max.x - _colliderBox.min.x;
+  const d = _colliderBox.max.z - _colliderBox.min.z;
+  const ratio = Math.min(w, d) / Math.max(w, d);
+  if (ratio > 0.6) {
+    colliders.push({ type: 'cyl', cx, cz, r: Math.max(w, d) / 2 * shrinkFrac,
+      maxY: _colliderBox.max.y, minY: _colliderBox.min.y });
+  } else {
+    const halfW = w / 2 * shrinkFrac, halfD = d / 2 * shrinkFrac;
+    colliders.push({ minX: cx-halfW, maxX: cx+halfW, minZ: cz-halfD, maxZ: cz+halfD,
+      maxY: _colliderBox.max.y, minY: _colliderBox.min.y });
+  }
+}
+
+const _tmpBox = new THREE.Box3();
+function seatOnGround(obj, x, z, buryFrac = 0) {
+  obj.position.set(0, 0, 0);
+  obj.updateMatrixWorld(true);
+  _tmpBox.setFromObject(obj);
+  const localBottom = _tmpBox.min.y;
+  const localTop = _tmpBox.max.y;
+  const height = localTop - localBottom;
+  const bury = height * buryFrac;
+  const groundH = getGroundHeight(x, z);
+  obj.position.set(x, groundH - localBottom - bury, z);
+  obj.updateMatrixWorld(true);
+}
+
+function place(group, x, z, buryFrac = 0, colliderShrink = 0.85, skipCollision = false) {
+  scene.add(group);
+  seatOnGround(group, x, z, buryFrac);
+  if (!skipCollision) addCollider(group, colliderShrink);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CRYSTAL FORMATIONS — scattered shards in the landscape
+// ══════════════════════════════════════════════════════════════════
+const crystalMats = [
+  new THREE.MeshStandardMaterial({ color: 0x6040b0, emissive: 0x4020a0, emissiveIntensity: 0.45, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.85, flatShading: true }),
+  new THREE.MeshStandardMaterial({ color: 0x40a0d0, emissive: 0x2080b0, emissiveIntensity: 0.5, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.9, flatShading: true }),
+  new THREE.MeshStandardMaterial({ color: 0x8060ff, emissive: 0x4020c0, emissiveIntensity: 0.4, roughness: 0.15, metalness: 0.25, transparent: true, opacity: 0.8, flatShading: true }),
+  new THREE.MeshStandardMaterial({ color: 0xd0a0ff, emissive: 0x8050d0, emissiveIntensity: 0.55, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.75, flatShading: true }),
+];
+
+function addCrystal(x, z, size, matIdx) {
+  const group = new THREE.Group();
+  const shardCount = 2 + Math.floor(rand() * 3);
+  for (let i = 0; i < shardCount; i++) {
+    const geo = new THREE.ConeGeometry(size * (0.25 + rand() * 0.25), size * (1.4 + rand() * 1.2), 5);
+    const shard = new THREE.Mesh(geo, crystalMats[matIdx]);
+    shard.rotation.set((rand() - 0.5) * 0.5, rand() * Math.PI * 2, (rand() - 0.5) * 0.5);
+    shard.position.set((rand() - 0.5) * size * 0.6, size * 0.7, (rand() - 0.5) * size * 0.6);
+    shard.castShadow = true; shard.receiveShadow = true;
+    group.add(shard);
+  }
+  place(group, x, z, 0.15, 0.75);
+}
+
+// Scatter crystals — more density far from artefact
+for (let i = 0; i < PERF.crystalCount; i++) {
+  const a = rand() * Math.PI * 2;
+  const r = 10 + rand() * 50;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r;
+  // Keep clear zone near artefact and village
+  if (Math.sqrt(x*x + z*z) < 7) continue;
+  if (Math.sqrt((x+22)*(x+22) + (z-18)*(z-18)) < 8) continue; // village
+  addCrystal(x, z, 0.7 + rand() * 1.8, Math.floor(rand() * 4));
+}
+
+// Distant crystal spires (beyond barrier, non-colliding)
+for (let i = 0; i < 30; i++) {
+  const a = (i / 30) * Math.PI * 2 + rand() * 0.3;
+  const r = 85 + rand() * 70;
+  const size = 3 + rand() * 8;
+  const geo = new THREE.ConeGeometry(size * 0.3, size * 2.5, 5);
+  const spire = new THREE.Mesh(geo, crystalMats[Math.floor(rand() * 4)].clone());
+  spire.position.set(Math.cos(a) * r, size, Math.sin(a) * r);
+  spire.rotation.y = rand() * Math.PI * 2;
+  spire.rotation.z = (rand() - 0.5) * 0.15;
+  scene.add(spire);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// THE ARTEFACT — centerpiece
+// Massive floating crystal ring with inner orb
+// ══════════════════════════════════════════════════════════════════
+const artefact = new THREE.Group();
+scene.add(artefact);
+artefact.position.set(0, 0, 0);
+
+// Stone dais — circular platform
+const daisGeo = new THREE.CylinderGeometry(4.0, 4.5, 0.6, 16);
+const daisMat = new THREE.MeshStandardMaterial({ color: 0x302038, roughness: 0.7, metalness: 0.3, flatShading: true });
+const dais = new THREE.Mesh(daisGeo, daisMat);
+dais.position.y = 0.3;
+dais.castShadow = true; dais.receiveShadow = true;
+artefact.add(dais);
+
+// Dais runes (glowing rings on top)
+const runeRing = new THREE.Mesh(
+  new THREE.RingGeometry(2.8, 3.2, 48, 1),
+  new THREE.MeshBasicMaterial({ color: 0xa080ff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+);
+runeRing.rotation.x = -Math.PI / 2;
+runeRing.position.y = 0.61;
+artefact.add(runeRing);
+
+// Inner rune ring
+const runeRing2 = new THREE.Mesh(
+  new THREE.RingGeometry(1.8, 2.0, 48, 1),
+  new THREE.MeshBasicMaterial({ color: 0x80c0ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+);
+runeRing2.rotation.x = -Math.PI / 2;
+runeRing2.position.y = 0.615;
+artefact.add(runeRing2);
+
+// Three vertical stone pillars framing the artefact
+for (let i = 0; i < 3; i++) {
+  const a = (i / 3) * Math.PI * 2 + Math.PI / 6;
+  const r = 3.6;
+  const pillarGeo = new THREE.CylinderGeometry(0.25, 0.35, 4.2, 6);
+  const pillar = new THREE.Mesh(pillarGeo, new THREE.MeshStandardMaterial({ color: 0x202838, roughness: 0.8, metalness: 0.4, flatShading: true }));
+  pillar.position.set(Math.cos(a) * r, 2.1 + 0.6, Math.sin(a) * r);
+  pillar.castShadow = true;
+  artefact.add(pillar);
+  // Pillar capstone — glowing crystal
+  const cap = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.4, 0),
+    new THREE.MeshStandardMaterial({ color: 0xa080ff, emissive: 0xa080ff, emissiveIntensity: 2.5, roughness: 0.1, metalness: 0.6 })
+  );
+  cap.position.set(Math.cos(a) * r, 4.4, Math.sin(a) * r);
+  cap.userData.isPillarCap = true;
+  cap.userData.phase = i * 2;
+  artefact.add(cap);
+}
+
+// The core — large floating crystal ring
+const coreRingGeo = new THREE.TorusGeometry(1.6, 0.28, 8, 48);
+const coreRingMat = new THREE.MeshStandardMaterial({
+  color: 0x8060ff, emissive: 0x6040e0, emissiveIntensity: 1.6,
+  roughness: 0.1, metalness: 0.85, flatShading: true,
+});
+const coreRing = new THREE.Mesh(coreRingGeo, coreRingMat);
+coreRing.position.y = 5.5;
+coreRing.rotation.x = Math.PI / 2;
+coreRing.userData.isCoreRing = true;
+artefact.add(coreRing);
+
+// Second ring perpendicular
+const coreRing2 = new THREE.Mesh(coreRingGeo.clone(), coreRingMat.clone());
+coreRing2.position.y = 5.5;
+coreRing2.rotation.y = Math.PI / 2;
+coreRing2.userData.isCoreRing2 = true;
+artefact.add(coreRing2);
+
+// Floating inner orb
+const artOrb = new THREE.Mesh(
+  new THREE.SphereGeometry(0.7, 24, 16),
+  new THREE.MeshStandardMaterial({
+    color: 0xc0a0ff, emissive: 0xc0a0ff, emissiveIntensity: 3.2,
+    roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.88,
+  })
+);
+artOrb.position.y = 5.5;
+artOrb.userData.isArtOrb = true;
+artefact.add(artOrb);
+
+// Strong point light inside
+const artLight = new THREE.PointLight(0xc0a0ff, 10, 30);
+artLight.position.y = 5.5;
+artefact.add(artLight);
+
+// Seat dais on ground center
+seatOnGround(artefact, 0, 0, 0);
+addCollider(dais, 0.9);
+
+// Interact zone for the artefact
+const artInteract = { x: 0, z: 0, radius: 4.5, label: 'COMMUNE WITH ARTEFACT', kind: 'artefact', done: false };
+
+// ══════════════════════════════════════════════════════════════════
+// ALIEN SYMBOLS — each fragment teaches one of these
+// ══════════════════════════════════════════════════════════════════
+const SYMBOLS = ['◬', '✦', '⟁', '⌘', '⚯'];
+const SYMBOL_NAMES = ['EARTH', 'SKY', 'FLESH', 'STONE', 'MIND'];
+// Puzzle answer (the "rhythm" order) — taught only by the glyph stone
+const PUZZLE_ANSWER = [0, 1, 2, 3, 4];
+// Scrambled display order on the artefact itself — so the artefact can't
+// be used as a cheatsheet; the player must remember what the stone said.
+const ARTEFACT_GLYPH_ORDER = [2, 0, 4, 1, 3];  // FLESH EARTH MIND SKY STONE
+
+function makeGlyphPlane(symbol, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 128, 128);
+  ctx.font = 'bold 96px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = color;
+  ctx.fillText(symbol, 64, 70);
+  ctx.shadowBlur = 8;
+  ctx.fillText(symbol, 64, 70);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, side: THREE.DoubleSide,
+    depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const geo = new THREE.PlaneGeometry(0.9, 0.9);
+  return new THREE.Mesh(geo, mat);
+}
+
+// Floating glyph tablets around the artefact core — scrambled order
+const artGlyphs = [];
+for (let i = 0; i < 5; i++) {
+  const symIdx = ARTEFACT_GLYPH_ORDER[i];
+  const ang = (i / 5) * Math.PI * 2 - Math.PI / 2;
+  const r = 2.5;
+  const plane = makeGlyphPlane(SYMBOLS[symIdx], '#c0a0ff');
+  plane.position.set(Math.cos(ang) * r, 3.2, Math.sin(ang) * r);
+  plane.userData.baseY = 3.2;
+  plane.userData.phase = i * 1.1;
+  plane.userData.angle = ang;
+  plane.userData.radius = r;
+  plane.userData.isArtGlyph = true;
+  artefact.add(plane);
+  artGlyphs.push(plane);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CRYSTAL FRAGMENTS — 5 collectibles
+// ══════════════════════════════════════════════════════════════════
+const fragments = [];
+const fragmentPositions = [
+  [ 28, -18],
+  [-32,   6],
+  [ 12,  34],
+  [-24, -26],
+  [ 40,  14],
+];
+
+for (let i = 0; i < fragmentPositions.length; i++) {
+  const [fx, fz] = fragmentPositions[i];
+  const group = new THREE.Group();
+
+  // Crystal shard group that floats — octahedron + vertical shard behind it
+  const octGeo = new THREE.OctahedronGeometry(0.42, 0);
+  const shardMat = new THREE.MeshStandardMaterial({
+    color: 0x80c0ff, emissive: 0x60a0ff, emissiveIntensity: 2.8,
+    roughness: 0.1, metalness: 0.35, transparent: true, opacity: 0.9,
+  });
+  const oct = new THREE.Mesh(octGeo, shardMat);
+  oct.position.y = 0.5;
+  oct.castShadow = true;
+  group.add(oct);
+
+  const spike = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 5), shardMat);
+  spike.position.y = 1.05;
+  group.add(spike);
+
+  const spike2 = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.5, 5), shardMat);
+  spike2.position.set(0.18, 0.45, 0.12);
+  spike2.rotation.set(0.3, 0.2, -0.35);
+  group.add(spike2);
+
+  // Glow light
+  const glow = new THREE.PointLight(0x80c0ff, 2.2, 6);
+  glow.position.y = 0.5;
+  group.add(glow);
+
+  const gh = getGroundHeight(fx, fz);
+  group.position.set(fx, gh + 0.5, fz);
+  group.userData.phase = i * 1.3;
+  group.userData.baseY = gh + 0.5;
+  group.userData.collected = false;
+  group.userData.symbolIdx = i;
+  scene.add(group);
+  fragments.push(group);
+}
+
+// Beams over uncollected fragments (waypoint markers)
+const objectiveBeams = [];
+function addObjectiveBeam(x, z, color, height = 18) {
+  const beamGeo = new THREE.CylinderGeometry(0.18, 0.28, height, 6, 1, true);
+  const beamMat = new THREE.MeshBasicMaterial({
+    color, transparent: true, opacity: 0.3, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const beam = new THREE.Mesh(beamGeo, beamMat);
+  beam.position.set(x, height / 2 + getGroundHeight(x, z), z);
+  scene.add(beam);
+
+  const topGeo = new THREE.SphereGeometry(0.3, 10, 8);
+  const top = new THREE.Mesh(topGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  top.position.set(x, height + getGroundHeight(x, z), z);
+  scene.add(top);
+
+  objectiveBeams.push({ beam, top, x, z });
+  return { beam, top };
+}
+
+function fadeBeamAt(x, z) {
+  for (const ob of objectiveBeams) {
+    if (Math.abs(ob.x - x) < 0.6 && Math.abs(ob.z - z) < 0.6) {
+      ob.beam.visible = false;
+      ob.top.visible = false;
+    }
+  }
+}
+
+for (const [fx, fz] of fragmentPositions) addObjectiveBeam(fx, fz, 0x80c0ff, 16);
+// Beam over artefact (always visible)
+addObjectiveBeam(0, 0, 0xa080ff, 24);
+
+// ══════════════════════════════════════════════════════════════════
+// PEACE VILLAGE — mixed Verdant + Monolith exiles
+// Located NW of artefact
+// ══════════════════════════════════════════════════════════════════
+const villageX = -22, villageZ = 18;
+const villageGh = getGroundHeight(villageX, villageZ);
+const villageInteracts = [];
+
+{
+  // Central campfire with glowing stones
+  const fireRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.7, 0.15, 6, 12),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 1, flatShading: true })
+  );
+  fireRing.position.set(villageX, villageGh + 0.08, villageZ);
+  fireRing.rotation.x = Math.PI / 2;
+  scene.add(fireRing);
+
+  // Glowing embers (animated in tick)
+  const ember = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0xff6040, emissive: 0xff6040, emissiveIntensity: 3 })
+  );
+  ember.position.set(villageX, villageGh + 0.25, villageZ);
+  ember.userData.isEmber = true;
+  scene.add(ember);
+
+  const embLight = new THREE.PointLight(0xff8040, 3, 8);
+  embLight.position.set(villageX, villageGh + 0.5, villageZ);
+  embLight.userData.isEmbLight = true;
+  scene.add(embLight);
+
+  // Shelters — 4 crystal-covered huts around the campfire
+  function addHut(offX, offZ, faction) {
+    const group = new THREE.Group();
+    const domeMat = new THREE.MeshStandardMaterial({
+      color: faction === 'verdant' ? 0x406030 : 0x504060,
+      roughness: 0.8, flatShading: true,
+    });
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.3, 10, 8, 0, Math.PI*2, 0, Math.PI/2), domeMat);
+    dome.castShadow = true; dome.receiveShadow = true;
+    group.add(dome);
+    // Doorway opening — dark void on the front face
+    const door = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.7, 1.0),
+      new THREE.MeshBasicMaterial({ color: 0x000008 })
+    );
+    door.position.set(0, 0.5, 1.3);
+    group.add(door);
+    // Crystal cluster on top
+    for (let k = 0; k < 3; k++) {
+      const ang = (k / 3) * Math.PI * 2;
+      const cg = new THREE.Mesh(
+        new THREE.ConeGeometry(0.12, 0.5, 5),
+        crystalMats[faction === 'verdant' ? 1 : 2]
+      );
+      cg.position.set(Math.cos(ang) * 0.3, 1.4, Math.sin(ang) * 0.3);
+      cg.rotation.z = (rand() - 0.5) * 0.3;
+      group.add(cg);
+    }
+    group.rotation.y = Math.atan2(-offX, -offZ);
+    place(group, villageX + offX, villageZ + offZ, 0, 0.85);
+  }
+  addHut(-3.0,  1.5, 'verdant');
+  addHut( 2.8,  1.0, 'monolith');
+  addHut(-1.5, -3.0, 'verdant');
+  addHut( 2.5, -2.5, 'monolith');
+
+  // Crystal totem — central marker
+  const totem = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const stone = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.35, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x302038, roughness: 0.8, flatShading: true })
+    );
+    stone.position.y = i * 0.35 + 0.175;
+    stone.rotation.y = i * 0.3;
+    totem.add(stone);
+  }
+  // Crystal at top
+  const totemCrystal = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.3, 0),
+    new THREE.MeshStandardMaterial({ color: 0x80c0ff, emissive: 0x80c0ff, emissiveIntensity: 2, roughness: 0.1 })
+  );
+  totemCrystal.position.y = 1.7;
+  totemCrystal.userData.isTotemCrystal = true;
+  totem.add(totemCrystal);
+  place(totem, villageX, villageZ - 4.5, 0, 0.8);
+
+  // Glyph stone — tutorial that reveals the puzzle rhythm
+  const glyphStoneGroup = new THREE.Group();
+  const stoneBase = new THREE.Mesh(
+    new THREE.BoxGeometry(1.3, 0.15, 1.0),
+    new THREE.MeshStandardMaterial({ color: 0x25152a, roughness: 0.95, flatShading: true })
+  );
+  stoneBase.position.y = 0.08;
+  stoneBase.castShadow = true;
+  glyphStoneGroup.add(stoneBase);
+  // 5 floating etched symbols
+  for (let k = 0; k < 5; k++) {
+    const etch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.01, 0.14 + rand() * 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x80c0ff, emissive: 0x80c0ff, emissiveIntensity: 1.5 })
+    );
+    etch.position.set(-0.4 + k * 0.2, 0.16, 0);
+    etch.rotation.x = Math.PI / 2;
+    glyphStoneGroup.add(etch);
+  }
+  place(glyphStoneGroup, villageX + 3.8, villageZ - 1.5, 0, 0, true);
+  villageInteracts.push({
+    x: villageX + 3.8, z: villageZ - 1.5, radius: 2.2,
+    label: 'READ GLYPH STONE', kind: 'glyph-stone', done: false,
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ALIEN NPCs — loaded from GLBs and placed in village
+// ══════════════════════════════════════════════════════════════════
+const npcModels = [];
+const loader = new GLTFLoader();
+const CB = '?v=' + Date.now();
+
+const npcDefs = [
+  { faction: 'verdant',  variant: '',       x: villageX - 2.2, z: villageZ + 0.3, rot: 1.2,  scale: 1.0, label: 'TALK TO VERDANT ELDER', id: 'verdant-elder',
+    dlg: { title: 'VERDANT EXILE — ELDER', body: `"You fell from the sky in a beam of light.\nYou carry the scent of a crashed world.\n\nThis is a place of peace. A refuge for those who refused to kill.\nMy kin — the Verdant — live in the jungle beyond. Our cousins the Monoliths dwell in the ruins to the east. For a thousand generations we have been at war.\n\nNone here remember why."` } },
+  { faction: 'monolith', variant: '_staff', x: villageX + 1.2, z: villageZ + 2.8, rot: -0.5, scale: 1.0, label: 'TALK TO MONOLITH SHAMAN', id: 'monolith-shaman',
+    dlg: { title: 'MONOLITH EXILE — SHAMAN', body: `"The artefact at the center of this valley is older than both our peoples.\nIt speaks, but only in the old glyphs.\n\nIt knows us. It has watched the war from before the war began.\n\nCollect the five shards that fell from its rings when it last spoke.\nTouch each one. The knowledge will settle into you like frost on stone."` } },
+  { faction: 'verdant',  variant: '_spear', x: villageX + 2.6, z: villageZ - 0.3, rot: 2.5,  scale: 1.0, label: 'TALK TO VERDANT GUARD', id: 'verdant-guard',
+    dlg: { title: 'VERDANT GUARD', body: `"My mate and I fled the jungle before the last great bloom.\nThe Council was demanding every root-drinker fight — even the children.\n\nI laid down my spear. I still carry it, but only to ward off the slake-hounds that roam at night.\n\nStay in the village after dark. The crystal fields sing strange things when the moon rises."` } },
+  { faction: 'monolith', variant: '_bow',   x: villageX + 0.5, z: villageZ - 1.8, rot: 0.2,  scale: 1.0, label: 'TALK TO MONOLITH ARCHER', id: 'monolith-archer',
+    dlg: { title: 'MONOLITH ARCHER', body: `"The High Prism told us the Verdant were mindless beasts, all teeth and roots.\nI believed it — until I shot one and she screamed a lullaby my mother used to sing.\n\nMost of us here have a story like that.\n\nOne of you will have to choose which kind wins the war. We cannot. We are both."` } },
+  { faction: 'verdant',  variant: '',       x: villageX - 1.3, z: villageZ + 0.4, rot: 0.4,  scale: 0.55, label: 'TALK TO VERDANT CHILD', id: 'verdant-child',
+    dlg: { title: 'VERDANT CHILD', body: `"I was born here. I've never seen the jungle.\nI've never seen the ruins.\n\nElder says both are very pretty. Both are also very cruel.\n\nI asked the artefact once if it would be less lonely if I stayed forever. It did not answer. But the rings spun a little faster."` } },
+];
+
+for (const def of npcDefs) {
+  const fname = `alien_${def.faction}${def.variant}.glb`;
+  const baseX = def.x, baseZ = def.z;
+  const baseRot = def.rot;
+  const baseScale = def.scale || 1.0;
+  loader.load(`models/${fname}${CB}`, (gltf) => {
+    const npc = gltf.scene;
+    npc.traverse(obj => { if (obj.isMesh) obj.castShadow = true; });
+    npc.scale.setScalar(baseScale);
+    scene.add(npc);
+    const gh = getGroundHeight(baseX, baseZ);
+    npc.position.set(baseX, gh, baseZ);
+    npc.rotation.y = baseRot;
+    npc.userData.baseY = gh;
+    npc.userData.phase = rand() * Math.PI * 2;
+    npcModels.push(npc);
+    // Interact zone for each NPC
+    villageInteracts.push({
+      x: baseX, z: baseZ, radius: 2.3,
+      label: def.label, kind: 'npc', id: def.id,
+      dialog: def.dlg, done: false,
+    });
+  }, undefined, (err) => console.warn('NPC load error:', fname, err));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MEMORY CUBES — 3 scattered alien-POV memory pickups
+// Walk over to pick up (no E key). Each one reveals a story snippet.
+// ══════════════════════════════════════════════════════════════════
+const memoryCubes = [];
+const memoryDefs = [
+  { x:  12, z: -42, title: 'MEMORY :: FIRST ENCOUNTER',
+    body: `A Verdant child, small and green, meets a Monolith child on the boundary stone.\nThey exchange gifts — a seedling for a crystal.\nThey are laughing. Their elders have not yet told them they are meant to be enemies.` },
+  { x:  45, z:   5, title: 'MEMORY :: THE PACT',
+    body: `A council under a blooming sky. The artefact hovers above them, newly arrived, speaking in a tongue none recognise.\nVerdant and Monolith chieftains clasp hands.\n"We will not fight. The valley is sacred."` },
+  { x: -10, z:  28, title: 'MEMORY :: THE FALL',
+    body: `A spear is thrown. No one can later remember who threw it or why.\nBut a Monolith falls. The Verdant flee.\nThe sky goes the colour of bruised fruit, and never quite lifts again.` },
+];
+
+for (const m of memoryDefs) {
+  const group = new THREE.Group();
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.35, 0.35, 0.35),
+    new THREE.MeshStandardMaterial({
+      color: 0x40ffc0, emissive: 0x40ffc0, emissiveIntensity: 2.5,
+      roughness: 0.2, metalness: 0.5, transparent: true, opacity: 0.85,
+    })
+  );
+  cube.position.y = 0.5;
+  cube.castShadow = true;
+  group.add(cube);
+  // Wire outline for tech-y feel
+  const wire = new THREE.LineSegments(
+    new THREE.EdgesGeometry(cube.geometry),
+    new THREE.LineBasicMaterial({ color: 0x80ffe0 })
+  );
+  wire.position.copy(cube.position);
+  group.add(wire);
+  const pl = new THREE.PointLight(0x40ffc0, 1.5, 5);
+  pl.position.y = 0.6;
+  group.add(pl);
+  const gh = getGroundHeight(m.x, m.z);
+  group.position.set(m.x, gh + 0.55, m.z);
+  group.userData.baseY = gh + 0.55;
+  group.userData.phase = rand() * Math.PI * 2;
+  group.userData.collected = false;
+  group.userData.title = m.title;
+  group.userData.body = m.body;
+  scene.add(group);
+  memoryCubes.push(group);
+  addObjectiveBeam(m.x, m.z, 0x40ffc0, 14);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CAIRN TRAIL + WANDERER SHRINE
+// 5 stacked-stone cairns leading east-southeast to a hidden shrine.
+// ══════════════════════════════════════════════════════════════════
+const cairnPositions = [
+  [-14,  8],
+  [ -4, -2],
+  [  9, -14],
+  [ 22, -26],
+  [ 36, -36],
+];
+const cairnStoneMat = new THREE.MeshStandardMaterial({ color: 0x3a2848, roughness: 0.95, flatShading: true });
+const cairnGlyphMat = new THREE.MeshStandardMaterial({ color: 0x80c0ff, emissive: 0x80c0ff, emissiveIntensity: 1.2 });
+
+for (const [cx, cz] of cairnPositions) {
+  const group = new THREE.Group();
+  const stoneCount = 4 + Math.floor(rand() * 2);
+  let y = 0;
+  for (let i = 0; i < stoneCount; i++) {
+    const s = 0.5 - i * 0.08;
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(s, 0.18, s * 0.85), cairnStoneMat);
+    stone.position.y = y + 0.09;
+    stone.rotation.y = (rand() - 0.5) * 0.6;
+    stone.castShadow = true;
+    group.add(stone);
+    y += 0.18;
+  }
+  // Glyph chip on top
+  const chip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.08), cairnGlyphMat);
+  chip.position.y = y + 0.04;
+  group.add(chip);
+  place(group, cx, cz, 0, 0.8);
+}
+
+// Wanderer shrine at trail's end
+const shrineX = 45, shrineZ = -43;
+{
+  const group = new THREE.Group();
+  // Three leaning poles forming a tripod
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.9, flatShading: true });
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 5), poleMat);
+    pole.position.set(Math.cos(a) * 0.6, 1.2, Math.sin(a) * 0.6);
+    pole.rotation.z = Math.cos(a) * 0.3;
+    pole.rotation.x = Math.sin(a) * 0.3;
+    pole.castShadow = true;
+    group.add(pole);
+  }
+  // Hanging crystal on cord
+  const relic = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.35, 0),
+    new THREE.MeshStandardMaterial({ color: 0xffb060, emissive: 0xff8040, emissiveIntensity: 2, roughness: 0.2, metalness: 0.4 })
+  );
+  relic.position.y = 1.5;
+  relic.userData.isShrineRelic = true;
+  group.add(relic);
+  // Relic glow
+  const rlight = new THREE.PointLight(0xff8040, 3, 10);
+  rlight.position.y = 1.5;
+  group.add(rlight);
+  // Dreamcatcher disc behind
+  const discGeo = new THREE.RingGeometry(0.4, 0.5, 16);
+  const disc = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: 0xffc080, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
+  disc.position.y = 1.5;
+  disc.rotation.y = Math.PI / 4;
+  group.add(disc);
+  // Stacked bones & rags at base (simple wedges)
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.3;
+    const bone = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.04, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0xe0d0b0, roughness: 0.9, flatShading: true })
+    );
+    bone.position.set(Math.cos(a) * 0.5, 0.04, Math.sin(a) * 0.5);
+    bone.rotation.y = a;
+    group.add(bone);
+  }
+  place(group, shrineX, shrineZ, 0, 0.7);
+}
+addObjectiveBeam(shrineX, shrineZ, 0xff8040, 18);
+
+// ══════════════════════════════════════════════════════════════════
+// MEDITATION DAIS — stand on it for 5 seconds to trigger a vision
+// ══════════════════════════════════════════════════════════════════
+const medX = -40, medZ = -12;
+{
+  const group = new THREE.Group();
+  // Low stone disc
+  const stone = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.6, 1.8, 0.3, 12),
+    new THREE.MeshStandardMaterial({ color: 0x202040, roughness: 0.8, metalness: 0.4, flatShading: true })
+  );
+  stone.position.y = 0.15;
+  stone.receiveShadow = true;
+  group.add(stone);
+  // Glowing inlaid ring
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(1.1, 1.3, 32),
+    new THREE.MeshBasicMaterial({ color: 0x60e0ff, transparent: true, opacity: 0.75, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.305;
+  ring.userData.isMedRing = true;
+  group.add(ring);
+  // Four upright prayer stones
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const st = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.9, 0.18),
+      new THREE.MeshStandardMaterial({ color: 0x303050, roughness: 0.9, flatShading: true })
+    );
+    st.position.set(Math.cos(a) * 1.35, 0.5, Math.sin(a) * 1.35);
+    st.castShadow = true;
+    group.add(st);
+  }
+  // Hovering central crystal
+  const beacon = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.25, 0),
+    new THREE.MeshStandardMaterial({ color: 0x60e0ff, emissive: 0x60e0ff, emissiveIntensity: 2.5, roughness: 0.1 })
+  );
+  beacon.position.y = 1.4;
+  beacon.userData.isMedBeacon = true;
+  group.add(beacon);
+  const medLight = new THREE.PointLight(0x60e0ff, 2.5, 10);
+  medLight.position.y = 1.4;
+  group.add(medLight);
+  // Seat but skip collision so the player can stand on it
+  scene.add(group);
+  seatOnGround(group, medX, medZ, 0);
+}
+addObjectiveBeam(medX, medZ, 0x60e0ff, 18);
+
+// ══════════════════════════════════════════════════════════════════
+// ECHO STONES — atmospheric ambient lore (no quest, no interact key)
+// Walk within range; a whispered line appears briefly in the overlay.
+// ══════════════════════════════════════════════════════════════════
+const echoStones = [];
+const echoDefs = [
+  { x: -55, z:   0, line: '"We were one people. We split at a stone shaped like this one."' },
+  { x:  20, z:  55, line: '"The artefact was falling the day I was born. My mother called it a second sun."' },
+  { x:  -8, z: -55, line: '"Listen — can you hear the old wind? It remembers every name."' },
+  { x:  55, z:  25, line: '"Seven generations have died waiting for someone to say STOP."' },
+];
+
+for (const e of echoDefs) {
+  const group = new THREE.Group();
+  // Tall thin standing stone
+  const geo = new THREE.CylinderGeometry(0.15, 0.3, 2.8, 5);
+  const stone = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color: 0x2a2040, roughness: 0.95, flatShading: true,
+  }));
+  stone.position.y = 1.4;
+  stone.rotation.z = (rand() - 0.5) * 0.2;
+  stone.castShadow = true;
+  group.add(stone);
+  // Glowing etched band
+  for (let k = 0; k < 3; k++) {
+    const band = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.12, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x80c0ff, emissive: 0x80c0ff, emissiveIntensity: 1.2 })
+    );
+    const ang = k * (Math.PI * 2 / 3);
+    band.position.set(Math.cos(ang) * 0.22, 1.0 + k * 0.4, Math.sin(ang) * 0.22);
+    band.rotation.y = ang;
+    group.add(band);
+  }
+  // Faint glow light
+  const gl = new THREE.PointLight(0x6090d0, 0.7, 6);
+  gl.position.y = 1.8;
+  group.add(gl);
+  place(group, e.x, e.z, 0, 0.8);
+  echoStones.push({ x: e.x, z: e.z, line: e.line, triggered: false, cooldown: 0 });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FROZEN TRAVELERS — 2 alien figures frozen in crystal, quest
+// ══════════════════════════════════════════════════════════════════
+const travelerDefs = [
+  { x: -30, z: -45, faction: 'verdant',  dlg: { title: 'FROZEN TRAVELER — A VERDANT',
+    body: `A tall figure curled in on itself, forever caught mid-step.\nPalm pressed against the inside of the ice, as if beckoning.\n\nAt the base, scratched in the old script:\n\n"I left the war. I walked for thirteen days toward the artefact.\nI lay down to sleep in the first blue valley I found.\nIt was colder than I knew."\n\nThe body has no wounds.` } },
+  { x:  30, z:  40, faction: 'monolith', dlg: { title: 'FROZEN TRAVELER — A MONOLITH',
+    body: `A slender figure, spear still in hand, eyes wide.\nThe crystal around it is faintly purple, as if it was running from something when it fell.\n\n"She warned me not to cross the valley alone.\nBut the artefact was speaking in my dreams.\nI went to answer it."\n\nBeside the body: a small carved charm of a Verdant seedling.\nLove, or trade, or something older than both.` } },
+];
+const travelers = [];
+for (const t of travelerDefs) {
+  const group = new THREE.Group();
+  // Ice block (translucent cube)
+  const blockMat = new THREE.MeshStandardMaterial({
+    color: 0xa0d0ff, emissive: 0x4080c0, emissiveIntensity: 0.3,
+    roughness: 0.2, metalness: 0.5, transparent: true, opacity: 0.55,
+    flatShading: true,
+  });
+  const block = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 1.0), blockMat);
+  block.position.y = 1.1;
+  block.castShadow = true;
+  group.add(block);
+  // Ice edges wire
+  const wire = new THREE.LineSegments(
+    new THREE.EdgesGeometry(block.geometry),
+    new THREE.LineBasicMaterial({ color: 0xd0e0ff, transparent: true, opacity: 0.5 })
+  );
+  wire.position.copy(block.position);
+  group.add(wire);
+  // Vague silhouette inside — a thin tall mesh
+  const figMat = new THREE.MeshStandardMaterial({
+    color: t.faction === 'verdant' ? 0x306040 : 0x504060,
+    roughness: 0.9, flatShading: true,
+  });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.5, 6), figMat);
+  body.position.y = 0.9;
+  group.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), figMat);
+  head.position.y = 1.8;
+  group.add(head);
+  // Cold light
+  const cl = new THREE.PointLight(0x80c0ff, 0.8, 6);
+  cl.position.y = 1.5;
+  group.add(cl);
+  place(group, t.x, t.z, 0.05, 0.9);
+  travelers.push({ x: t.x, z: t.z, dlg: t.dlg, done: false });
+  addObjectiveBeam(t.x, t.z, 0xa0d0ff, 14);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SKY MIRROR POOL — one-time vision of the past, NW
+// ══════════════════════════════════════════════════════════════════
+const smX = -45, smZ = 35;
+{
+  const group = new THREE.Group();
+  // Stone rim
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(2.2, 0.25, 8, 32),
+    new THREE.MeshStandardMaterial({ color: 0x202036, roughness: 0.8, flatShading: true })
+  );
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.2;
+  group.add(rim);
+  // Mirror water — highly reflective disc
+  const water = new THREE.Mesh(
+    new THREE.CircleGeometry(2.1, 48),
+    new THREE.MeshStandardMaterial({
+      color: 0x60a0e0, emissive: 0x2050a0, emissiveIntensity: 0.25,
+      roughness: 0.05, metalness: 0.95,
+    })
+  );
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = 0.22;
+  water.userData.isSkyMirror = true;
+  group.add(water);
+  // 4 small posts around
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.08, 0.9, 5),
+      new THREE.MeshStandardMaterial({ color: 0x303050, roughness: 0.9, flatShading: true })
+    );
+    post.position.set(Math.cos(a) * 2.6, 0.45, Math.sin(a) * 2.6);
+    post.castShadow = true;
+    group.add(post);
+  }
+  // Soft glow
+  const gl = new THREE.PointLight(0x80b0ff, 1.8, 10);
+  gl.position.y = 1.2;
+  group.add(gl);
+  scene.add(group);
+  seatOnGround(group, smX, smZ, 0);
+}
+addObjectiveBeam(smX, smZ, 0x80b0ff, 16);
+
+// ══════════════════════════════════════════════════════════════════
+// CRYSTAL BLOOMS — small reactive plants that pulse when player is near
+// ══════════════════════════════════════════════════════════════════
+const blooms = [];
+const bloomPositions = [
+  [  5,  -5], [-15, -10], [ 18,  18], [-10, -35],
+  [ 35,  20], [-45,  15], [ 28,  -8], [ 15,  45],
+  [-18,   3], [  8,  25], [ 50,  10], [-32, -20],
+];
+for (const [bx, bz] of bloomPositions) {
+  const group = new THREE.Group();
+  const baseColor = [0x80c0ff, 0xc0a0ff, 0xa0e0ff, 0xd0b0ff][Math.floor(rand() * 4)];
+  const bloomMat = new THREE.MeshStandardMaterial({
+    color: baseColor, emissive: baseColor, emissiveIntensity: 0.6,
+    roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.85, flatShading: true,
+  });
+  // Cluster of tiny shards
+  const petalCount = 4 + Math.floor(rand() * 3);
+  for (let p = 0; p < petalCount; p++) {
+    const a = (p / petalCount) * Math.PI * 2;
+    const petal = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.35, 4), bloomMat);
+    petal.position.set(Math.cos(a) * 0.1, 0.2, Math.sin(a) * 0.1);
+    petal.rotation.z = Math.cos(a) * 0.4;
+    petal.rotation.x = Math.sin(a) * 0.4;
+    group.add(petal);
+  }
+  // Central bulb
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), bloomMat);
+  bulb.position.y = 0.25;
+  group.add(bulb);
+  group.userData.isBloom = true;
+  group.userData.mat = bloomMat;
+  group.userData.phase = rand() * Math.PI * 2;
+  group.userData.baseIntensity = 0.6;
+  const gh = getGroundHeight(bx, bz);
+  group.position.set(bx, gh, bz);
+  scene.add(group);
+  blooms.push(group);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// EXTRA INTERACTS — shrine + meditation + sky mirror + 2 travelers.
+// (Memory cubes are walk-over; echo stones are proximity-whispers.)
+// ══════════════════════════════════════════════════════════════════
+const extraInteracts = [
+  { x: shrineX, z: shrineZ, radius: 2.3,
+    label: 'EXAMINE WANDERER SHRINE', kind: 'shrine', done: false },
+  { x: medX, z: medZ, radius: 2.0,
+    label: 'BEGIN MEDITATION', kind: 'meditation', done: false },
+  { x: smX, z: smZ, radius: 2.6,
+    label: 'PEER INTO THE SKY MIRROR', kind: 'skymirror', done: false },
+  { x: travelers[0].x, z: travelers[0].z, radius: 2.2,
+    label: 'EXAMINE FROZEN VERDANT', kind: 'traveler', idx: 0, done: false },
+  { x: travelers[1].x, z: travelers[1].z, radius: 2.2,
+    label: 'EXAMINE FROZEN MONOLITH', kind: 'traveler', idx: 1, done: false },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// DISTANT OUT-OF-BOUNDS SCENERY: frozen lake, jungle edge, ruins hint
+// Gives visible horizons to match design doc
+// ══════════════════════════════════════════════════════════════════
+// Frozen lake — large reflective disc to the south
+{
+  const lakeGeo = new THREE.CircleGeometry(45, 48);
+  const lakeMat = new THREE.MeshStandardMaterial({
+    color: 0x4060a0, emissive: 0x204060, emissiveIntensity: 0.2,
+    roughness: 0.1, metalness: 0.85,
+  });
+  const lake = new THREE.Mesh(lakeGeo, lakeMat);
+  lake.rotation.x = -Math.PI / 2;
+  lake.position.set(0, -2.0, 90);
+  scene.add(lake);
+}
+
+// Cluster of distant silhouettes — hints of the Ch3 biomes
+for (let i = 0; i < 6; i++) {
+  const a = Math.PI * 1.3 + i * 0.08 + rand() * 0.04;
+  const r = 140 + rand() * 30;
+  const h = 6 + rand() * 10;
+  const hint = new THREE.Mesh(
+    new THREE.ConeGeometry(2 + rand() * 2, h, 5),
+    new THREE.MeshStandardMaterial({ color: 0x0a0820, roughness: 1, flatShading: true })
+  );
+  hint.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+  scene.add(hint);
+}
+// Ruin hint — boxy crystalline structures to the east
+for (let i = 0; i < 5; i++) {
+  const a = 0.1 + i * 0.1;
+  const r = 130 + rand() * 25;
+  const h = 8 + rand() * 8;
+  const hint = new THREE.Mesh(
+    new THREE.BoxGeometry(3 + rand() * 3, h, 3 + rand() * 3),
+    new THREE.MeshStandardMaterial({ color: 0x10102a, roughness: 0.8, metalness: 0.3, flatShading: true })
+  );
+  hint.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r);
+  scene.add(hint);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BARRIER — force field around the explorable area
+// ══════════════════════════════════════════════════════════════════
+const BARRIER_RADIUS = 68;
+const barrierGeo = new THREE.CylinderGeometry(BARRIER_RADIUS, BARRIER_RADIUS, 32, IS_EDGE ? 16 : 48, 1, true);
+const barrierMat = new THREE.ShaderMaterial({
+  transparent: true, side: IS_EDGE ? THREE.FrontSide : THREE.DoubleSide, depthWrite: false,
+  uniforms: {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(0x8060ff) },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    varying vec3 vPos;
+    void main() {
+      vUv = uv;
+      vPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime;
+    uniform vec3 uColor;
+    varying vec2 vUv;
+    varying vec3 vPos;
+    void main() {
+      float hx = sin(vUv.x * 140.0) * 0.5 + 0.5;
+      float vy = sin(vUv.y * 50.0 + uTime * 0.8) * 0.5 + 0.5;
+      float grid = pow(hx, 20.0) + pow(vy, 12.0) * 0.4;
+      float pulse = 0.6 + 0.4 * sin(uTime * 1.3 + vPos.y * 0.2);
+      float alpha = (0.15 + grid * 0.45) * pulse;
+      gl_FragColor = vec4(uColor * (0.6 + grid), alpha);
+    }
+  `,
+});
+const barrier = new THREE.Mesh(barrierGeo, barrierMat);
+barrier.position.y = 14;
+scene.add(barrier);
+let barrierMsgTimer = 0;
+const barrierMsg = document.getElementById('barrierMsg');
+
+// ══════════════════════════════════════════════════════════════════
+// PARTICLES — drifting crystal dust + falling snow-shards
+// ══════════════════════════════════════════════════════════════════
+const dustGeo = new THREE.BufferGeometry();
+const dustPos = new Float32Array(PERF.dustCount * 3);
+for (let i = 0; i < PERF.dustCount; i++) {
+  dustPos[i*3]   = (Math.random() - 0.5) * 220;
+  dustPos[i*3+1] = Math.random() * 6;
+  dustPos[i*3+2] = (Math.random() - 0.5) * 220;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  color: 0xc0a0ff, size: 0.05, transparent: true, opacity: 0.55, sizeAttenuation: true,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+scene.add(dust);
+
+const snowGeo = new THREE.BufferGeometry();
+const snowPos = new Float32Array(PERF.snowCount * 3);
+const snowV = new Float32Array(PERF.snowCount);
+for (let i = 0; i < PERF.snowCount; i++) {
+  snowPos[i*3]   = (Math.random() - 0.5) * 200;
+  snowPos[i*3+1] = Math.random() * 40;
+  snowPos[i*3+2] = (Math.random() - 0.5) * 200;
+  snowV[i] = 0.01 + Math.random() * 0.02;
+}
+snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({
+  color: 0xe0d8ff, size: 0.08, transparent: true, opacity: 0.7, sizeAttenuation: true,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+scene.add(snow);
+
+// ══════════════════════════════════════════════════════════════════
+// QUEST SYSTEM
+// ══════════════════════════════════════════════════════════════════
+const quests = [
+  { id: 'talk',       label: 'Speak with the village exiles', total: 5, done: 0 },
+  { id: 'glyph',      label: 'Read the glyph stone',          total: 1, done: 0 },
+  { id: 'fragments',  label: 'Collect 5 crystal fragments',   total: 5, done: 0 },
+  { id: 'memory',     label: 'Recover 3 memory cubes',        total: 3, done: 0 },
+  { id: 'cairn',      label: 'Follow the cairn trail',        total: 1, done: 0 },
+  { id: 'meditate',   label: 'Meditate at the lookout dais',  total: 1, done: 0 },
+  { id: 'travelers',  label: 'Examine the frozen travelers',  total: 2, done: 0 },
+  { id: 'skymirror',  label: 'Peer into the sky mirror',      total: 1, done: 0 },
+  { id: 'artefact',   label: 'Commune with the artefact',     total: 1, done: 0 },
+];
+
+function renderQuests() {
+  const el = document.getElementById('questItems');
+  el.innerHTML = quests.map(q => {
+    const complete = q.done >= q.total;
+    const dot = complete ? '<span style="color:#60ff80;">●</span>' : '<span style="color:rgba(255,255,255,0.35);">○</span>';
+    const lab = complete
+      ? `<span style="color:rgba(255,255,255,0.4);text-decoration:line-through;">${q.label}</span>`
+      : `<span style="color:rgba(255,255,255,0.8);">${q.label}</span>`;
+    const count = q.total > 1 ? ` <span style="color:#a080ff;">${q.done}/${q.total}</span>` : '';
+    return `${dot}&nbsp; ${lab}${count}`;
+  }).join('<br>');
+}
+
+function updateQuest(id, delta = 1) {
+  const q = quests.find(x => x.id === id);
+  if (!q) return;
+  q.done = Math.min(q.total, q.done + delta);
+  renderQuests();
+}
+renderQuests();
+
+// ══════════════════════════════════════════════════════════════════
+// PLAYER
+// ══════════════════════════════════════════════════════════════════
+const player = {
+  position: new THREE.Vector3(4, 0, 4),
+  velocity: new THREE.Vector3(0, 0, 0),
+  yaw: Math.PI * 0.85,
+  cameraPitch: -0.18,
+  cameraYaw: Math.PI * 0.85,
+  cameraDistance: 5,
+  cameraHeight: 2.0,
+  speed: 5.5,
+  runMul: 1.8,
+  jumpVel: 6.5,
+  gravity: 18,
+  onGround: true,
+  isMoving: false,
+  walkPhase: 0,
+};
+const keys = { w: false, a: false, s: false, d: false, shift: false, space: false, ctrl: false };
+let pointerLocked = false;
+let astronautModel = null;
+let mode = 'walk';
+const freeCam = { position: new THREE.Vector3(10, 5, 10), yaw: Math.PI, pitch: -0.25, speed: 12, sprintMul: 3 };
+
+let cutsceneActive = true;
+let cutsceneTime = 0;
+let arrived = false;
+let dialogOpen = false;
+let puzzleOpen = false;
+let finaleTriggered = false;
+let meditationActive = false;
+let activeVision = null;  // { scene, camera, steps, captions, duration, tick, onComplete, time }
+
+const clickToPlay = document.getElementById('clickToPlay');
+let hasStarted = false;
+
+// Hide ground props + HUD until cutscene reveal
+const _hideInCutscene = [];
+scene.children.forEach(o => {
+  if (o === ground) return;
+  if (o.isLight) return;
+  if (o.isMesh && o.geometry?.type === 'SphereGeometry' && o.material?.side === THREE.BackSide) return;
+  o.visible = false;
+  o.userData._hideInCutscene = true;
+  _hideInCutscene.push(o);
+});
+
+document.querySelector('.hud').style.opacity = '0';
+document.getElementById('controlsHelp').style.opacity = '0';
+document.getElementById('questLog').style.opacity = '0';
+
+// Beam-of-light arrival effect
+const arrivalBeam = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.6, 1.2, 40, 12, 1, true),
+  new THREE.MeshBasicMaterial({
+    color: 0xa080ff, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false,
+  })
+);
+arrivalBeam.position.set(4, 20, 4);
+scene.add(arrivalBeam);
+
+const arrivalLight = new THREE.PointLight(0xa080ff, 0, 30);
+arrivalLight.position.set(4, 5, 4);
+scene.add(arrivalLight);
+
+const flashEl = document.createElement('div');
+flashEl.style.cssText = 'position:fixed;inset:0;z-index:150;background:#e0d0ff;opacity:0;pointer-events:none;transition:opacity 0.4s;';
+document.body.appendChild(flashEl);
+
+// ── Orbit controls (only active in orbit mode) ──
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.08;
+orbitControls.target.set(player.position.x, 1.5, player.position.z);
+orbitControls.enabled = false;
+
+// ══════════════════════════════════════════════════════════════════
+// INPUT
+// ══════════════════════════════════════════════════════════════════
+clickToPlay.addEventListener('click', () => {
+  hasStarted = true;
+  clickToPlay.classList.add('hidden');
+  initAudio();
+  try { canvas.requestPointerLock(); } catch (e) {}
+});
+
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = document.pointerLockElement === canvas;
+});
+
+canvas.addEventListener('click', () => {
+  if (!hasStarted) return;
+  if (dialogOpen || puzzleOpen) return;
+  if (!pointerLocked && mode !== 'orbit') {
+    try { canvas.requestPointerLock(); } catch (e) {}
+  }
+});
+
+document.addEventListener('mousemove', (e) => {
+  if (!pointerLocked) return;
+  const sens = 0.0025;
+  if (mode === 'walk') {
+    player.cameraYaw -= e.movementX * sens;
+    player.cameraPitch -= e.movementY * sens;
+    player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
+  } else if (mode === 'freecam') {
+    freeCam.yaw -= e.movementX * sens;
+    freeCam.pitch -= e.movementY * sens;
+    freeCam.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, freeCam.pitch));
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (dialogOpen) {
+    if (e.code === 'Escape') closeDialog();
+    return;
+  }
+  if (puzzleOpen) {
+    if (e.code === 'Escape') closePuzzle();
+    return;
+  }
+  switch (e.code) {
+    case 'KeyW': keys.w = true; break;
+    case 'KeyA': keys.a = true; break;
+    case 'KeyS': keys.s = true; break;
+    case 'KeyD': keys.d = true; break;
+    case 'ShiftLeft':
+    case 'ShiftRight': keys.shift = true; break;
+    case 'Space':
+      e.preventDefault();
+      keys.space = true;
+      if (mode === 'walk' && player.onGround) {
+        player.velocity.y = player.jumpVel;
+        player.onGround = false;
+      }
+      break;
+    case 'ControlLeft':
+    case 'ControlRight': keys.ctrl = true; break;
+    case 'KeyE': tryInteract(); break;
+    case 'KeyF': setMode(mode === 'freecam' ? 'walk' : 'freecam'); break;
+    case 'KeyO': setMode(mode === 'orbit' ? 'walk' : 'orbit'); break;
+    case 'KeyH': document.body.classList.toggle('hide-hud'); break;
+    case 'Escape': if (pointerLocked) document.exitPointerLock(); break;
+  }
+});
+document.addEventListener('keyup', (e) => {
+  switch (e.code) {
+    case 'KeyW': keys.w = false; break;
+    case 'KeyA': keys.a = false; break;
+    case 'KeyS': keys.s = false; break;
+    case 'KeyD': keys.d = false; break;
+    case 'ShiftLeft':
+    case 'ShiftRight': keys.shift = false; break;
+    case 'Space': keys.space = false; break;
+    case 'ControlLeft':
+    case 'ControlRight': keys.ctrl = false; break;
+  }
+});
+
+function setMode(newMode) {
+  mode = newMode;
+  orbitControls.enabled = (mode === 'orbit');
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  const helpEl = document.getElementById('controlsHelp');
+  if (mode === 'walk') {
+    helpEl.innerHTML = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk · <kbd>SHIFT</kbd> run · <kbd>SPACE</kbd> jump · <kbd>E</kbd> interact · <kbd>H</kbd> hide UI<br>mouse to look · <kbd>ESC</kbd> release cursor';
+  } else if (mode === 'freecam') {
+    helpEl.innerHTML = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> fly · <kbd>SPACE</kbd>/<kbd>CTRL</kbd> up/down · <kbd>SHIFT</kbd> boost<br><kbd>F</kbd> back to walking';
+  } else if (mode === 'orbit') {
+    helpEl.innerHTML = 'drag to orbit · scroll to zoom · right-drag to pan<br><kbd>O</kbd> or WALK to return';
+  }
+  if (mode === 'orbit') {
+    if (pointerLocked) document.exitPointerLock();
+    orbitControls.target.copy(player.position).add(new THREE.Vector3(0, 1.5, 0));
+  } else if (mode === 'freecam') {
+    freeCam.position.copy(camera.position);
+    freeCam.yaw = player.cameraYaw + Math.PI;
+    freeCam.pitch = -player.cameraPitch;
+    if (!pointerLocked) canvas.requestPointerLock();
+  } else if (mode === 'walk') {
+    if (!pointerLocked && !dialogOpen && !puzzleOpen) canvas.requestPointerLock();
+  }
+}
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => { e.stopPropagation(); setMode(btn.dataset.mode); });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// DIALOG / INTERACT
+// ══════════════════════════════════════════════════════════════════
+function openDialog(title, body) {
+  dialogOpen = true;
+  if (pointerLocked) document.exitPointerLock();
+  document.getElementById('dlgTitle').textContent = title;
+  document.getElementById('dlgBody').innerHTML = body.replace(/\n/g, '<br>');
+  document.getElementById('dialogScreen').style.display = 'block';
+}
+function closeDialog() {
+  dialogOpen = false;
+  document.getElementById('dialogScreen').style.display = 'none';
+  if (mode === 'walk' && hasStarted) canvas.requestPointerLock();
+}
+document.getElementById('dlgClose').addEventListener('click', closeDialog);
+
+// Glyph puzzle
+function openPuzzle() {
+  puzzleOpen = true;
+  if (pointerLocked) document.exitPointerLock();
+  renderPuzzle();
+  document.getElementById('glyphPuzzle').style.display = 'block';
+}
+function closePuzzle() {
+  puzzleOpen = false;
+  document.getElementById('glyphPuzzle').style.display = 'none';
+  if (mode === 'walk' && hasStarted) canvas.requestPointerLock();
+}
+document.getElementById('puzzleClose').addEventListener('click', closePuzzle);
+
+let puzzleSlots = [null, null, null, null, null];
+// Scrambled palette order — same as what's etched on the artefact itself,
+// so left-to-right clicking won't work. Player must recall from memory.
+const PALETTE_ORDER = ARTEFACT_GLYPH_ORDER.slice();
+
+function renderPuzzle() {
+  // Pool: only show symbols the player has collected, in scrambled palette order
+  const collected = PALETTE_ORDER.filter(i => fragments[i] && fragments[i].userData.collected);
+  const slotsEl = document.getElementById('puzzleSlots');
+  slotsEl.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.textContent = puzzleSlots[i] !== null ? SYMBOLS[puzzleSlots[i]] : '·';
+    slot.addEventListener('click', () => {
+      if (puzzleSlots[i] !== null) { puzzleSlots[i] = null; renderPuzzle(); }
+    });
+    slotsEl.appendChild(slot);
+  }
+  const glyphsEl = document.getElementById('puzzleGlyphs');
+  glyphsEl.innerHTML = '';
+  for (const idx of collected) {
+    const g = document.createElement('div');
+    const placed = puzzleSlots.includes(idx);
+    g.className = 'glyph' + (placed ? ' placed' : '');
+    g.textContent = SYMBOLS[idx];
+    g.addEventListener('click', () => {
+      if (placed) return;
+      const firstEmpty = puzzleSlots.indexOf(null);
+      if (firstEmpty === -1) return;
+      puzzleSlots[firstEmpty] = idx;
+      renderPuzzle();
+      // Check solution when all filled
+      if (!puzzleSlots.includes(null)) checkPuzzle();
+    });
+    glyphsEl.appendChild(g);
+  }
+  document.getElementById('puzzleHint').textContent = puzzleSlots.every(s => s === null)
+    ? 'Click a glyph to place it — click a placed glyph to remove'
+    : `Order placed: ${puzzleSlots.map(s => s === null ? '·' : SYMBOLS[s]).join(' ')}`;
+}
+
+function checkPuzzle() {
+  const correct = puzzleSlots.every((s, i) => s === PUZZLE_ANSWER[i]);
+  if (correct) {
+    playPuzzleSolve();
+    document.getElementById('puzzleHint').textContent = 'The artefact hums. The rings begin to spin.';
+    document.getElementById('puzzleHint').style.color = '#60ffa0';
+    setTimeout(() => { closePuzzle(); triggerFinale(); }, 2200);
+  } else {
+    document.getElementById('puzzleHint').textContent = 'The artefact remains silent. Try again.';
+    document.getElementById('puzzleHint').style.color = '#ff8080';
+    setTimeout(() => { puzzleSlots = [null, null, null, null, null]; renderPuzzle(); document.getElementById('puzzleHint').style.color = ''; }, 1600);
+  }
+}
+
+// Interactables pool — artefact + village (NPCs pushed to villageInteracts
+// asynchronously as their GLBs load, so iterate the live array each call)
+function allInteractables() { return [artInteract, ...villageInteracts, ...extraInteracts]; }
+
+// ══════════════════════════════════════════════════════════════════
+// 3D VISION SCENES — mini stylized scenes for meditation + sky mirror
+// ══════════════════════════════════════════════════════════════════
+
+function makeSilhouette(color) {
+  const g = new THREE.Group();
+  const bmat = new THREE.MeshBasicMaterial({ color });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.26, 1.6, 6), bmat);
+  body.position.y = 0.9;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), bmat);
+  head.position.y = 1.9;
+  g.add(head);
+  // Head tendrils — short cones
+  for (let k = 0; k < 2; k++) {
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 4), bmat);
+    t.position.set((k - 0.5) * 0.18, 2.08, 0.05);
+    t.rotation.z = (k - 0.5) * 0.4;
+    g.add(t);
+  }
+  return g;
+}
+
+function playVision(visionData, onComplete) {
+  activeVision = Object.assign({}, visionData, {
+    time: 0,
+    onComplete,
+    captionsShown: new Set(),
+  });
+}
+
+function disposeVision(v) {
+  v.scene.traverse(obj => {
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) {
+      if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+      else obj.material.dispose();
+    }
+  });
+  while (v.scene.children.length) v.scene.remove(v.scene.children[0]);
+}
+
+// ── MEDITATION VISION — future war ──
+function buildMeditationVision() {
+  const vs = new THREE.Scene();
+  vs.background = new THREE.Color(0x08041a);
+  vs.fog = new THREE.FogExp2(0x100520, 0.018);
+
+  vs.add(new THREE.AmbientLight(0x404066, 0.6));
+  const dl = new THREE.DirectionalLight(0xc0a0ff, 0.7);
+  dl.position.set(30, 40, -20);
+  vs.add(dl);
+
+  // Ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300, 40, 40),
+    new THREE.MeshStandardMaterial({ color: 0x1a1030, roughness: 1, flatShading: true })
+  );
+  const gp = ground.geometry.attributes.position;
+  for (let i = 0; i < gp.count; i++) {
+    const x = gp.getX(i), y = gp.getY(i);
+    gp.setZ(i, (Math.sin(x * 0.1) + Math.cos(y * 0.12)) * 0.4);
+  }
+  gp.needsUpdate = true;
+  ground.geometry.computeVertexNormals();
+  ground.rotation.x = -Math.PI / 2;
+  vs.add(ground);
+
+  // Scattered crystal spires
+  for (let i = 0; i < 30; i++) {
+    const s = 2 + Math.random() * 4;
+    const spire = new THREE.Mesh(
+      new THREE.ConeGeometry(s * 0.3, s * 2.2, 5),
+      new THREE.MeshStandardMaterial({
+        color: 0x4020a0, emissive: 0x2010a0, emissiveIntensity: 0.4,
+        roughness: 0.15, flatShading: true,
+      })
+    );
+    const a = Math.random() * Math.PI * 2;
+    const r = 18 + Math.random() * 60;
+    spire.position.set(Math.cos(a) * r, s, Math.sin(a) * r);
+    spire.rotation.y = Math.random() * Math.PI;
+    vs.add(spire);
+  }
+
+  // Sky rift (hidden at first)
+  const rift = new THREE.Mesh(
+    new THREE.PlaneGeometry(90, 8, 10, 1),
+    new THREE.MeshBasicMaterial({
+      color: 0xff2040, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false,
+    })
+  );
+  const riftPos = rift.geometry.attributes.position;
+  for (let i = 0; i < riftPos.count; i++) {
+    riftPos.setZ(i, (Math.random() - 0.5) * 2);
+  }
+  rift.position.set(0, 38, -30);
+  rift.userData.isRift = true;
+  vs.add(rift);
+
+  const riftLight = new THREE.PointLight(0xff3050, 0, 80);
+  riftLight.position.set(0, 30, -20);
+  riftLight.userData.isRiftLight = true;
+  vs.add(riftLight);
+
+  // Two armies — Verdant green (west), Monolith purple (east)
+  const armies = [];
+  for (let side = 0; side < 2; side++) {
+    const color = side === 0 ? 0x204020 : 0x302050;
+    const dir = side === 0 ? -1 : 1;
+    for (let i = 0; i < 18; i++) {
+      const col = i % 6, row = Math.floor(i / 6);
+      const sil = makeSilhouette(color);
+      const x = dir * 32 + dir * -row * 1.4 + (col - 2.5) * 1.1;
+      const z = (col - 2.5) * 0.9 + (row % 2) * 0.4;
+      sil.position.set(x, 0, z);
+      sil.userData.startX = x;
+      sil.userData.dir = -dir;
+      vs.add(sil);
+      armies.push(sil);
+    }
+  }
+
+  // Distant Verdant inferno (left)
+  const fireGlow = new THREE.Mesh(
+    new THREE.ConeGeometry(6, 18, 10),
+    new THREE.MeshBasicMaterial({
+      color: 0xff6030, transparent: true, opacity: 0.6,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  fireGlow.position.set(-85, 9, -45);
+  fireGlow.userData.isFire = true;
+  vs.add(fireGlow);
+  const fireLight = new THREE.PointLight(0xff5020, 4, 60);
+  fireLight.position.set(-85, 10, -45);
+  vs.add(fireLight);
+
+  // Distant Monolith beams (right)
+  const monLights = [];
+  for (let i = 0; i < 4; i++) {
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.8, 22, 6),
+      new THREE.MeshBasicMaterial({
+        color: 0xa060ff, transparent: true, opacity: 0.55,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+    );
+    beam.position.set(80 + (i - 1.5) * 4, 11, -45);
+    beam.rotation.z = (Math.random() - 0.5) * 0.2;
+    beam.userData.isMonBeam = true;
+    vs.add(beam);
+    monLights.push(beam);
+  }
+
+  // Star dust
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = new Float32Array(300 * 3);
+  for (let i = 0; i < 300; i++) {
+    starPos[i*3]   = (Math.random() - 0.5) * 300;
+    starPos[i*3+1] = 30 + Math.random() * 80;
+    starPos[i*3+2] = (Math.random() - 0.5) * 300;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  vs.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xb0a0ff, size: 0.6, transparent: true, opacity: 0.6 })));
+
+  const vc = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+
+  const steps = [
+    { t:  0,  cam: [0, 45, 55],  look: [0, 5, -10] },
+    { t:  3,  cam: [-18, 22, 30], look: [0, 4, 0] },
+    { t:  6,  cam: [0, 8, 14],    look: [0, 2, -3] },
+    { t:  9,  cam: [18, 10, 14],  look: [0, 3, -5] },
+    { t: 12,  cam: [0, 40, 50],   look: [0, 5, 0] },
+  ];
+
+  const captions = [
+    { t:     0, text: 'YOU SEE IT', sub: 'A vision, not a memory' },
+    { t:  2500, text: 'TWO ARMIES GATHER', sub: 'At the edges of this valley' },
+    { t:  5000, text: 'THE SKY TEARS OPEN', sub: '' },
+    { t:  7600, text: 'JUNGLES BURN · RUINS CRACK LIKE GLASS', sub: '' },
+    { t: 10600, text: 'CHOOSE', sub: 'Or this place burns too' },
+  ];
+
+  function tick(vt, dt) {
+    // Armies march inward, slowing as they get close
+    const marchP = Math.min(1, vt / 10);
+    for (const sil of armies) {
+      sil.position.x = sil.userData.startX + sil.userData.dir * marchP * 18;
+      const bob = Math.sin(vt * 4 + sil.userData.startX * 0.3) * 0.15;
+      sil.position.y = Math.max(0, bob);
+    }
+    // Rift opens from t=5 to t=8
+    if (vt > 5) {
+      const p = Math.min(1, (vt - 5) / 3);
+      rift.material.opacity = p * 0.9;
+      rift.scale.y = 0.5 + p * 2.5;
+      riftLight.intensity = p * 15;
+    }
+    // Fire flickers
+    fireGlow.scale.y = 1 + Math.sin(vt * 8) * 0.2;
+    fireGlow.scale.x = 1 + Math.cos(vt * 7) * 0.15;
+    // Monolith beams pulse
+    for (let i = 0; i < monLights.length; i++) {
+      monLights[i].material.opacity = 0.4 + Math.sin(vt * 3 + i) * 0.3;
+    }
+  }
+
+  return { scene: vs, camera: vc, steps, captions, duration: 14, tick, bg: 'rgba(20,0,40,0.85)' };
+}
+
+// ── SKY MIRROR VISION — past peace, the artefact's arrival ──
+function buildSkyMirrorVision() {
+  const vs = new THREE.Scene();
+  vs.background = new THREE.Color(0x2a3560);
+  vs.fog = new THREE.FogExp2(0x4060a0, 0.012);
+
+  vs.add(new THREE.AmbientLight(0x8090c0, 0.7));
+  const dl = new THREE.DirectionalLight(0xffe0c0, 1.4);
+  dl.position.set(40, 60, 20);
+  vs.add(dl);
+
+  // Flat crystal plaza
+  const plaza = new THREE.Mesh(
+    new THREE.CircleGeometry(40, 48),
+    new THREE.MeshStandardMaterial({
+      color: 0x9098c0, emissive: 0x303860, emissiveIntensity: 0.25,
+      roughness: 0.3, metalness: 0.7, flatShading: true,
+    })
+  );
+  plaza.rotation.x = -Math.PI / 2;
+  vs.add(plaza);
+
+  // Concentric rings carved into plaza
+  for (let r = 5; r <= 30; r += 5) {
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(r - 0.12, r, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0xc0d0ff, transparent: true, opacity: 0.45,
+        blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.02;
+    vs.add(ring);
+  }
+
+  // Council of 20 figures in a circle — mixed Verdant + Monolith
+  const council = [];
+  for (let i = 0; i < 20; i++) {
+    const ang = (i / 20) * Math.PI * 2;
+    const color = i % 2 === 0 ? 0x2e5030 : 0x402850;
+    const sil = makeSilhouette(color);
+    sil.position.set(Math.cos(ang) * 7, 0, Math.sin(ang) * 7);
+    sil.rotation.y = ang + Math.PI; // face center
+    sil.userData.ang = ang;
+    vs.add(sil);
+    council.push(sil);
+  }
+
+  // One "reaching" figure closer to center — the one who'll forget
+  const reacher = makeSilhouette(0x604030);
+  reacher.position.set(3.2, 0, -0.2);
+  reacher.rotation.y = Math.PI;
+  reacher.userData.isReacher = true;
+  vs.add(reacher);
+
+  // The artefact — a glowing ring + orb that descends
+  const art = new THREE.Group();
+  const artRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.4, 0.22, 8, 32),
+    new THREE.MeshStandardMaterial({
+      color: 0xffe0a0, emissive: 0xffc060, emissiveIntensity: 2.5,
+      roughness: 0.1, metalness: 0.7,
+    })
+  );
+  artRing.rotation.x = Math.PI / 2;
+  art.add(artRing);
+  const artRing2 = new THREE.Mesh(artRing.geometry, artRing.material);
+  artRing2.rotation.y = Math.PI / 2;
+  art.add(artRing2);
+  const artOrb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.6, 16, 12),
+    new THREE.MeshStandardMaterial({
+      color: 0xffe0ff, emissive: 0xffc080, emissiveIntensity: 3.5,
+    })
+  );
+  art.add(artOrb);
+  const artLight = new THREE.PointLight(0xffc080, 8, 25);
+  art.add(artLight);
+  art.position.set(0, 80, 0);  // starts high in the sky
+  art.userData.isArt = true;
+  vs.add(art);
+
+  // Sky rays descending on the council
+  const raysGeo = new THREE.BufferGeometry();
+  const rayCount = 30;
+  const rayPos = new Float32Array(rayCount * 3);
+  for (let i = 0; i < rayCount; i++) {
+    rayPos[i*3]   = (Math.random() - 0.5) * 16;
+    rayPos[i*3+1] = Math.random() * 40;
+    rayPos[i*3+2] = (Math.random() - 0.5) * 16;
+  }
+  raysGeo.setAttribute('position', new THREE.BufferAttribute(rayPos, 3));
+  const rays = new THREE.Points(raysGeo, new THREE.PointsMaterial({
+    color: 0xffe0a0, size: 0.3, transparent: true, opacity: 0.8,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  vs.add(rays);
+
+  // Distant silhouette mountains
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const r = 80 + Math.random() * 20;
+    const mt = new THREE.Mesh(
+      new THREE.ConeGeometry(8 + Math.random() * 6, 18 + Math.random() * 10, 5),
+      new THREE.MeshStandardMaterial({ color: 0x3a4268, roughness: 1, flatShading: true })
+    );
+    mt.position.set(Math.cos(a) * r, 9, Math.sin(a) * r);
+    mt.rotation.y = Math.random() * Math.PI;
+    vs.add(mt);
+  }
+
+  const vc = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+
+  const steps = [
+    { t:  0,  cam: [0, 50, 35],   look: [0, 5, 0] },
+    { t:  3,  cam: [0, 20, 20],   look: [0, 3, 0] },
+    { t:  6,  cam: [10, 8, 12],   look: [0, 3, 0] },
+    { t:  9,  cam: [5, 4, 8],     look: [2, 1.5, 0] },
+    { t: 12,  cam: [0, 35, 40],   look: [0, 5, 0] },
+  ];
+
+  const captions = [
+    { t:     0, text: 'THE WATER GOES STILL', sub: 'The sky above it is not the sky above you' },
+    { t:  2600, text: 'A THOUSAND YEARS AGO', sub: 'Both armies lay down their weapons' },
+    { t:  5200, text: 'THE ARTEFACT DESCENDS', sub: 'It was young once, like you' },
+    { t:  8000, text: 'IT WHISPERED A SONG', sub: 'They all learned it together' },
+    { t: 10800, text: 'AND THEN SOMEONE FORGOT THE ORDER', sub: '' },
+  ];
+
+  function tick(vt, dt) {
+    // Artefact descends from y=80 to y=8 by t=7
+    const descP = Math.min(1, vt / 7);
+    art.position.y = 80 - 72 * (descP * descP * (3 - 2 * descP));
+    art.rotation.y += dt * 0.4;
+    artRing.rotation.z = vt * 0.6;
+    artRing2.rotation.z = -vt * 0.5;
+    // Rays stream down
+    const rp = rays.geometry.attributes.position;
+    for (let i = 0; i < rayCount; i++) {
+      rp.array[i*3+1] -= dt * 8;
+      if (rp.array[i*3+1] < 0) rp.array[i*3+1] = 40;
+    }
+    rp.needsUpdate = true;
+    // Council bow slightly as artefact arrives
+    if (vt > 5) {
+      const p = Math.min(1, (vt - 5) / 2);
+      for (const c of council) {
+        c.rotation.x = -p * 0.35;
+      }
+    }
+    // Reacher reaches forward at t>8
+    if (vt > 8) {
+      const p = Math.min(1, (vt - 8) / 3);
+      reacher.position.x = 3.2 - p * 2.0;
+      reacher.rotation.z = p * 0.2;
+    }
+  }
+
+  return { scene: vs, camera: vc, steps, captions, duration: 14, tick, bg: 'rgba(30,20,50,0.4)' };
+}
+
+function triggerSkyMirror() {
+  // Inject ripple keyframes once
+  if (!document.getElementById('ripple-keyframes')) {
+    const style = document.createElement('style');
+    style.id = 'ripple-keyframes';
+    style.textContent = `
+      @keyframes rippleExpand {
+        0%   { transform: scale(0.08); opacity: 1;    border-width: 5px; }
+        35%  {                          opacity: 0.9; border-width: 3px; }
+        100% { transform: scale(140);   opacity: 0;   border-width: 0.5px; }
+      }
+      @keyframes rippleTint {
+        0%   { opacity: 0; }
+        30%  { opacity: 0.8; }
+        70%  { opacity: 0.4; }
+        100% { opacity: 0.25; }
+      }
+      @keyframes canvasDive {
+        0%   { transform: scale(1)    translateY(0); filter: blur(0) saturate(1); }
+        60%  { transform: scale(1.18) translateY(-30px); filter: blur(1px) saturate(1.3); }
+        100% { transform: scale(1.35) translateY(-40px); filter: blur(3px) saturate(1.5); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // Expanding rings (each staggered)
+  const ripple = document.createElement('div');
+  ripple.style.cssText = 'position:fixed;inset:0;z-index:200;pointer-events:none;overflow:hidden;';
+  const RING_COUNT = 7;
+  for (let i = 0; i < RING_COUNT; i++) {
+    const ring = document.createElement('div');
+    const hue = 200 + i * 8;
+    ring.style.cssText = `
+      position:absolute; top:50%; left:50%;
+      width:40px; height:40px; margin:-20px 0 0 -20px;
+      border: 3px solid hsla(${hue}, 90%, 75%, 0.9);
+      border-radius:50%;
+      box-shadow: 0 0 40px hsla(${hue}, 90%, 70%, 0.7), inset 0 0 20px hsla(${hue}, 90%, 85%, 0.4);
+      animation: rippleExpand 2.4s cubic-bezier(0.25, 0.5, 0.35, 1) ${i * 0.18}s forwards;
+    `;
+    ripple.appendChild(ring);
+  }
+  // Blue-tint gradient flash behind the rings
+  const tint = document.createElement('div');
+  tint.style.cssText = `
+    position:absolute; inset:0;
+    background: radial-gradient(ellipse at center, rgba(80,140,220,0.55) 0%, rgba(20,40,90,0.75) 45%, rgba(0,8,28,0.9) 100%);
+    opacity:0; animation: rippleTint 2.4s ease-in-out forwards;
+  `;
+  ripple.appendChild(tint);
+  document.body.appendChild(ripple);
+
+  // Camera dive — canvas zooms + blurs as if we're plunging into the pool
+  canvas.style.transition = '';  // reset
+  canvas.style.animation = 'canvasDive 1.2s ease-in forwards';
+
+  playChime();
+
+  // Vision starts mid-ripple once the dive completes
+  setTimeout(() => {
+    canvas.style.animation = '';
+    canvas.style.transform = '';
+    canvas.style.filter = '';
+    playArtefact();
+    playVision(buildSkyMirrorVision(), () => {
+      // Remove the lingering ripple + tint after the vision
+      const fadeBg = document.createElement('div');
+      fadeBg.style.cssText = 'position:fixed;inset:0;z-index:150;background:rgba(0,20,50,0.3);opacity:1;pointer-events:none;transition:opacity 1s;';
+      document.body.appendChild(fadeBg);
+      setTimeout(() => { fadeBg.style.opacity = '0'; }, 10);
+      setTimeout(() => fadeBg.remove(), 1100);
+    });
+  }, 1200);
+
+  // Cleanup the ripple overlay after its full animation
+  setTimeout(() => ripple.remove(), 2700);
+}
+
+function startMeditation() {
+  meditationActive = true;
+  playArtefact();
+  playVision(buildMeditationVision(), () => {
+    meditationActive = false;
+    const medInt = extraInteracts.find(i => i.kind === 'meditation');
+    if (medInt) medInt.done = true;
+    updateQuest('meditate');
+    fadeBeamAt(medX, medZ);
+  });
+}
+
+function tryInteract() {
+  if (dialogOpen || puzzleOpen || mode !== 'walk' || finaleTriggered || activeVision) return;
+  let nearest = null, nearestD = Infinity;
+  for (const ia of allInteractables()) {
+    if (ia.done) continue;
+    const dx = player.position.x - ia.x;
+    const dz = player.position.z - ia.z;
+    const d = dx*dx + dz*dz;
+    if (d < ia.radius * ia.radius && d < nearestD) { nearestD = d; nearest = ia; }
+  }
+  if (!nearest) return;
+  playInteract();
+
+  if (nearest.kind === 'npc') {
+    openDialog(nearest.dialog.title, nearest.dialog.body);
+    if (!nearest.done) { nearest.done = true; updateQuest('talk'); }
+  } else if (nearest.kind === 'glyph-stone') {
+    openDialog('GLYPH STONE — WEATHERED ALIEN SCRIPT',
+      `<div style="color:#ffb080;font-size:10px;letter-spacing:2px;margin-bottom:12px;">⚠ THE STONE CRUMBLES WHEN TOUCHED. YOU MAY ONLY READ IT ONCE. COMMIT IT TO MEMORY.</div>` +
+      `The stone is cold, etched deep with five symbols left to right:\n\n` +
+      `<div style="text-align:center;font-size:30px;color:#80c0ff;margin:14px 0;letter-spacing:10px;text-shadow:0 0 16px rgba(128,192,255,0.7);">${SYMBOLS.join(' ')}</div>` +
+      `Beneath each glyph, a smaller word has been carved in the same hand:\n\n` +
+      `<div style="text-align:center;color:#a080ff;letter-spacing:4px;font-size:11px;">${SYMBOL_NAMES.join(' · ')}</div>\n\n` +
+      `"A song the artefact sings when it is willing to speak. Earth. Sky. Flesh. Stone. Mind. In that order, in that breath."\n\n` +
+      `<div style="color:rgba(255,180,120,0.6);font-size:10px;letter-spacing:1px;margin-top:10px;">The glyphs on the artefact itself are NOT in this order — the artefact scrambles them.</div>`
+    );
+    if (!nearest.done) { nearest.done = true; updateQuest('glyph'); }
+  } else if (nearest.kind === 'artefact') {
+    // Can only commune after everything else done
+    const ready = quests.every(q => q.id === 'artefact' || q.done >= q.total);
+    if (!ready) {
+      openDialog('THE ARTEFACT', `Its rings are still. The core orb pulses in dim, sleeping colours.\n\nIt is waiting for something. Perhaps you are not yet ready to speak with it — collect more shards, learn its song, hear what the village knows.`);
+      return;
+    }
+    openPuzzle();
+  } else if (nearest.kind === 'traveler') {
+    const trav = travelers[nearest.idx];
+    openDialog(trav.dlg.title, trav.dlg.body);
+    if (!nearest.done) { nearest.done = true; updateQuest('travelers'); fadeBeamAt(nearest.x, nearest.z); }
+  } else if (nearest.kind === 'skymirror') {
+    if (!nearest.done) { nearest.done = true; updateQuest('skymirror'); fadeBeamAt(smX, smZ); }
+    triggerSkyMirror();
+  } else if (nearest.kind === 'shrine') {
+    openDialog('WANDERER SHRINE',
+      `The three leaning poles are older than the village — older, perhaps, than the war.\nA weathered crystal hangs at their centre, the colour of a sunset you have not yet seen on this world.\n\n"These valleys were ours first."\n\nThe inscription is scratched into one of the bones at the base.\n\n"Before the green ones and the hard ones came and chose each other as enemies, we walked between them.\nWe would not pick a side. They burned our camps for it.\nWhat few of us remain drift the deserts of other stars, laying cairns for those who need to find the truth.\n\nThe artefact is not a god. It is a refugee, like us."`
+    );
+    if (!nearest.done) { nearest.done = true; updateQuest('cairn'); }
+  } else if (nearest.kind === 'meditation') {
+    if (meditationActive) return;
+    startMeditation();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODEL LOAD — astronaut
+// ══════════════════════════════════════════════════════════════════
+const joints = {};
+loader.load('models/astronaut.glb' + CB, (gltf) => {
+  astronautModel = gltf.scene;
+  astronautModel.traverse(obj => { if (obj.isMesh) obj.castShadow = true; });
+  scene.add(astronautModel);
+  astronautModel.position.copy(player.position);
+  astronautModel.rotation.y = player.yaw;
+  if (cutsceneActive) { astronautModel.visible = false; astronautModel.userData._hideInCutscene = true; _hideInCutscene.push(astronautModel); }
+
+  joints.hipL      = astronautModel.getObjectByName('HipLeft');
+  joints.hipR      = astronautModel.getObjectByName('HipRight');
+  joints.kneeL     = astronautModel.getObjectByName('KneeJoint_L');
+  joints.kneeR     = astronautModel.getObjectByName('KneeJoint_R');
+  joints.shoulderL = astronautModel.getObjectByName('ShoulderLeft');
+  joints.shoulderR = astronautModel.getObjectByName('ShoulderRight');
+  joints.elbowL    = astronautModel.getObjectByName('ElbowJoint_L');
+  joints.elbowR    = astronautModel.getObjectByName('ElbowJoint_R');
+  joints.neck      = astronautModel.getObjectByName('NeckJoint');
+  joints.torso     = astronautModel.getObjectByName('TorsoRoot');
+  for (const k of Object.keys(joints)) {
+    if (joints[k]) joints[k].userData.basePos = joints[k].position.clone();
+  }
+
+  document.getElementById('loading').classList.add('hidden');
+}, undefined, (err) => {
+  document.getElementById('loading').textContent = 'ERROR: ' + err.message;
+  console.error(err);
+});
+
+const animState = { walkIntensity: 0, airIntensity: 0 };
+function updateAstronautAnimation(dt) {
+  if (!joints.hipL) return;
+  const targetWalk = player.isMoving && player.onGround ? (keys.shift ? 1.5 : 1.0) : 0;
+  const targetAir = player.onGround ? 0 : 1;
+  animState.walkIntensity += (targetWalk - animState.walkIntensity) * Math.min(1, dt * 9);
+  animState.airIntensity += (targetAir - animState.airIntensity) * Math.min(1, dt * 10);
+  const walk = animState.walkIntensity, air = animState.airIntensity;
+  const phase = player.walkPhase;
+  const legSwing = Math.sin(phase) * 0.55 * walk;
+  joints.hipL.rotation.x = legSwing;
+  joints.hipR.rotation.x = -legSwing;
+  const kneeL = Math.max(0, -Math.sin(phase)) * 0.9 * walk;
+  const kneeR = Math.max(0,  Math.sin(phase)) * 0.9 * walk;
+  if (joints.kneeL) joints.kneeL.rotation.x = kneeL;
+  if (joints.kneeR) joints.kneeR.rotation.x = kneeR;
+  const armSwing = -Math.sin(phase) * 0.5 * walk;
+  if (joints.shoulderL) joints.shoulderL.rotation.x = armSwing;
+  if (joints.shoulderR) joints.shoulderR.rotation.x = -armSwing;
+  const elbowBend = 0.25 + Math.abs(Math.sin(phase)) * 0.3 * walk;
+  if (joints.elbowL) joints.elbowL.rotation.x = -elbowBend;
+  if (joints.elbowR) joints.elbowR.rotation.x = -elbowBend;
+  if (joints.torso && joints.torso.userData.basePos) {
+    joints.torso.rotation.z = Math.sin(phase) * 0.04 * walk;
+    const base = joints.torso.userData.basePos;
+    joints.torso.position.y = base.y + Math.abs(Math.sin(phase * 2)) * 0.015 * walk;
+  }
+  if (joints.neck) joints.neck.rotation.z = -Math.sin(phase) * 0.02 * walk;
+  if (air > 0.01) {
+    joints.hipL.rotation.x += 0.2 * air;
+    joints.hipR.rotation.x += 0.2 * air;
+    if (joints.kneeL) joints.kneeL.rotation.x += 0.6 * air;
+    if (joints.kneeR) joints.kneeR.rotation.x += 0.6 * air;
+    if (joints.shoulderL) joints.shoulderL.rotation.z = 0.3 * air;
+    if (joints.shoulderR) joints.shoulderR.rotation.z = -0.3 * air;
+  } else {
+    if (joints.shoulderL) joints.shoulderL.rotation.z = 0;
+    if (joints.shoulderR) joints.shoulderR.rotation.z = 0;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FINALE — communing with the artefact → Chapter 3 transition
+// ══════════════════════════════════════════════════════════════════
+function triggerFinale() {
+  if (finaleTriggered) return;
+  finaleTriggered = true;
+  updateQuest('artefact');
+  playArtefact();
+
+  const overlay = document.getElementById('storyOverlay');
+  const text = document.getElementById('storyText');
+  const sub = document.getElementById('storySub');
+
+  // Sequence of lines spoken by the artefact
+  const lines = [
+    { t: 500,  text: 'YOU ARE FAR FROM HOME', sub: '— the rings spin —' },
+    { t: 3200, text: 'I HAVE WATCHED BOTH HALVES FIGHT FOR ONE THOUSAND LIVES OF MINE', sub: '' },
+    { t: 6400, text: 'THEY WERE ONE PEOPLE ONCE', sub: '' },
+    { t: 9200, text: 'THERE IS A WAR TO THE EAST', sub: '' },
+    { t: 12400, text: 'GO TO IT', sub: '' },
+    { t: 15200, text: 'HELP ONE HALF TO WIN', sub: '— the village will survive either way —' },
+    { t: 18400, text: 'CHOOSE', sub: '' },
+  ];
+
+  for (const l of lines) {
+    setTimeout(() => {
+      text.textContent = l.text;
+      text.classList.add('show');
+      sub.textContent = l.sub;
+      sub.classList.add('show');
+    }, l.t);
+  }
+
+  // Camera pulls back to frame the artefact
+  setTimeout(() => {
+    const camT = { p: 0 };
+    const startCam = camera.position.clone();
+    const endCam = new THREE.Vector3(0, 16, 22);
+    function anim() {
+      camT.p += 0.006;
+      if (camT.p >= 1) return;
+      const s = camT.p * camT.p * (3 - 2 * camT.p);
+      camera.position.lerpVectors(startCam, endCam, s);
+      camera.lookAt(0, 5.5, 0);
+      requestAnimationFrame(anim);
+    }
+    anim();
+  }, 800);
+
+  // Fire a beam from the artefact into the sky
+  setTimeout(() => {
+    playBeam();
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.4, 80, 10),
+      new THREE.MeshBasicMaterial({ color: 0xd0a0ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    beam.position.set(0, 45, 0);
+    scene.add(beam);
+    const bl = new THREE.PointLight(0xd0a0ff, 20, 60);
+    bl.position.set(0, 40, 0);
+    scene.add(bl);
+  }, 6200);
+
+  // Fade to black
+  setTimeout(() => { overlay.classList.add('fade'); }, 21500);
+  // Go to Chapter 3
+  setTimeout(() => { window.location.href = 'chapter3.html'; }, 24000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ARRIVAL CUTSCENE — beam drops player into the valley
+// ══════════════════════════════════════════════════════════════════
+const cutsceneSteps = [
+  { t: 0,   cam: [0, 40, 30], look: [4, 6, 4],  text: 'COORDINATES RESOLVED' },
+  { t: 2.5, cam: [8, 20, 18], look: [4, 6, 4],  text: 'TRANSIT BEAM STABILIZING' },
+  { t: 5,   cam: [5, 8, 12],  look: [4, 3, 4],  text: '' },
+  { t: 7,   cam: [4, 4, 10],  look: [4, 1.5, 4], text: '' },
+];
+const CUTSCENE_END = 9;
+
+clickToPlay.classList.add('hidden');
+
+// ══════════════════════════════════════════════════════════════════
+// ANIMATE
+// ══════════════════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+let lastT = performance.now() * 0.001;
+let frameCount = 0, lastFpsUpdate = performance.now(), fps = 0;
+
+function animate() {
+  const t = performance.now() * 0.001;
+  const dt = Math.min(0.05, t - lastT);
+  lastT = t;
+
+  // ── 3D VISION (plays above the main scene) ──
+  if (activeVision) {
+    activeVision.time += dt;
+    const vt = activeVision.time;
+    const steps = activeVision.steps;
+    let s0 = steps[0], s1 = steps[0];
+    for (let i = 0; i < steps.length - 1; i++) {
+      if (vt >= steps[i].t && vt < steps[i+1].t) { s0 = steps[i]; s1 = steps[i+1]; break; }
+    }
+    if (vt >= steps[steps.length - 1].t) { s0 = s1 = steps[steps.length - 1]; }
+    const frac = s1.t > s0.t ? Math.min(1, (vt - s0.t) / (s1.t - s0.t)) : 1;
+    const smooth = frac * frac * (3 - 2 * frac);
+    const vc = activeVision.camera;
+    vc.position.set(
+      s0.cam[0] + (s1.cam[0] - s0.cam[0]) * smooth,
+      s0.cam[1] + (s1.cam[1] - s0.cam[1]) * smooth,
+      s0.cam[2] + (s1.cam[2] - s0.cam[2]) * smooth,
+    );
+    vc.lookAt(
+      s0.look[0] + (s1.look[0] - s0.look[0]) * smooth,
+      s0.look[1] + (s1.look[1] - s0.look[1]) * smooth,
+      s0.look[2] + (s1.look[2] - s0.look[2]) * smooth,
+    );
+
+    // Captions
+    const tms = vt * 1000;
+    const stEl = document.getElementById('storyText');
+    const ssEl = document.getElementById('storySub');
+    for (const cap of activeVision.captions) {
+      if (tms >= cap.t && !activeVision.captionsShown.has(cap)) {
+        activeVision.captionsShown.add(cap);
+        stEl.textContent = cap.text;
+        ssEl.textContent = cap.sub || '';
+        stEl.classList.add('show');
+        ssEl.classList.add('show');
+      }
+    }
+
+    if (activeVision.tick) activeVision.tick(vt, dt);
+
+    renderer.render(activeVision.scene, activeVision.camera);
+
+    if (vt >= activeVision.duration) {
+      stEl.classList.remove('show'); ssEl.classList.remove('show');
+      const cb = activeVision.onComplete;
+      disposeVision(activeVision);
+      activeVision = null;
+      if (cb) cb();
+    }
+
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  // ── CUTSCENE ──
+  if (cutsceneActive) {
+    cutsceneTime += dt;
+    const text = document.getElementById('storyText');
+
+    // Interpolate camera steps
+    let s0 = cutsceneSteps[0], s1 = cutsceneSteps[0];
+    for (let i = 0; i < cutsceneSteps.length - 1; i++) {
+      if (cutsceneTime >= cutsceneSteps[i].t && cutsceneTime < cutsceneSteps[i+1].t) {
+        s0 = cutsceneSteps[i]; s1 = cutsceneSteps[i+1]; break;
+      }
+      if (i === cutsceneSteps.length - 2) { s0 = cutsceneSteps[i+1]; s1 = s0; }
+    }
+    const frac = s1.t > s0.t ? Math.min(1, (cutsceneTime - s0.t) / (s1.t - s0.t)) : 1;
+    const smooth = frac * frac * (3 - 2 * frac);
+    camera.position.set(
+      s0.cam[0] + (s1.cam[0] - s0.cam[0]) * smooth,
+      s0.cam[1] + (s1.cam[1] - s0.cam[1]) * smooth,
+      s0.cam[2] + (s1.cam[2] - s0.cam[2]) * smooth,
+    );
+    camera.lookAt(
+      s0.look[0] + (s1.look[0] - s0.look[0]) * smooth,
+      s0.look[1] + (s1.look[1] - s0.look[1]) * smooth,
+      s0.look[2] + (s1.look[2] - s0.look[2]) * smooth,
+    );
+
+    if (s0.text) { text.textContent = s0.text; text.classList.add('show'); }
+    else { text.classList.remove('show'); }
+
+    // Beam grows & pulses
+    const ct = cutsceneTime;
+    const beamStrength = ct < 6 ? Math.min(1, ct / 3) : Math.max(0, 1 - (ct - 6) / 2);
+    arrivalBeam.material.opacity = beamStrength * 0.8 * (0.7 + 0.3 * Math.sin(ct * 8));
+    arrivalBeam.scale.x = 0.8 + beamStrength * 0.4;
+    arrivalBeam.scale.z = 0.8 + beamStrength * 0.4;
+    arrivalLight.intensity = beamStrength * 15;
+
+    // Reveal everything at t=5 (flash)
+    if (ct > 5 && !arrived) {
+      arrived = true;
+      flashEl.style.opacity = '1';
+      setTimeout(() => { flashEl.style.opacity = '0'; }, 300);
+      playChime();  // only plays if user already started audio
+
+      for (const o of _hideInCutscene) {
+        o.visible = true;
+        delete o.userData._hideInCutscene;
+      }
+      // astronaut appears at the beam spot
+      if (astronautModel) {
+        const ax = player.position.x, az = player.position.z;
+        astronautModel.visible = true;
+        astronautModel.position.set(ax, getGroundHeight(ax, az), az);
+      }
+    }
+
+    if (cutsceneTime >= CUTSCENE_END) {
+      cutsceneActive = false;
+      text.classList.remove('show');
+      // Remove arrival beam cleanly
+      scene.remove(arrivalBeam); arrivalBeam.geometry.dispose(); arrivalBeam.material.dispose();
+      scene.remove(arrivalLight);
+      flashEl.remove();
+      clickToPlay.classList.remove('hidden');
+      document.querySelector('.hud').style.opacity = '1';
+      document.getElementById('controlsHelp').style.opacity = '1';
+      document.getElementById('questLog').style.opacity = '1';
+      // Welcome subtitle
+      const sub = document.getElementById('storySub');
+      const st = document.getElementById('storyText');
+      st.textContent = 'THE ARTEFACT AWAITS';
+      sub.textContent = 'Explore the valley. Speak with the exiles.';
+      st.classList.add('show'); sub.classList.add('show');
+      setTimeout(() => { st.classList.remove('show'); sub.classList.remove('show'); }, 4500);
+    }
+
+    if (composer) composer.render(); else renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  // ── MODES ──
+  if (mode === 'orbit') {
+    orbitControls.update();
+  } else if (mode === 'freecam') {
+    let moveX = 0, moveZ = 0, moveY = 0;
+    if (keys.w) moveZ -= 1; if (keys.s) moveZ += 1;
+    if (keys.a) moveX -= 1; if (keys.d) moveX += 1;
+    if (keys.space) moveY += 1; if (keys.ctrl) moveY -= 1;
+    const sp = freeCam.speed * (keys.shift ? freeCam.sprintMul : 1);
+    const fwd = new THREE.Vector3(-Math.sin(freeCam.yaw) * Math.cos(freeCam.pitch), Math.sin(freeCam.pitch), -Math.cos(freeCam.yaw) * Math.cos(freeCam.pitch));
+    const right = new THREE.Vector3(Math.cos(freeCam.yaw), 0, -Math.sin(freeCam.yaw));
+    const mv = new THREE.Vector3();
+    mv.addScaledVector(fwd, -moveZ);
+    mv.addScaledVector(right, moveX);
+    mv.addScaledVector(new THREE.Vector3(0, 1, 0), moveY);
+    if (mv.length() > 0) mv.normalize();
+    freeCam.position.addScaledVector(mv, sp * dt);
+    const gh = getGroundHeight(freeCam.position.x, freeCam.position.z);
+    if (freeCam.position.y < gh + 0.8) freeCam.position.y = gh + 0.8;
+    camera.position.copy(freeCam.position);
+    camera.lookAt(freeCam.position.clone().add(fwd));
+  } else if (!dialogOpen && !puzzleOpen) {
+    // ── Walk / player ──
+    let moveX = 0, moveZ = 0;
+    if (keys.w) moveZ -= 1; if (keys.s) moveZ += 1;
+    if (keys.a) moveX -= 1; if (keys.d) moveX += 1;
+    player.isMoving = (moveX !== 0 || moveZ !== 0);
+
+    if (player.isMoving) {
+      const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+      moveX /= len; moveZ /= len;
+      const sp = player.speed * (keys.shift ? player.runMul : 1);
+      const fwd = new THREE.Vector3(-Math.sin(player.cameraYaw), 0, -Math.cos(player.cameraYaw));
+      const right = new THREE.Vector3(Math.cos(player.cameraYaw), 0, -Math.sin(player.cameraYaw));
+      const dir = new THREE.Vector3();
+      dir.addScaledVector(fwd, -moveZ);
+      dir.addScaledVector(right, moveX);
+      dir.normalize();
+      const sx = dir.x * sp * dt, sz = dir.z * sp * dt;
+      const PR = 0.45, PH = 1.8, STEP_H = 0.45;
+
+      function collidesY(c) {
+        const feet = player.position.y, top = feet + PH;
+        if (feet > c.maxY - 0.05) return false;
+        if (c.minY > top) return false;
+        const pcx = c.type === 'cyl' ? c.cx : (c.minX + c.maxX) / 2;
+        const pcz = c.type === 'cyl' ? c.cz : (c.minZ + c.maxZ) / 2;
+        const propH = c.maxY - getGroundHeight(pcx, pcz);
+        if (propH < STEP_H && player.onGround) return false;
+        return true;
+      }
+      function pushOut(c) {
+        if (c.type === 'cyl') {
+          const dx = player.position.x - c.cx;
+          const dz = player.position.z - c.cz;
+          const d = Math.sqrt(dx*dx + dz*dz);
+          const mn = PR + c.r;
+          if (d < mn && d > 0.001) {
+            const push = mn - d;
+            player.position.x += (dx / d) * push;
+            player.position.z += (dz / d) * push;
+          }
+        } else {
+          const cx = Math.max(c.minX, Math.min(player.position.x, c.maxX));
+          const cz = Math.max(c.minZ, Math.min(player.position.z, c.maxZ));
+          const dx = player.position.x - cx, dz = player.position.z - cz;
+          const d2 = dx*dx + dz*dz;
+          if (d2 < PR * PR && d2 > 0.0001) {
+            const d = Math.sqrt(d2);
+            const push = PR - d;
+            player.position.x += (dx / d) * push;
+            player.position.z += (dz / d) * push;
+          }
+        }
+      }
+      player.position.x += sx;
+      player.position.z += sz;
+      for (const c of colliders) { if (!collidesY(c)) continue; pushOut(c); }
+
+      const targetYaw = Math.atan2(dir.x, dir.z);
+      let yawDiff = targetYaw - player.yaw;
+      while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+      while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+      player.yaw += yawDiff * Math.min(1, dt * 12);
+
+      player.walkPhase += dt * (keys.shift ? 12 : 8);
+      if (player.onGround) { footstepCooldown -= dt; playFootstep(); }
+    }
+
+    // Gravity + ground
+    player.velocity.y -= player.gravity * dt;
+    player.position.y += player.velocity.y * dt;
+
+    let surfaceY = getGroundHeight(player.position.x, player.position.z);
+    for (const c of colliders) {
+      let over = false;
+      if (c.type === 'cyl') {
+        const dx = player.position.x - c.cx, dz = player.position.z - c.cz;
+        over = (dx*dx + dz*dz) < (c.r + 0.2) * (c.r + 0.2);
+      } else {
+        over = player.position.x > c.minX - 0.2 && player.position.x < c.maxX + 0.2 &&
+               player.position.z > c.minZ - 0.2 && player.position.z < c.maxZ + 0.2;
+      }
+      if (over && c.maxY > surfaceY && c.maxY <= player.position.y + 0.4) surfaceY = c.maxY;
+    }
+    if (player.position.y <= surfaceY) {
+      player.position.y = surfaceY;
+      player.velocity.y = 0;
+      player.onGround = true;
+    } else {
+      player.onGround = false;
+    }
+
+    if (astronautModel) {
+      astronautModel.position.x = player.position.x;
+      astronautModel.position.z = player.position.z;
+      const targetY = player.position.y;
+      astronautModel.position.y += (targetY - astronautModel.position.y) * Math.min(1, dt * 14);
+      astronautModel.rotation.y = player.yaw;
+      updateAstronautAnimation(dt);
+    }
+
+    // Third-person camera
+    if (typeof player._smoothY === 'undefined') player._smoothY = player.position.y;
+    player._smoothY += (player.position.y - player._smoothY) * Math.min(1, dt * 12);
+    const camOff = new THREE.Vector3(
+      Math.sin(player.cameraYaw) * Math.cos(player.cameraPitch) * player.cameraDistance,
+      Math.sin(-player.cameraPitch) * player.cameraDistance + player.cameraHeight,
+      Math.cos(player.cameraYaw) * Math.cos(player.cameraPitch) * player.cameraDistance,
+    );
+    const targ = new THREE.Vector3(player.position.x, player._smoothY + 1.5, player.position.z);
+    const desired = targ.clone().add(camOff);
+    camera.position.x += (desired.x - camera.position.x) * Math.min(1, dt * 18);
+    camera.position.y += (desired.y - camera.position.y) * Math.min(1, dt * 10);
+    camera.position.z += (desired.z - camera.position.z) * Math.min(1, dt * 18);
+    const cgh = getGroundHeight(camera.position.x, camera.position.z);
+    if (camera.position.y < cgh + 0.5) camera.position.y = cgh + 0.5;
+    camera.lookAt(targ);
+
+    // Barrier push-back
+    const pd = Math.sqrt(player.position.x ** 2 + player.position.z ** 2);
+    if (pd > BARRIER_RADIUS - 0.5) {
+      const pb = (BARRIER_RADIUS - 0.5) / pd;
+      player.position.x *= pb;
+      player.position.z *= pb;
+      if (barrierMsgTimer <= 0) {
+        barrierMsg.textContent = 'BARRIER ACTIVE — The valley is enclosed. The artefact holds you here for a reason.';
+        barrierMsg.style.opacity = '1';
+        barrierMsgTimer = 3.5;
+      }
+    }
+
+    // Fragment collection
+    for (let i = 0; i < fragments.length; i++) {
+      const f = fragments[i];
+      if (f.userData.collected) continue;
+      f.position.y = f.userData.baseY + Math.sin(t * 2 + f.userData.phase) * 0.15;
+      f.rotation.y += 0.015;
+      const dx = player.position.x - f.position.x;
+      const dz = player.position.z - f.position.z;
+      if (dx*dx + dz*dz < 4) {
+        f.userData.collected = true;
+        f.visible = false;
+        playChime();
+        updateQuest('fragments');
+        fadeBeamAt(f.position.x, f.position.z);
+        const stext = document.getElementById('storyText');
+        const ssub = document.getElementById('storySub');
+        stext.textContent = `GLYPH LEARNED :: ${SYMBOLS[f.userData.symbolIdx]}`;
+        stext.classList.add('show');
+        ssub.textContent = `"${SYMBOL_NAMES[f.userData.symbolIdx]}" — a concept of the old speech`;
+        ssub.classList.add('show');
+        setTimeout(() => { stext.classList.remove('show'); ssub.classList.remove('show'); }, 3200);
+      }
+    }
+
+    // Echo stones — whisper a line when player gets close (once per stone)
+    for (const es of echoStones) {
+      es.cooldown = Math.max(0, es.cooldown - dt);
+      if (es.triggered) continue;
+      const dx = player.position.x - es.x;
+      const dz = player.position.z - es.z;
+      if (dx*dx + dz*dz < 16) {
+        es.triggered = true;
+        const st = document.getElementById('storyText');
+        const ss = document.getElementById('storySub');
+        st.textContent = 'ECHO :: STANDING STONE';
+        ss.textContent = es.line;
+        st.classList.add('show'); ss.classList.add('show');
+        setTimeout(() => { st.classList.remove('show'); ss.classList.remove('show'); }, 5000);
+        playChime();
+      }
+    }
+
+    // Crystal blooms — pulse when player is nearby
+    for (const b of blooms) {
+      const dx = player.position.x - b.position.x;
+      const dz = player.position.z - b.position.z;
+      const d2 = dx*dx + dz*dz;
+      const near = d2 < 9;
+      const targetInt = near ? 2.8 : b.userData.baseIntensity;
+      const cur = b.userData.mat.emissiveIntensity;
+      b.userData.mat.emissiveIntensity = cur + (targetInt - cur) * Math.min(1, dt * 4);
+      b.rotation.y += dt * (near ? 0.8 : 0.15);
+      const lift = near ? 0.1 + 0.04 * Math.sin(t * 5 + b.userData.phase) : 0;
+      b.position.y = getGroundHeight(b.position.x, b.position.z) + lift;
+    }
+
+    // Memory cube collection
+    for (const mc of memoryCubes) {
+      if (mc.userData.collected) continue;
+      mc.position.y = mc.userData.baseY + Math.sin(t * 1.8 + mc.userData.phase) * 0.1;
+      mc.rotation.y += 0.012;
+      const dx = player.position.x - mc.position.x;
+      const dz = player.position.z - mc.position.z;
+      if (dx*dx + dz*dz < 4) {
+        mc.userData.collected = true;
+        mc.visible = false;
+        playChime();
+        updateQuest('memory');
+        fadeBeamAt(mc.position.x, mc.position.z);
+        openDialog(mc.userData.title, mc.userData.body);
+      }
+    }
+
+    // Interact prompt
+    const ip = document.getElementById('interactPrompt');
+    let nearest = null, nearestD = Infinity;
+    for (const ia of allInteractables()) {
+      if (ia.done) continue;
+      const dx = player.position.x - ia.x;
+      const dz = player.position.z - ia.z;
+      const d = dx*dx + dz*dz;
+      if (d < ia.radius * ia.radius && d < nearestD) {
+        // Artefact is locked until ready — still show label but shifted
+        nearestD = d; nearest = ia;
+      }
+    }
+    if (nearest) {
+      const label = nearest.kind === 'artefact' && !quests.every(q => q.id === 'artefact' || q.done >= q.total)
+        ? 'ARTEFACT (NOT READY)'
+        : nearest.label;
+      if (ip._lastLabel !== label) {
+        document.getElementById('interactLabel').textContent = label;
+        ip._lastLabel = label;
+      }
+      if (ip._shown !== true) { ip.style.opacity = '1'; ip._shown = true; }
+    } else if (ip._shown !== false) {
+      ip.style.opacity = '0'; ip._shown = false;
+    }
+  }
+
+  // ── Ambient animation ──
+  if (barrierMsgTimer > 0) {
+    barrierMsgTimer -= dt;
+    if (barrierMsgTimer <= 0) barrierMsg.style.opacity = '0';
+  }
+
+  // Artefact animations
+  artefact.traverse(obj => {
+    if (obj.userData.isArtOrb) {
+      obj.material.emissiveIntensity = 2.8 + Math.sin(t * 1.3) * 1.0;
+      obj.scale.setScalar(1 + Math.sin(t * 1.3) * 0.06);
+    }
+    if (obj.userData.isCoreRing) {
+      obj.rotation.z = t * 0.4;
+      const boost = finaleTriggered ? 3.5 : 1.6;
+      obj.material.emissiveIntensity = boost + Math.sin(t * 2) * 0.4;
+    }
+    if (obj.userData.isCoreRing2) {
+      obj.rotation.x = t * 0.3 + Math.PI / 2;
+      const boost = finaleTriggered ? 3.5 : 1.6;
+      obj.material.emissiveIntensity = boost + Math.sin(t * 2 + 1) * 0.4;
+    }
+    if (obj.userData.isPillarCap) {
+      obj.rotation.y = t * 0.6;
+      obj.position.y = 4.4 + Math.sin(t * 1.5 + obj.userData.phase) * 0.15;
+    }
+    if (obj.userData.isTotemCrystal) {
+      obj.rotation.y = t * 0.3;
+    }
+    if (obj.userData.isArtGlyph) {
+      // Slow orbit around the artefact core
+      const a = obj.userData.angle + t * 0.15;
+      const r = obj.userData.radius;
+      obj.position.x = Math.cos(a) * r;
+      obj.position.z = Math.sin(a) * r;
+      obj.position.y = obj.userData.baseY + Math.sin(t * 1.1 + obj.userData.phase) * 0.2;
+      // Face outward from center (plane's +Z axis points away from core)
+      obj.rotation.y = Math.PI / 2 - a;
+    }
+  });
+
+  // Ember flicker + shrine relic + meditation dais animations
+  scene.traverse(obj => {
+    if (obj.userData.isEmber && obj.material) {
+      obj.material.emissiveIntensity = 2 + Math.abs(Math.sin(t * 4)) * 2;
+      obj.scale.setScalar(0.9 + Math.abs(Math.sin(t * 4)) * 0.2);
+    }
+    if (obj.userData.isEmbLight) {
+      obj.intensity = 2.5 + Math.abs(Math.sin(t * 4)) * 2;
+    }
+    if (obj.userData.isShrineRelic) {
+      obj.rotation.y = t * 0.5;
+      obj.position.y = 1.5 + Math.sin(t * 1.2) * 0.08;
+    }
+    if (obj.userData.isMedBeacon) {
+      obj.rotation.y = t * 0.4;
+      const boost = meditationActive ? 4.0 : 2.5;
+      obj.material.emissiveIntensity = boost + Math.sin(t * 2) * 0.8;
+      obj.position.y = 1.4 + Math.sin(t * 1.1) * 0.12;
+    }
+    if (obj.userData.isMedRing && obj.material) {
+      obj.material.opacity = meditationActive
+        ? 0.55 + 0.4 * Math.sin(t * 4)
+        : 0.55 + 0.2 * Math.sin(t * 2);
+    }
+    if (obj.userData.isSkyMirror && obj.material) {
+      obj.material.emissiveIntensity = 0.2 + 0.15 * Math.sin(t * 0.7);
+      obj.material.roughness = 0.05 + 0.04 * Math.sin(t * 1.3);
+    }
+  });
+
+  // NPC idle bob + face camera slightly
+  for (const npc of npcModels) {
+    if (!npc.userData.baseY) continue;
+    npc.position.y = npc.userData.baseY + Math.sin(t * 1.2 + npc.userData.phase) * 0.06;
+  }
+
+  // Dust drift
+  const dp = dust.geometry.attributes.position;
+  for (let i = 0; i < PERF.dustCount; i++) {
+    dp.array[i*3]   += 0.02;
+    dp.array[i*3+1] += 0.002;
+    if (dp.array[i*3]   > 110) dp.array[i*3]   = -110;
+    if (dp.array[i*3+1] > 6) dp.array[i*3+1] = 0;
+  }
+  dp.needsUpdate = true;
+
+  // Snow falls
+  const sp = snow.geometry.attributes.position;
+  for (let i = 0; i < PERF.snowCount; i++) {
+    sp.array[i*3]   += 0.008;
+    sp.array[i*3+1] -= snowV[i];
+    if (sp.array[i*3]   > 100) sp.array[i*3]   = -100;
+    if (sp.array[i*3+1] < 0) sp.array[i*3+1] = 40;
+  }
+  sp.needsUpdate = true;
+
+  // Pulse beams
+  for (const ob of objectiveBeams) {
+    if (ob.beam.visible) {
+      ob.beam.material.opacity = 0.25 + Math.sin(t * 2 + ob.x) * 0.15;
+      ob.top.scale.setScalar(1 + Math.sin(t * 3 + ob.x) * 0.2);
+    }
+  }
+
+  // Barrier shader tick
+  barrierMat.uniforms.uTime.value = t;
+
+  // Sun follows player
+  const pp = mode === 'walk' ? player.position : freeCam.position;
+  sun.position.set(pp.x + 40, 45, pp.z - 20);
+  sun.target.position.set(pp.x, 0, pp.z);
+  sun.target.updateMatrixWorld();
+
+  if (composer) composer.render(); else renderer.render(scene, camera);
+
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsUpdate >= 500) {
+    fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
+    frameCount = 0; lastFpsUpdate = now;
+    document.getElementById('fps').textContent = `${fps} FPS`;
+    document.getElementById('camDist').textContent = `MODE: ${mode.toUpperCase()}`;
+  }
+
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

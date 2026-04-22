@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wayfarer Forge</title>
+<meta name="description" content="A studio of small games about wandering — Wayfarer Forge.">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    min-height: 100%;
+    background: #05030a;
+    color: #fff;
+    font-family: 'SF Mono', ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Courier New', monospace;
+    overflow-x: hidden;
+  }
+
+  /* Animated starfield — pure CSS via multiple box-shadows */
+  .stars, .stars2, .stars3 {
+    position: fixed; inset: 0;
+    background: transparent;
+    z-index: 0; pointer-events: none;
+  }
+  .stars::before, .stars2::before, .stars3::before {
+    content: ''; position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%;
+    box-shadow:
+      100px 200px #fff, 340px 80px #eef, 520px 420px #fff, 760px 160px #fdf,
+      80px 640px #fff, 960px 300px #eef, 200px 900px #fff, 640px 700px #dff,
+      1100px 540px #fff, 1340px 220px #fff, 180px 1140px #eef, 420px 1380px #fff,
+      860px 1080px #fdf, 1240px 800px #fff, 1500px 1200px #eef, 1560px 360px #fff,
+      40px 1520px #fff, 540px 1660px #eef, 1020px 1740px #fff, 280px 1880px #dff,
+      1400px 1500px #fff, 1180px 1300px #eef, 720px 1460px #fff, 1720px 980px #fff;
+  }
+  .stars2::before {
+    width: 1.5px; height: 1.5px;
+    box-shadow:
+      160px 60px #fff, 460px 200px #fff, 720px 340px #fff, 980px 520px #fff,
+      120px 780px #fff, 360px 1020px #fff, 660px 1180px #fff, 900px 880px #fff,
+      1180px 660px #fff, 1420px 420px #fff, 1620px 140px #fff, 200px 1420px #fff,
+      500px 1560px #fff, 820px 1680px #fff, 1080px 1520px #fff, 1340px 1340px #fff,
+      1600px 1660px #fff, 1720px 1120px #fff, 60px 1280px #fff, 280px 300px #fff;
+    animation: twinkle 5s infinite;
+  }
+  .stars3::before {
+    width: 1px; height: 1px;
+    box-shadow:
+      240px 140px #fff, 580px 280px #fff, 800px 60px #fff, 1060px 240px #fff,
+      1280px 480px #fff, 60px 380px #fff, 380px 480px #fff, 620px 580px #fff,
+      880px 460px #fff, 1140px 360px #fff, 1460px 620px #fff, 1680px 280px #fff,
+      140px 1080px #fff, 460px 860px #fff, 780px 1240px #fff, 1020px 1420px #fff,
+      1320px 1100px #fff, 1520px 780px #fff, 1700px 1380px #fff, 320px 1740px #fff;
+    animation: twinkle 8s infinite 2s;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Soft glow at the top of the page */
+  .glow {
+    position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+    width: 1200px; height: 600px; z-index: 1; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(255,120,60,0.18), rgba(120,40,20,0.06) 40%, transparent 70%);
+    filter: blur(40px);
+  }
+
+  .page {
+    position: relative; z-index: 2;
+    max-width: 980px; margin: 0 auto;
+    padding: 80px 32px 120px;
+  }
+
+  /* Header */
+  .brand {
+    letter-spacing: 8px; font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-bottom: 12px;
+  }
+  .brand .dot {
+    display: inline-block; width: 6px; height: 6px;
+    background: #ffa870; border-radius: 50%;
+    margin-right: 10px; vertical-align: middle;
+    box-shadow: 0 0 12px #ffa870;
+    animation: pulseDot 2.5s infinite ease-in-out;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  h1.title {
+    font-size: clamp(34px, 6vw, 62px);
+    letter-spacing: 6px;
+    font-weight: 700;
+    color: #ffd0a0;
+    text-shadow: 0 0 30px rgba(255,168,112,0.35);
+    line-height: 1.05;
+  }
+  h1.title span { color: #ffa870; }
+
+  .tagline {
+    margin-top: 20px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.55);
+    max-width: 540px;
+    line-height: 1.9;
+  }
+  .tagline em { color: #ffa870; font-style: normal; }
+
+  /* Section */
+  .section-head {
+    margin-top: 80px; margin-bottom: 22px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .section-head .line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, rgba(255,168,112,0.4), rgba(255,168,112,0.05));
+  }
+  .section-head .label {
+    font-size: 10px; letter-spacing: 5px;
+    color: #ffa870;
+  }
+
+  /* Game cards */
+  .games {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+  }
+  .game {
+    position: relative;
+    background: linear-gradient(155deg, rgba(40,20,12,0.65), rgba(10,6,14,0.85));
+    border: 1px solid rgba(255,168,112,0.22);
+    border-radius: 10px;
+    padding: 28px 28px 24px;
+    overflow: hidden;
+    transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+  }
+  .game:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255,168,112,0.55);
+    box-shadow: 0 16px 40px rgba(255,120,60,0.12), 0 0 24px rgba(255,168,112,0.15);
+  }
+  .game.coming {
+    opacity: 0.6;
+    background: linear-gradient(155deg, rgba(20,16,30,0.55), rgba(8,6,14,0.85));
+    border-color: rgba(160,160,192,0.18);
+  }
+  .game.coming:hover {
+    transform: none;
+    border-color: rgba(160,160,192,0.22);
+    box-shadow: none;
+  }
+
+  .game .num {
+    font-size: 11px; letter-spacing: 4px;
+    color: rgba(255,168,112,0.7);
+    margin-bottom: 8px;
+  }
+  .game.coming .num { color: rgba(160,160,192,0.6); }
+
+  .game .name {
+    font-size: 22px; letter-spacing: 2px;
+    color: #ffd0a0; font-weight: 700;
+    margin-bottom: 10px;
+    line-height: 1.2;
+  }
+  .game.coming .name { color: #b0a8c8; }
+
+  .game .meta {
+    font-size: 10px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 16px;
+  }
+
+  .game .desc {
+    font-size: 12px; line-height: 1.85;
+    color: rgba(255,255,255,0.72);
+    min-height: 112px;
+  }
+
+  .game .play {
+    margin-top: 18px;
+    display: inline-block;
+    padding: 10px 20px;
+    background: rgba(255,168,112,0.15);
+    color: #ffd0a0; text-decoration: none;
+    font-size: 11px; letter-spacing: 4px;
+    border: 1px solid rgba(255,168,112,0.5);
+    border-radius: 4px;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .game .play:hover {
+    background: rgba(255,168,112,0.3);
+    color: #fff;
+    border-color: #ffa870;
+  }
+  .game .coming-tag {
+    margin-top: 18px;
+    display: inline-block;
+    padding: 10px 20px;
+    color: rgba(160,160,192,0.6);
+    font-size: 11px; letter-spacing: 4px;
+    border: 1px dashed rgba(160,160,192,0.3);
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  /* About */
+  .about {
+    margin-top: 36px;
+    font-size: 12px;
+    line-height: 2;
+    color: rgba(255,255,255,0.55);
+    max-width: 620px;
+  }
+  .about em { color: #ffa870; font-style: normal; }
+
+  /* Footer */
+  .foot {
+    margin-top: 100px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,168,112,0.15);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.35);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .foot a {
+    color: rgba(255,168,112,0.7);
+    text-decoration: none;
+  }
+  .foot a:hover { color: #ffd0a0; }
+
+  @media (max-width: 640px) {
+    .page { padding: 60px 20px 80px; }
+    .game { padding: 22px 22px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow"></div>
+<div class="stars"></div>
+<div class="stars2"></div>
+<div class="stars3"></div>
+
+<div class="page">
+
+  <div class="brand"><span class="dot"></span> WAYFARER FORGE</div>
+
+  <h1 class="title">
+    small games<br>
+    about <span>wandering</span>
+  </h1>
+
+  <div class="tagline">
+    Walking-mystery games. No combat. One traveller, many worlds —
+    dropped into other peoples' stories and <em>asked to choose</em>.
+  </div>
+
+  <!-- Games section -->
+  <div class="section-head">
+    <span class="label">GAMES</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="games">
+
+    <!-- Game 1 — playable -->
+    <div class="game">
+      <div class="num">WAYFARER · I</div>
+      <div class="name">The Wounded,<br>Never Wolves</div>
+      <div class="meta">3 KINGDOMS · ~20 MIN · WEB</div>
+      <div class="desc">
+        You crash on a red desert planet and wake to a signal. Follow it through three kingdoms —
+        a ruined crash site, a crystal valley around a living artefact, and a valley between
+        two warring peoples. Both sides claim they are <em>the wounded, never the wolves</em>.
+        Pick a side. Live with it.
+      </div>
+      <a class="play" href="chapter1.html">PLAY ›</a>
+    </div>
+
+    <!-- Game 2 — in development -->
+    <div class="game coming">
+      <div class="num">WAYFARER · II</div>
+      <div class="name">Below the Sand</div>
+      <div class="meta">IN DEVELOPMENT · WEB</div>
+      <div class="desc">
+        Wake on a small dusty planet. Walk around it, save its shy little calculator-rock people,
+        and watch the ground disappear — the planet was a lid all along, and there's a donut-shaped
+        station humming below it.
+      </div>
+      <span class="coming-tag">COMING SOON</span>
+    </div>
+
+  </div>
+
+  <!-- About -->
+  <div class="section-head">
+    <span class="label">ABOUT</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="about">
+    Wayfarer Forge is a one-person studio making small, quiet games about strangers who pass
+    through. Each entry shares one recurring protagonist — the astronaut you'll meet in
+    <em>The Wounded, Never Wolves</em> — and a single loop: <em>arrive, listen, choose, leave</em>.<br><br>
+    No signup, no account, no ads. Just open a page and walk.
+  </div>
+
+  <!-- Footer -->
+  <div class="foot">
+    <div>&copy; 2026 WAYFARER FORGE</div>
+    <div>wayfarerforge.game</div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,2800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdom 3 — The War</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: 'SF Mono', monospace; }
+  #canvas { display: block; width: 100%; height: 100%; }
+  .hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.6);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .hud .title { color: #ff8060; font-weight: 700; text-shadow: 0 0 12px rgba(255,128,96,0.5); }
+  .hud .meta { margin-top: 4px; color: rgba(255,255,255,0.35); font-size: 10px; }
+  .hud #zoneTag {
+    margin-top: 10px; display: inline-block;
+    padding: 3px 10px; border-radius: 3px;
+    font-size: 10px; letter-spacing: 3px;
+    border: 1px solid currentColor;
+    opacity: 0.85;
+  }
+  .controls-help {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8); line-height: 1.7;
+  }
+  .controls-help kbd {
+    display: inline-block; padding: 2px 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 3px;
+    font-family: inherit; font-size: 10px; color: #ff8060; margin: 0 2px;
+  }
+  .crosshair {
+    position: fixed; top: 50%; left: 50%; z-index: 10; pointer-events: none;
+    width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 50%;
+  }
+  .click-to-play {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,6,10,0.88); cursor: pointer;
+    transition: opacity 0.3s;
+  }
+  .click-to-play.hidden { opacity: 0; pointer-events: none; }
+  .click-to-play div { text-align: center; color: #ff8060; letter-spacing: 4px; font-size: 14px; }
+  .click-to-play .small { color: rgba(255,255,255,0.4); font-size: 10px; margin-top: 12px; letter-spacing: 2px; }
+
+  .story-overlay {
+    position: fixed; inset: 0; z-index: 200; pointer-events: none;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    text-align: center; transition: background 2s;
+  }
+  .story-overlay .text {
+    color: #ffb0a0; font-size: 16px; letter-spacing: 4px; opacity: 0;
+    transition: opacity 1.5s; text-shadow: 0 0 20px rgba(255,160,128,0.6);
+  }
+  .story-overlay .text.show { opacity: 1; }
+  .story-overlay .sub {
+    color: rgba(255,255,255,0.55); font-size: 11px; letter-spacing: 2px;
+    margin-top: 12px; opacity: 0; transition: opacity 1.5s 1s;
+  }
+  .story-overlay .sub.show { opacity: 1; }
+  .story-overlay.fade { background: rgba(0,0,0,1); }
+
+  .interact-prompt {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+    z-index: 60; pointer-events: none; text-align: center;
+    transition: opacity 0.3s; opacity: 0;
+  }
+  .interact-prompt .key { color: #ff8060; font-size: 14px; letter-spacing: 3px; }
+  .interact-prompt .label { color: rgba(255,255,255,0.55); font-size: 10px; letter-spacing: 2px; margin-top: 4px; }
+
+  .dialog-screen {
+    position: fixed; inset: auto 10% 15% 10%; z-index: 250;
+    background: rgba(18,6,10,0.95);
+    border: 1px solid rgba(255,128,96,0.35); border-radius: 4px;
+    padding: 24px 32px; color: #ffd0b8; font-size: 13px;
+    letter-spacing: 1px; line-height: 1.8;
+    display: none; pointer-events: auto;
+    box-shadow: 0 0 40px rgba(220,80,60,0.2), inset 0 0 60px rgba(80,20,20,0.3);
+    max-height: 340px; overflow-y: auto;
+  }
+  .dialog-screen .t-title { color: #ffb090; font-size: 13px; letter-spacing: 3px; margin-bottom: 14px; }
+  .dialog-screen .t-close { position: absolute; top: 10px; right: 14px; color: #a05040; cursor: pointer; font-size: 11px; letter-spacing: 2px; }
+  .dialog-screen .t-close:hover { color: #ff8060; }
+
+  .mode-buttons {
+    position: fixed; bottom: 16px; right: 16px; z-index: 10;
+    display: flex; gap: 6px;
+  }
+  .mode-btn {
+    padding: 6px 12px; background: rgba(20,8,8,0.7);
+    border: 1px solid rgba(255,128,96,0.3);
+    color: rgba(255,255,255,0.6);
+    font-family: inherit; font-size: 10px; letter-spacing: 2px;
+    cursor: pointer; border-radius: 4px; transition: all 0.15s;
+  }
+  .mode-btn:hover {
+    background: rgba(40,18,18,0.85); color: #ff8060;
+    border-color: rgba(255,128,96,0.55);
+  }
+  .mode-btn.active {
+    background: rgba(255,128,96,0.2); color: #ffb090;
+    border-color: rgba(255,128,96,0.7);
+  }
+  body.hide-hud .hud,
+  body.hide-hud .controls-help,
+  body.hide-hud .stats,
+  body.hide-hud .mode-buttons,
+  body.hide-hud .crosshair,
+  body.hide-hud #questLog,
+  body.hide-hud .vignette { display: none !important; }
+  .loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #0a0606; color: #ff8060; font-size: 12px; letter-spacing: 3px;
+    transition: opacity 0.5s;
+  }
+  .loading.hidden { opacity: 0; pointer-events: none; }
+  .stats {
+    position: fixed; bottom: 64px; right: 16px; z-index: 10;
+    font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.45);
+    text-align: right; text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .vignette {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(20,6,4,0.5) 100%);
+  }
+  #questLog {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    font-size: 11px; letter-spacing: 1px;
+    color: rgba(255,255,255,0.7); background: rgba(12,5,5,0.55);
+    padding: 14px 18px; border: 1px solid rgba(255,128,96,0.25);
+    border-radius: 4px; min-width: 260px; backdrop-filter: blur(4px);
+    transition: opacity 0.5s;
+  }
+  #questLog .h { color: #ff8060; font-weight: 700; letter-spacing: 3px; margin-bottom: 10px; font-size: 11px; }
+  .barrier-msg {
+    position: fixed; bottom: 180px; left: 50%; transform: translateX(-50%);
+    z-index: 55; color: #ffd0b8; font-size: 11px; letter-spacing: 2px;
+    padding: 8px 16px; background: rgba(30,8,8,0.8);
+    border: 1px solid rgba(255,128,96,0.3); border-radius: 3px;
+    transition: opacity 0.4s; opacity: 0; pointer-events: none;
+    max-width: 500px; text-align: center;
+  }
+  .proof-hud {
+    position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+    z-index: 11; font-size: 11px; letter-spacing: 2px;
+    text-align: center; opacity: 0; transition: opacity 0.5s;
+  }
+  .proof-hud .v { color: #60ff80; margin-right: 20px; }
+  .proof-hud .m { color: #c080ff; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">ARRIVING AT BATTLEFIELD...</div>
+<canvas id="canvas"></canvas>
+<div class="vignette"></div>
+<div class="hud">
+  <div class="title">KINGDOM 3 :: THE_WAR</div>
+  <div class="meta">CONTESTED_VALLEY :: DUAL_BIOME :: SOL_?</div>
+  <div id="zoneTag" style="color:rgba(255,255,255,0.3);">NEUTRAL GROUND</div>
+</div>
+<div id="questLog">
+  <div class="h">OBJECTIVES</div>
+  <div id="questItems" style="line-height:1.9;"></div>
+</div>
+<div class="controls-help" id="controlsHelp">
+  <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk &nbsp;·&nbsp; <kbd>SHIFT</kbd> run &nbsp;·&nbsp; <kbd>SPACE</kbd> jump &nbsp;·&nbsp; <kbd>E</kbd> interact<br>
+  mouse to look &nbsp;·&nbsp; <kbd>ESC</kbd> release cursor
+</div>
+<div class="mode-buttons">
+  <button class="mode-btn active" data-mode="walk">WALK</button>
+  <button class="mode-btn" data-mode="freecam">FREE CAM</button>
+  <button class="mode-btn" data-mode="orbit">ORBIT</button>
+</div>
+<div class="crosshair"></div>
+<div class="proof-hud" id="proofHud">
+  <span class="v">VERDANT PROOF: <span id="proofV">0</span>/3</span>
+  <span class="m">MONOLITH PROOF: <span id="proofM">0</span>/3</span>
+</div>
+<div class="interact-prompt" id="interactPrompt">
+  <div class="key">[E]</div>
+  <div class="label" id="interactLabel"></div>
+</div>
+<div class="dialog-screen" id="dialogScreen">
+  <div class="t-close" id="dlgClose">[ ESC TO CLOSE ]</div>
+  <div class="t-title" id="dlgTitle"></div>
+  <div id="dlgBody"></div>
+</div>
+<div class="story-overlay" id="storyOverlay">
+  <div class="text" id="storyText"></div>
+  <div class="sub" id="storySub"></div>
+</div>
+<div class="barrier-msg" id="barrierMsg"></div>
+<div class="click-to-play" id="clickToPlay">
+  <div>CLICK TO BEGIN<br>
+    <div class="small">controls will be captured</div>
+  </div>
+</div>
+<div class="stats">
+  <div id="camDist">—</div>
+  <div id="fps">—</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const canvas = document.getElementById('canvas');
+
+let seed = 777;
+function rand() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+
+const IS_EDGE = /Edg\//.test(navigator.userAgent);
+const PERF = {
+  shadowMapSize: IS_EDGE ? 1024 : 2048,
+  pixelRatio: IS_EDGE ? 1 : Math.min(window.devicePixelRatio, 2),
+  bloom: !IS_EDGE,
+  dustCount: IS_EDGE ? 120 : 260,
+  jungleProps: IS_EDGE ? 60 : 130,
+  ruinProps: IS_EDGE ? 40 : 90,
+};
+
+// ══════════════════════════════════════════════════════════════════
+// AUDIO — war-tinged: low drones, bird calls for jungle, stone echoes for ruins
+// ══════════════════════════════════════════════════════════════════
+let audioCtx = null, masterGain = null, soundReady = false;
+const musicNodes = [];
+
+function initAudio() {
+  if (soundReady) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.5;
+  masterGain.connect(audioCtx.destination);
+  soundReady = true;
+  startAmbient();
+  startMusic();
+}
+
+function startAmbient() {
+  const bufSize = audioCtx.sampleRate * 2;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+  const n = audioCtx.createBufferSource(); n.buffer = buf; n.loop = true; n.start();
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.6;
+  const lfo = audioCtx.createOscillator();
+  lfo.frequency.value = 0.09; lfo.start();
+  const lfoG = audioCtx.createGain(); lfoG.gain.value = 200;
+  lfo.connect(lfoG); lfoG.connect(bp.frequency);
+  const g = audioCtx.createGain(); g.gain.value = 0.05;
+  n.connect(bp); bp.connect(g); g.connect(masterGain);
+}
+
+function startMusic() {
+  const freqs = [49, 73.4, 98, 110, 146.8];  // low dark chord
+  for (const f of freqs) {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine'; o.frequency.value = f;
+    const g = audioCtx.createGain(); g.gain.value = 0.016;
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.05 + Math.random() * 0.08; lfo.start();
+    const lfoG = audioCtx.createGain(); lfoG.gain.value = 0.01;
+    lfo.connect(lfoG); lfoG.connect(g.gain);
+    o.connect(g); g.connect(masterGain);
+    o.start();
+    musicNodes.push({ osc: o, gain: g });
+  }
+}
+
+function playInteract() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(440, t);
+  o.frequency.exponentialRampToValueAtTime(880, t + 0.15);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 0.28);
+}
+
+function playPickup() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  const notes = [440, 554, 659];
+  for (let i = 0; i < notes.length; i++) {
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle'; o.frequency.value = notes[i];
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, t + i * 0.08);
+    g.gain.linearRampToValueAtTime(0.1, t + i * 0.08 + 0.02);
+    g.gain.linearRampToValueAtTime(0, t + i * 0.08 + 0.2);
+    o.connect(g); g.connect(masterGain);
+    o.start(t + i * 0.08); o.stop(t + i * 0.08 + 0.22);
+  }
+}
+
+function playChoiceBoom() {
+  if (!soundReady) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'sine'; o.frequency.setValueAtTime(120, t);
+  o.frequency.exponentialRampToValueAtTime(40, t + 1.5);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.4, t);
+  g.gain.linearRampToValueAtTime(0, t + 1.6);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 1.6);
+  // Noise burst
+  const bufSize = audioCtx.sampleRate * 1.2;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) d[i] = (Math.random()*2-1) * Math.exp(-i / (bufSize * 0.3));
+  const n = audioCtx.createBufferSource(); n.buffer = buf; n.start(t);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 300;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.3;
+  n.connect(lp); lp.connect(g2); g2.connect(masterGain);
+}
+
+let footstepCooldown = 0;
+let footstepBiome = 'neutral';
+function playFootstep() {
+  if (!soundReady || footstepCooldown > 0) return;
+  footstepCooldown = 0.34;
+  const t = audioCtx.currentTime;
+  const bufSize = audioCtx.sampleRate * 0.1;
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    const env = Math.exp(-i / (bufSize * 0.15));
+    d[i] = (Math.random()*2-1) * env;
+  }
+  const n = audioCtx.createBufferSource(); n.buffer = buf; n.start(t);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = footstepBiome === 'jungle' ? 400 : (footstepBiome === 'ruins' ? 220 : 300);
+  const g = audioCtx.createGain();
+  g.gain.value = footstepBiome === 'jungle' ? 0.06 : 0.08;
+  n.connect(lp); lp.connect(g); g.connect(masterGain);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SCENE / CAMERA / RENDERER
+// ══════════════════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+
+// Sky — dusk over a battlefield, warm west (burning jungle), cold east (cracking ruins)
+const skyGeo = new THREE.SphereGeometry(300, 32, 16);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: {
+    topColor:     { value: new THREE.Color(0x1a0818) },
+    midColor:     { value: new THREE.Color(0x3a1224) },
+    horizonWest:  { value: new THREE.Color(0xc04028) }, // burning jungle
+    horizonEast:  { value: new THREE.Color(0x4028a0) }, // crystal ruins
+  },
+  vertexShader: `
+    varying vec3 vWorldPos;
+    void main() {
+      vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying vec3 vWorldPos;
+    uniform vec3 topColor, midColor, horizonWest, horizonEast;
+    void main() {
+      vec3 n = normalize(vWorldPos);
+      float h = n.y;
+      float ew = smoothstep(-1.0, 1.0, n.x);  // 0=west, 1=east
+      vec3 horizon = mix(horizonWest, horizonEast, ew);
+      vec3 col;
+      if (h > 0.15) col = mix(midColor, topColor, smoothstep(0.15, 0.9, h));
+      else          col = mix(horizon, midColor, smoothstep(-0.1, 0.28, h));
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+scene.fog = new THREE.FogExp2(0x2a0a18, 0.009);
+
+const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 600);
+camera.position.set(18, 9, 18);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(PERF.pixelRatio);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.35;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ── Lights ── (brighter than K2 — dusk battlefield is already dim enough)
+const ambient = new THREE.AmbientLight(0xa090b0, 0.95);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffd0b0, 2.6);
+sun.position.set(50, 45, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.width = PERF.shadowMapSize;
+sun.shadow.mapSize.height = PERF.shadowMapSize;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 250;
+sun.shadow.camera.left = -60;
+sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60;
+sun.shadow.camera.bottom = -60;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+scene.add(sun.target);
+
+// Jungle fill — warm green
+const jungleFill = new THREE.DirectionalLight(0x80e090, 1.1);
+jungleFill.position.set(-50, 25, 20);
+scene.add(jungleFill);
+
+// Ruins fill — cold purple-cyan
+const ruinsFill = new THREE.DirectionalLight(0xa090e0, 1.2);
+ruinsFill.position.set(50, 25, -20);
+scene.add(ruinsFill);
+
+// Stars
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(400 * 3);
+for (let i = 0; i < 400; i++) {
+  const r = 260 + Math.random() * 30;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(Math.random() * 2 - 1);
+  starPos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+  starPos[i*3+1] = Math.abs(r * Math.cos(phi)) * 0.65;
+  starPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+  color: 0xffd0c0, size: 0.65, transparent: true, opacity: 0.7, sizeAttenuation: true,
+})));
+
+let composer = null;
+if (PERF.bloom) {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.7, 0.6, 0.2));
+}
+
+// Noise helpers (same as K2)
+function noise(x, y) {
+  const a = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return (a - Math.floor(a)) * 2 - 1;
+}
+function smoothNoise(x, y) {
+  const fx = Math.floor(x), fy = Math.floor(y);
+  const dx = x - fx, dy = y - fy;
+  const a = noise(fx, fy), b = noise(fx+1, fy), c = noise(fx, fy+1), d = noise(fx+1, fy+1);
+  const u = dx*dx*(3-2*dx), v = dy*dy*(3-2*dy);
+  return a + (b-a)*u + (c-a)*v + (a+d-b-c)*u*v;
+}
+function fbm(x, y, oct = 4) {
+  let v = 0, amp = 1, f = 1, m = 0;
+  for (let i = 0; i < oct; i++) { v += smoothNoise(x*f, y*f) * amp; m += amp; amp *= 0.5; f *= 2; }
+  return v / m;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BIOME MAP — western half (x < 0) is JUNGLE, eastern half is RUINS
+// The battlefield strip is near x = 0. Altars are at x = ±45.
+// ══════════════════════════════════════════════════════════════════
+function getBiome(x, z) {
+  if (x < -8) return 'jungle';
+  if (x >  8) return 'ruins';
+  return 'neutral';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// TERRAIN — vertex-colored plane, height + color varies by biome
+// ══════════════════════════════════════════════════════════════════
+const GROUND_SIZE = 500, GROUND_SEGS = 140;
+const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, GROUND_SEGS, GROUND_SEGS);
+const gpos = groundGeo.attributes.position;
+const gcol = new Float32Array(gpos.count * 3);
+
+const BARREN = new THREE.Color(0x1a1012);  // dead ground outside the barrier
+for (let i = 0; i < gpos.count; i++) {
+  const x = gpos.getX(i), y = gpos.getY(i);
+  const ny = -y;  // world Z
+  let h = fbm(x * 0.05, ny * 0.05, 4) * 2.0;
+  h += fbm(x * 0.015, ny * 0.015, 3) * 1.2;
+  h += fbm(x * 0.2, ny * 0.2, 2) * 0.3;
+
+  // Flatten a battlefield strip through the middle
+  const battlefieldFactor = Math.min(1, Math.abs(x) / 10);
+  h *= 0.35 + 0.65 * battlefieldFactor;
+
+  // Flatten further outside the barrier so biome terrain doesn't bleed past
+  const distFromCenter = Math.sqrt(x * x + y * y);
+  const outsideBlend = Math.max(0, Math.min(1, (distFromCenter - 60) / 15));
+  h *= 1 - outsideBlend * 0.85;
+
+  gpos.setZ(i, h);
+
+  // Color by biome, blended at boundary
+  const wJungle = Math.max(0, Math.min(1, (4 - x) / 12));      // 1 far west
+  const wRuins  = Math.max(0, Math.min(1, (x + 4) / 12));       // 1 far east
+  const wBattle = 1 - Math.max(wJungle, wRuins);                // 1 at center
+  const junCol = new THREE.Color(0x183a14).lerp(new THREE.Color(0x386030), Math.max(0, h / 3));
+  const ruiCol = new THREE.Color(0x302040).lerp(new THREE.Color(0x706090), Math.max(0, h / 3));
+  const batCol = new THREE.Color(0x1a0a0a).lerp(new THREE.Color(0x3a1a10), Math.max(0, h / 3));
+  const c = new THREE.Color(0, 0, 0);
+  c.r = junCol.r * wJungle + ruiCol.r * wRuins + batCol.r * wBattle;
+  c.g = junCol.g * wJungle + ruiCol.g * wRuins + batCol.g * wBattle;
+  c.b = junCol.b * wJungle + ruiCol.b * wRuins + batCol.b * wBattle;
+  // Fade to barren outside barrier
+  c.lerp(BARREN, outsideBlend);
+  gcol[i*3] = c.r; gcol[i*3+1] = c.g; gcol[i*3+2] = c.b;
+}
+gpos.needsUpdate = true;
+groundGeo.setAttribute('color', new THREE.BufferAttribute(gcol, 3));
+groundGeo.computeVertexNormals();
+
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({
+  vertexColors: true, roughness: 0.95, metalness: 0.05, flatShading: true,
+}));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function getGroundHeight(x, z) {
+  // Mesh gen used plane local-y = -world_z. Match the same formula exactly.
+  const py = -z;
+  let h = fbm(x * 0.05, (-py) * 0.05, 4) * 2.0;
+  h += fbm(x * 0.015, (-py) * 0.015, 3) * 1.2;
+  h += fbm(x * 0.2, (-py) * 0.2, 2) * 0.3;
+  const battlefieldFactor = Math.min(1, Math.abs(x) / 10);
+  h *= 0.35 + 0.65 * battlefieldFactor;
+  const distFromCenter = Math.sqrt(x * x + py * py);
+  const outsideBlend = Math.max(0, Math.min(1, (distFromCenter - 60) / 15));
+  h *= 1 - outsideBlend * 0.85;
+  return h;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// COLLISION (same pattern as K1/K2)
+// ══════════════════════════════════════════════════════════════════
+const colliders = [];
+const _colliderBox = new THREE.Box3();
+function addCollider(obj, shrinkFrac = 0.85) {
+  obj.updateMatrixWorld(true);
+  _colliderBox.setFromObject(obj);
+  const cx = (_colliderBox.min.x + _colliderBox.max.x) / 2;
+  const cz = (_colliderBox.min.z + _colliderBox.max.z) / 2;
+  const w = _colliderBox.max.x - _colliderBox.min.x;
+  const d = _colliderBox.max.z - _colliderBox.min.z;
+  const ratio = Math.min(w, d) / Math.max(w, d);
+  if (ratio > 0.6) {
+    colliders.push({ type: 'cyl', cx, cz, r: Math.max(w, d) / 2 * shrinkFrac,
+      maxY: _colliderBox.max.y, minY: _colliderBox.min.y });
+  } else {
+    const halfW = w / 2 * shrinkFrac, halfD = d / 2 * shrinkFrac;
+    colliders.push({ minX: cx-halfW, maxX: cx+halfW, minZ: cz-halfD, maxZ: cz+halfD,
+      maxY: _colliderBox.max.y, minY: _colliderBox.min.y });
+  }
+}
+const _tmpBox = new THREE.Box3();
+function seatOnGround(obj, x, z, buryFrac = 0) {
+  obj.position.set(0, 0, 0);
+  obj.updateMatrixWorld(true);
+  _tmpBox.setFromObject(obj);
+  const localBottom = _tmpBox.min.y;
+  const localTop = _tmpBox.max.y;
+  const height = localTop - localBottom;
+  const bury = height * buryFrac;
+  const groundH = getGroundHeight(x, z);
+  obj.position.set(x, groundH - localBottom - bury, z);
+  obj.updateMatrixWorld(true);
+}
+function place(group, x, z, buryFrac = 0, colliderShrink = 0.85, skipCollision = false) {
+  scene.add(group);
+  seatOnGround(group, x, z, buryFrac);
+  if (!skipCollision) addCollider(group, colliderShrink);
+}
+
+// Cached animated prop lists — avoids per-frame scene.traverse
+const ruinCrystals = [];
+const floatCrystals = [];
+const junglePlants = [];
+const verdantFlameRefs = { flame: null, light: null, totemEye: null, seed: null };
+const ruinsFlameRefs = { flame: null, light: null, banner: null, orb: null };
+let battleOrb = null;
+
+// Model loader (hoisted — NPC-loading code below the village blocks needs it)
+const loader = new GLTFLoader();
+const CB = '?v=' + Date.now();
+
+// ══════════════════════════════════════════════════════════════════
+// BARRIER
+// ══════════════════════════════════════════════════════════════════
+const BARRIER_RADIUS = 70;
+const barrierGeo = new THREE.CylinderGeometry(BARRIER_RADIUS, BARRIER_RADIUS, 32, IS_EDGE ? 16 : 48, 1, true);
+const barrierMat = new THREE.ShaderMaterial({
+  transparent: true, side: IS_EDGE ? THREE.FrontSide : THREE.DoubleSide, depthWrite: false,
+  uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0xff8060) } },
+  vertexShader: `
+    varying vec2 vUv; varying vec3 vPos;
+    void main() { vUv = uv; vPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+  `,
+  fragmentShader: `
+    uniform float uTime; uniform vec3 uColor;
+    varying vec2 vUv; varying vec3 vPos;
+    void main() {
+      float hx = sin(vUv.x * 140.0) * 0.5 + 0.5;
+      float vy = sin(vUv.y * 50.0 + uTime * 0.8) * 0.5 + 0.5;
+      float grid = pow(hx, 20.0) + pow(vy, 12.0) * 0.4;
+      float pulse = 0.6 + 0.4 * sin(uTime * 1.3 + vPos.y * 0.2);
+      float alpha = (0.15 + grid * 0.45) * pulse;
+      gl_FragColor = vec4(uColor * (0.6 + grid), alpha);
+    }`,
+});
+const barrier = new THREE.Mesh(barrierGeo, barrierMat);
+barrier.position.y = 14;
+scene.add(barrier);
+let barrierMsgTimer = 0;
+const barrierMsg = document.getElementById('barrierMsg');
+
+// ══════════════════════════════════════════════════════════════════
+// JUNGLE PROPS — west side
+// Trees (cone+sphere), vines, luminescent plants
+// ══════════════════════════════════════════════════════════════════
+const junGreens = [0x1a5020, 0x235a28, 0x2a6530, 0x326a38];
+const junTrunkMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.95, flatShading: true });
+
+function addJungleTree(x, z, scale = 1) {
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15 * scale, 0.24 * scale, 3.4 * scale, 6), junTrunkMat
+  );
+  trunk.position.y = 1.7 * scale;
+  trunk.castShadow = true; trunk.receiveShadow = true;
+  group.add(trunk);
+  // Canopy layers
+  for (let i = 0; i < 3; i++) {
+    const col = junGreens[Math.floor(rand() * junGreens.length)];
+    const canopy = new THREE.Mesh(
+      new THREE.ConeGeometry((0.9 + i * 0.3) * scale, (1.4 - i * 0.2) * scale, 7),
+      new THREE.MeshStandardMaterial({ color: col, roughness: 0.85, flatShading: true })
+    );
+    canopy.position.y = (2.4 + i * 0.8) * scale;
+    canopy.rotation.y = rand() * Math.PI;
+    canopy.castShadow = true;
+    group.add(canopy);
+  }
+  place(group, x, z, 0.1, 0.6);
+}
+
+function addLuminPlant(x, z) {
+  const group = new THREE.Group();
+  const pot = new THREE.Mesh(
+    new THREE.ConeGeometry(0.25, 0.2, 6),
+    new THREE.MeshStandardMaterial({ color: 0x1a2210, roughness: 1, flatShading: true })
+  );
+  pot.rotation.x = Math.PI;
+  pot.position.y = 0.1;
+  group.add(pot);
+  // Glowing petals
+  const petalCount = 5 + Math.floor(rand() * 3);
+  const glowColor = [0x60ff80, 0x80ffa0, 0xa0ffc0][Math.floor(rand() * 3)];
+  for (let p = 0; p < petalCount; p++) {
+    const a = (p / petalCount) * Math.PI * 2;
+    const petal = new THREE.Mesh(
+      new THREE.ConeGeometry(0.08, 0.45, 5),
+      new THREE.MeshStandardMaterial({
+        color: glowColor, emissive: glowColor, emissiveIntensity: 1.8,
+        roughness: 0.3, transparent: true, opacity: 0.88, flatShading: true,
+      })
+    );
+    petal.position.set(Math.cos(a) * 0.08, 0.35, Math.sin(a) * 0.08);
+    petal.rotation.x = -0.35;
+    petal.rotation.z = Math.cos(a) * 0.5;
+    petal.rotation.y = a;
+    group.add(petal);
+  }
+  const pl = new THREE.PointLight(glowColor, 1.2, 5);
+  pl.position.y = 0.35;
+  group.add(pl);
+  group.userData.phase = rand() * Math.PI * 2;
+  // Collect glow-material children so the tick doesn't re-traverse
+  group.userData.glowMats = [];
+  group.traverse(c => { if (c.material && c.material.emissive) group.userData.glowMats.push(c.material); });
+  const gh = getGroundHeight(x, z);
+  group.position.set(x, gh, z);
+  scene.add(group);
+  junglePlants.push(group);
+}
+
+// Scatter jungle trees in the west
+for (let i = 0; i < PERF.jungleProps; i++) {
+  const a = Math.PI * 0.5 + (rand() - 0.5) * Math.PI;  // centered on -X
+  const r = 10 + rand() * 55;
+  const x = Math.cos(a) * r - 10, z = Math.sin(a) * r;
+  if (x > -6) continue;
+  if (x * x + z * z > 64 * 64) continue;
+  addJungleTree(x, z, 0.7 + rand() * 0.8);
+}
+// Scatter luminous plants
+for (let i = 0; i < 35; i++) {
+  const x = -15 - rand() * 50;
+  const z = (rand() - 0.5) * 90;
+  if (x * x + z * z > 64 * 64) continue;
+  addLuminPlant(x, z);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RUINS PROPS — east side
+// Broken towers, fallen monolith blocks, floating crystals
+// ══════════════════════════════════════════════════════════════════
+const ruinMat = new THREE.MeshStandardMaterial({ color: 0x40305a, roughness: 0.85, metalness: 0.25, flatShading: true });
+const ruinMatDark = new THREE.MeshStandardMaterial({ color: 0x281840, roughness: 0.9, flatShading: true });
+const ruinCrystalMat = new THREE.MeshStandardMaterial({
+  color: 0xa080ff, emissive: 0x6040c0, emissiveIntensity: 1.8,
+  roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.88, flatShading: true,
+});
+
+function addRuinBlock(x, z, scale = 1) {
+  const group = new THREE.Group();
+  const blockCount = 2 + Math.floor(rand() * 3);
+  let y = 0;
+  for (let i = 0; i < blockCount; i++) {
+    const s = scale * (1.0 - i * 0.15);
+    const block = new THREE.Mesh(
+      new THREE.BoxGeometry(0.9 * s, 0.7 * s, 0.9 * s),
+      rand() > 0.3 ? ruinMat : ruinMatDark
+    );
+    block.position.set((rand() - 0.5) * 0.12, y + 0.35 * s, (rand() - 0.5) * 0.12);
+    block.rotation.y = (rand() - 0.5) * 0.3;
+    block.castShadow = true;
+    block.receiveShadow = true;
+    group.add(block);
+    y += 0.7 * s;
+  }
+  place(group, x, z, 0.05, 0.8);
+}
+
+function addBrokenTower(x, z, h = 4) {
+  const group = new THREE.Group();
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(1.4, 0.5, 1.4),
+    ruinMatDark
+  );
+  base.position.y = 0.25;
+  base.castShadow = true;
+  group.add(base);
+  const col = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, h, 0.8),
+    ruinMat
+  );
+  col.position.y = 0.5 + h / 2;
+  col.rotation.z = (rand() - 0.5) * 0.15;  // leaning
+  col.castShadow = true;
+  group.add(col);
+  // Broken top
+  const top = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 0.3, 0.6),
+    ruinMat
+  );
+  top.position.y = 0.5 + h + 0.15;
+  top.rotation.y = rand() * Math.PI;
+  group.add(top);
+  // Glowing crystal at top
+  if (rand() > 0.3) {
+    const cry = new THREE.Mesh(new THREE.OctahedronGeometry(0.2, 0), ruinCrystalMat);
+    cry.position.y = 0.5 + h + 0.5;
+    cry.userData.phase = rand() * Math.PI * 2;
+    group.add(cry);
+    ruinCrystals.push(cry);
+  }
+  place(group, x, z, 0.05, 0.7);
+}
+
+function addFloatingCrystal(x, z) {
+  const group = new THREE.Group();
+  const cry = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.35, 0),
+    ruinCrystalMat
+  );
+  cry.position.y = 1.4;
+  group.add(cry);
+  const pl = new THREE.PointLight(0x8060ff, 1.5, 6);
+  pl.position.y = 1.4;
+  group.add(pl);
+  group.userData.phase = rand() * Math.PI * 2;
+  group.userData.baseY = 1.4;
+  const gh = getGroundHeight(x, z);
+  group.position.set(x, gh, z);
+  scene.add(group);
+  floatCrystals.push(group);
+}
+
+for (let i = 0; i < PERF.ruinProps; i++) {
+  const a = -Math.PI * 0.5 + (rand() - 0.5) * Math.PI;
+  const r = 10 + rand() * 55;
+  const x = Math.cos(a) * r + 10, z = Math.sin(a) * r;
+  if (x < 6) continue;
+  if (x * x + z * z > 64 * 64) continue;
+  if (rand() < 0.3) addBrokenTower(x, z, 3 + rand() * 5);
+  else addRuinBlock(x, z, 0.8 + rand() * 0.8);
+}
+for (let i = 0; i < 18; i++) {
+  const x = 15 + rand() * 45;
+  const z = (rand() - 0.5) * 90;
+  if (x * x + z * z > 64 * 64) continue;
+  addFloatingCrystal(x, z);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VERDANT VILLAGE (west) — woven tents, fire, totem, faction altar
+// 3 NPCs with proof-granting dialog + atmospheric lore pieces
+// ══════════════════════════════════════════════════════════════════
+const verdantVillageX = -42, verdantVillageZ = 12;
+const verdantInteracts = [];
+{
+  const vgh = getGroundHeight(verdantVillageX, verdantVillageZ);
+
+  // Central bonfire — bigger & warmer than K2
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(1.0, 0.2, 6, 16),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 1, flatShading: true })
+  );
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(verdantVillageX, vgh + 0.1, verdantVillageZ);
+  scene.add(ring);
+  const flame = new THREE.Mesh(
+    new THREE.ConeGeometry(0.5, 1.2, 8),
+    new THREE.MeshStandardMaterial({ color: 0xff8030, emissive: 0xff6020, emissiveIntensity: 3, transparent: true, opacity: 0.88 })
+  );
+  flame.position.set(verdantVillageX, vgh + 0.7, verdantVillageZ);
+  scene.add(flame);
+  verdantFlameRefs.flame = flame;
+  const fireL = new THREE.PointLight(0xff7040, 6, 14);
+  fireL.position.set(verdantVillageX, vgh + 1.2, verdantVillageZ);
+  scene.add(fireL);
+  verdantFlameRefs.light = fireL;
+
+  // 4 woven tents — cone-shaped hide stretched over poles
+  function addVerdantTent(offX, offZ) {
+    const g = new THREE.Group();
+    const hide = new THREE.Mesh(
+      new THREE.ConeGeometry(1.4, 2.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4a3820, roughness: 0.95, flatShading: true })
+    );
+    hide.position.y = 1.1;
+    hide.castShadow = true; hide.receiveShadow = true;
+    g.add(hide);
+    // Door opening (dark triangle)
+    const door = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.6, 0.9),
+      new THREE.MeshBasicMaterial({ color: 0x000008 })
+    );
+    door.position.set(0, 0.5, 1.3);
+    g.add(door);
+    // Green moss cap
+    const cap = new THREE.Mesh(
+      new THREE.ConeGeometry(0.3, 0.4, 6),
+      new THREE.MeshStandardMaterial({ color: 0x2a5020, emissive: 0x1a3010, emissiveIntensity: 0.5, roughness: 0.8, flatShading: true })
+    );
+    cap.position.y = 2.3;
+    g.add(cap);
+    g.rotation.y = Math.atan2(-offX, -offZ);
+    place(g, verdantVillageX + offX, verdantVillageZ + offZ, 0, 0.85);
+  }
+  addVerdantTent(-3.0,  2.5);
+  addVerdantTent( 3.2,  1.8);
+  addVerdantTent(-2.5, -3.0);
+  addVerdantTent( 3.0, -2.8);
+
+  // Totem — stacked wooden segments with glowing glyphs
+  const totem = new THREE.Group();
+  const segMat = new THREE.MeshStandardMaterial({ color: 0x4a2a18, roughness: 0.9, flatShading: true });
+  for (let i = 0; i < 5; i++) {
+    const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.3 - i * 0.02, 0.35 - i * 0.02, 0.45, 6), segMat);
+    seg.position.y = i * 0.45 + 0.225;
+    seg.rotation.y = i * 0.4;
+    seg.castShadow = true;
+    totem.add(seg);
+  }
+  // Glowing eye at top
+  const totemEye = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 12, 8),
+    new THREE.MeshStandardMaterial({ color: 0x60ff80, emissive: 0x60ff80, emissiveIntensity: 2.5, roughness: 0.2 })
+  );
+  totemEye.position.y = 2.5;
+  totem.add(totemEye);
+  verdantFlameRefs.totemEye = totemEye;
+  place(totem, verdantVillageX - 5.5, verdantVillageZ, 0, 0.8);
+
+  // Verdant faction altar — behind the village, deep in the jungle
+  const altarX = -58, altarZ = -6;
+  const altar = new THREE.Group();
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry(2.6, 0.5, 1.8),
+    new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 0.9, flatShading: true })
+  );
+  slab.position.y = 0.25;
+  slab.castShadow = true; slab.receiveShadow = true;
+  altar.add(slab);
+  // Moss carpet
+  const moss = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 0.08, 1.7),
+    new THREE.MeshStandardMaterial({ color: 0x2a6030, emissive: 0x1a3018, emissiveIntensity: 0.6, roughness: 0.8, flatShading: true })
+  );
+  moss.position.y = 0.54;
+  altar.add(moss);
+  // Upright roots
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const root = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.22, 1.8, 5),
+      new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 0.95, flatShading: true })
+    );
+    root.position.set(Math.cos(a) * 1.0, 1.4, Math.sin(a) * 0.7);
+    root.rotation.z = Math.cos(a) * 0.25;
+    root.rotation.x = Math.sin(a) * 0.2;
+    root.castShadow = true;
+    altar.add(root);
+  }
+  // Central crystal-seed
+  const seed = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.35, 0),
+    new THREE.MeshStandardMaterial({ color: 0x80ffa0, emissive: 0x40ff60, emissiveIntensity: 2.5, roughness: 0.2, metalness: 0.3 })
+  );
+  seed.position.y = 1.3;
+  altar.add(seed);
+  verdantFlameRefs.seed = seed;
+  const sl = new THREE.PointLight(0x60ff80, 3, 12);
+  sl.position.y = 1.5;
+  altar.add(sl);
+  place(altar, altarX, altarZ, 0, 0.85);
+
+  // Objective beam over altar
+  addObjectiveBeam(altarX, altarZ, 0x60ff80, 20);
+
+  // Altar interact (non-proof, just lore + flavor)
+  verdantInteracts.push({
+    x: altarX, z: altarZ, radius: 2.8,
+    label: 'EXAMINE VERDANT ALTAR', kind: 'verdant-altar', done: false,
+    onInteract: (ia) => {
+      openDialog('VERDANT ALTAR — LIVING SHRINE',
+        `The stone is warm. Moss grows in veins beneath your feet, pulsing faintly with the altar's light.\n\n` +
+        `A low voice in your head — not a voice, exactly. A root-thought.\n\n` +
+        `"You walk between the leaf and the stone.\nLook with the leaf's eyes.\nLook with the stone's eyes.\nBoth will lie to you.\nThe truth is under the battlefield."`
+      );
+    },
+  });
+
+  // Lore stone (non-proof) — Verdant history as they tell it
+  const loreX = -50, loreZ = 18;
+  const loreStone = new THREE.Group();
+  const stone = new THREE.Mesh(
+    new THREE.BoxGeometry(0.9, 1.3, 0.3),
+    new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 0.95, flatShading: true })
+  );
+  stone.position.y = 0.65;
+  stone.rotation.z = -0.15;
+  stone.castShadow = true;
+  loreStone.add(stone);
+  for (let k = 0; k < 4; k++) {
+    const etch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.15 + rand() * 0.12, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x60ff80, emissive: 0x60ff80, emissiveIntensity: 1.3 })
+    );
+    etch.position.set(-0.2 + k * 0.14, 0.8, 0.16);
+    etch.rotation.z = -0.15;
+    loreStone.add(etch);
+  }
+  place(loreStone, loreX, loreZ, 0, 0.6);
+  verdantInteracts.push({
+    x: loreX, z: loreZ, radius: 2.0,
+    label: 'READ VERDANT LORE', kind: 'verdant-lore', done: false,
+    onInteract: (ia) => {
+      openDialog('VERDANT LORE STONE',
+        `(etched in the flowing Verdant script, then translated in smaller marks beneath:)\n\n` +
+        `"In the First Season, we shared the root-water with the stone-kin.\n` +
+        `In the Second Season, the stone-kin walled their crystals against us. They said the root was poison.\n` +
+        `In the Third Season, they sharpened their stones into spears.\n` +
+        `In the Fourth Season, they came for the seedlings.\n\n` +
+        `We fight now because the stone-kin have always chosen the killing blow first.\n` +
+        `We have always been the wounded, never the wolves."`
+      );
+      // Lore-only — proof comes from the 3 NPCs (otherwise count exceeds 3/3)
+      if (!ia.done) { ia.done = true; fadeBeamAt(loreX, loreZ); }
+    },
+  });
+  addObjectiveBeam(loreX, loreZ, 0x60ff80, 14);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VERDANT NPCs — 3 total, each grants a proof when talked to
+// ══════════════════════════════════════════════════════════════════
+const verdantNpcDefs = [
+  { variant: '_staff', x: verdantVillageX - 2.0, z: verdantVillageZ + 0.4, rot: 1.0, id: 'verdant-chief',
+    label: 'TALK TO VERDANT CHIEFTAIN',
+    dlg: { title: 'VERDANT CHIEFTAIN', body:
+      `"You smell of the artefact. Good.\n\nWe are losing this war, stranger. The Monoliths have a weapon — a resonance that turns our roots brittle. They use it on our scouts. Our children.\n\nThe Peace Village will tell you lies, that we are both guilty. We are not. We have never invaded the ruins. We have never burned a Monolith cradle.\n\nHelp us end this before the last of us is cracked open."` } },
+  { variant: '_spear', x: verdantVillageX + 1.8, z: verdantVillageZ + 2.2, rot: -0.5, id: 'verdant-warrior',
+    label: 'TALK TO VERDANT WARRIOR',
+    dlg: { title: 'VERDANT WARRIOR', body:
+      `"I lost my mate at the Second Ridge. The Monoliths came at dawn with their sharp shining things.\n\nShe was a gardener. She had never held a spear.\n\nI hold mine now for her. Do not ask me to forgive."` } },
+  { variant: '_bow',   x: verdantVillageX - 0.5, z: verdantVillageZ - 2.5, rot: 2.0, id: 'verdant-scout',
+    label: 'TALK TO VERDANT SCOUT',
+    dlg: { title: 'VERDANT SCOUT', body:
+      `"I've seen inside the ruins. Watched them at night when their crystals glow.\n\nThey are building something underground — machines that hum like dying insects. The elders in the Peace Village do not know. Our own council does not know.\n\nWhatever it is, if we do not strike soon, we will strike too late."` } },
+];
+
+for (const def of verdantNpcDefs) {
+  const fname = `alien_verdant${def.variant}.glb`;
+  const bx = def.x, bz = def.z, br = def.rot, bid = def.id, blabel = def.label, bdlg = def.dlg;
+  loader.load(`models/${fname}${CB}`, (gltf) => {
+    const npc = gltf.scene;
+    npc.traverse(obj => { if (obj.isMesh) obj.castShadow = true; });
+    scene.add(npc);
+    const gh = getGroundHeight(bx, bz);
+    npc.position.set(bx, gh, bz);
+    npc.rotation.y = br;
+    verdantInteracts.push({
+      x: bx, z: bz, radius: 2.3,
+      label: blabel, kind: 'verdant-npc', id: bid, done: false,
+      onInteract: (ia) => {
+        openDialog(bdlg.title, bdlg.body);
+        if (!ia.done) {
+          ia.done = true;
+          updateQuest('verdantProof');
+          proofV = Math.min(3, proofV + 1); updateProofHud();
+        }
+      },
+    });
+  }, undefined, (err) => console.warn('Verdant NPC load error:', fname, err));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MONOLITH RUIN CAMP (east) — geometric architecture, crystal banners,
+// lore tablets, faction altar. Mirror of the Verdant zone.
+// ══════════════════════════════════════════════════════════════════
+const monolithCampX = 42, monolithCampZ = 12;
+const monolithInteracts = [];
+{
+  const mgh = getGroundHeight(monolithCampX, monolithCampZ);
+
+  // Central brazier — purple crystal cage over cold flame
+  const brazier = new THREE.Group();
+  const cage = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.85, 0),
+    new THREE.MeshStandardMaterial({
+      color: 0x40305a, emissive: 0x301860, emissiveIntensity: 0.8,
+      roughness: 0.15, metalness: 0.6, transparent: true, opacity: 0.75, wireframe: true,
+    })
+  );
+  cage.position.y = 0.9;
+  brazier.add(cage);
+  const cold = new THREE.Mesh(
+    new THREE.ConeGeometry(0.35, 1.0, 8),
+    new THREE.MeshStandardMaterial({ color: 0xc080ff, emissive: 0xa060ff, emissiveIntensity: 2.8, transparent: true, opacity: 0.85 })
+  );
+  cold.position.y = 0.8;
+  brazier.add(cold);
+  const bplate = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.0, 1.2, 0.22, 8),
+    new THREE.MeshStandardMaterial({ color: 0x1a1030, roughness: 0.8, metalness: 0.4, flatShading: true })
+  );
+  bplate.position.y = 0.11;
+  brazier.add(bplate);
+  place(brazier, monolithCampX, monolithCampZ, 0, 0.85);
+  ruinsFlameRefs.flame = cold;
+  const brazLight = new THREE.PointLight(0xa060ff, 5, 14);
+  brazLight.position.set(monolithCampX, mgh + 1.4, monolithCampZ);
+  scene.add(brazLight);
+  ruinsFlameRefs.light = brazLight;
+
+  // 4 geometric shelters — low stepped pyramids instead of tents
+  function addMonolithShelter(offX, offZ) {
+    const g = new THREE.Group();
+    const sMat = new THREE.MeshStandardMaterial({ color: 0x382850, roughness: 0.85, metalness: 0.35, flatShading: true });
+    for (let s = 0; s < 3; s++) {
+      const step = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8 - s * 0.4, 0.45, 1.8 - s * 0.4),
+        sMat
+      );
+      step.position.y = s * 0.45 + 0.225;
+      step.castShadow = true;
+      step.receiveShadow = true;
+      g.add(step);
+    }
+    // Door recess
+    const door = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.55, 0.8),
+      new THREE.MeshBasicMaterial({ color: 0x000008 })
+    );
+    door.position.set(0, 0.4, 0.82);
+    g.add(door);
+    // Banner — vertical thin plane with glowing glyph
+    const bannerMat = new THREE.MeshStandardMaterial({
+      color: 0xa070ff, emissive: 0x6030c0, emissiveIntensity: 1.0,
+      roughness: 0.5, side: THREE.DoubleSide, transparent: true, opacity: 0.85,
+    });
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 1.0), bannerMat);
+    banner.position.set(0, 1.8, 0);
+    g.add(banner);
+    // Pole holding the banner
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.04, 1.4, 4),
+      new THREE.MeshStandardMaterial({ color: 0x1a1020, roughness: 0.9, flatShading: true })
+    );
+    pole.position.set(0, 1.95, 0);
+    g.add(pole);
+    g.rotation.y = Math.atan2(-offX, -offZ);
+    place(g, monolithCampX + offX, monolithCampZ + offZ, 0, 0.8);
+  }
+  addMonolithShelter(-3.2,  2.6);
+  addMonolithShelter( 3.4,  1.6);
+  addMonolithShelter(-2.5, -3.1);
+  addMonolithShelter( 3.0, -2.9);
+
+  // Obelisk — crystal-topped column that hums
+  const obelisk = new THREE.Group();
+  const col = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 3.0, 0.55),
+    new THREE.MeshStandardMaterial({ color: 0x2a1840, roughness: 0.7, metalness: 0.45, flatShading: true })
+  );
+  col.position.y = 1.5;
+  col.castShadow = true;
+  obelisk.add(col);
+  const obCry = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.32, 0),
+    new THREE.MeshStandardMaterial({ color: 0xc080ff, emissive: 0xa060ff, emissiveIntensity: 2.8, roughness: 0.15 })
+  );
+  obCry.position.y = 3.3;
+  obelisk.add(obCry);
+  place(obelisk, monolithCampX + 5.5, monolithCampZ, 0, 0.8);
+
+  // Monolith faction altar — east of the camp
+  const altarX = 58, altarZ = -6;
+  const altar = new THREE.Group();
+  // Tiered stone dais
+  for (let i = 0; i < 3; i++) {
+    const tier = new THREE.Mesh(
+      new THREE.BoxGeometry(2.8 - i * 0.6, 0.25, 2.0 - i * 0.5),
+      new THREE.MeshStandardMaterial({
+        color: 0x30204a, roughness: 0.8, metalness: 0.4, flatShading: true,
+      })
+    );
+    tier.position.y = 0.125 + i * 0.25;
+    tier.castShadow = true;
+    tier.receiveShadow = true;
+    altar.add(tier);
+  }
+  // Four crystal spires around corners
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const spire = new THREE.Mesh(
+      new THREE.ConeGeometry(0.2, 1.5, 4),
+      new THREE.MeshStandardMaterial({
+        color: 0xa080ff, emissive: 0x6040c0, emissiveIntensity: 1.6,
+        roughness: 0.2, metalness: 0.4, transparent: true, opacity: 0.85,
+      })
+    );
+    spire.position.set(Math.cos(a) * 1.2, 1.5, Math.sin(a) * 0.9);
+    altar.add(spire);
+  }
+  // Central geometric core — a sharp icosahedron
+  const core = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.45, 0),
+    new THREE.MeshStandardMaterial({
+      color: 0xd0a0ff, emissive: 0xa060ff, emissiveIntensity: 3.0,
+      roughness: 0.1, metalness: 0.7,
+    })
+  );
+  core.position.y = 1.6;
+  altar.add(core);
+  ruinsFlameRefs.orb = core;
+  const alight = new THREE.PointLight(0xa060ff, 4, 12);
+  alight.position.y = 1.7;
+  altar.add(alight);
+  place(altar, altarX, altarZ, 0, 0.85);
+  addObjectiveBeam(altarX, altarZ, 0xa080ff, 20);
+
+  monolithInteracts.push({
+    x: altarX, z: altarZ, radius: 2.8,
+    label: 'EXAMINE MONOLITH ALTAR', kind: 'monolith-altar', done: false,
+    onInteract: (ia) => {
+      openDialog('MONOLITH ALTAR — CRYSTAL CORE',
+        `The air near the core hums, and the hum lodges in your teeth.\n\n` +
+        `A precise voice, without warmth:\n\n` +
+        `"Form is the only truth.\nThe root lies in whatever shape it finds.\nThe stone keeps faith with its own edges.\nIf you must choose, choose the edge. It will not surprise you."`
+      );
+    },
+  });
+
+  // Lore tablet (non-proof NOT — give proof: their version of history)
+  const loreX = 50, loreZ = 20;
+  const tablet = new THREE.Group();
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry(1.1, 1.5, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0x302040, roughness: 0.6, metalness: 0.4, flatShading: true })
+  );
+  slab.position.y = 0.75;
+  slab.rotation.z = 0.12;
+  slab.castShadow = true;
+  tablet.add(slab);
+  // Etched glyph rows
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 3; c++) {
+      const etch = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.04, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0xa080ff, emissive: 0xa080ff, emissiveIntensity: 1.3 })
+      );
+      etch.position.set(-0.25 + c * 0.18, 1.1 - r * 0.2, 0.1);
+      etch.rotation.z = 0.12;
+      tablet.add(etch);
+    }
+  }
+  place(tablet, loreX, loreZ, 0, 0.6);
+  monolithInteracts.push({
+    x: loreX, z: loreZ, radius: 2.0,
+    label: 'READ MONOLITH LORE', kind: 'monolith-lore', done: false,
+    onInteract: (ia) => {
+      openDialog('MONOLITH TABLET',
+        `(precise, geometric glyphs. A smaller line beneath each block translates it.)\n\n` +
+        `"In the First Age, the root-kin lived in the low valleys and we in the high places. We shared the winter salts.\n` +
+        `In the Second Age, the root-kin began to send their vines into our foundations. They said it was accidental.\n` +
+        `In the Third Age, our crystals began to die. Our children were born without resonance.\n` +
+        `In the Fourth Age, the root-kin pretended sorrow and kept sending vines.\n\n` +
+        `We fight now because the root-kin have always chosen the slow poisoning.\n` +
+        `We have always been the wounded, never the wolves."`
+      );
+      // Lore-only — proof comes from the 3 NPCs (otherwise count exceeds 3/3)
+      if (!ia.done) { ia.done = true; fadeBeamAt(loreX, loreZ); }
+    },
+  });
+  addObjectiveBeam(loreX, loreZ, 0xa080ff, 14);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MONOLITH NPCs — 3 total, each grants a proof
+// ══════════════════════════════════════════════════════════════════
+const monolithNpcDefs = [
+  { variant: '_staff', x: monolithCampX + 1.8, z: monolithCampZ + 0.4, rot: -1.0, id: 'monolith-high',
+    label: 'TALK TO HIGH PRISM',
+    dlg: { title: 'MONOLITH HIGH PRISM', body:
+      `"You are the one the artefact summoned. Speak plainly.\n\nThe Verdant are patient poisoners. Their roots creep into our foundations at night. Their tendrils have already killed a third of our crystal nurseries.\n\nIn the Peace Village they will tell you both sides are guilty. They do not know. They hold hands across a gap they do not remember digging.\n\nHelp us end this, and the valleys will ring again."` } },
+  { variant: '_spear', x: monolithCampX - 2.0, z: monolithCampZ + 2.5, rot: 0.5, id: 'monolith-guard',
+    label: 'TALK TO MONOLITH GUARD',
+    dlg: { title: 'MONOLITH GUARD', body:
+      `"I patrol the eastern edge. Every week a new root finds its way through our walls.\n\nI cut them, I burn them, I grind them to powder. They send more.\n\nSeven nights ago I cut one that had wrapped around my sister's crystal cradle. She is seven years old. Her resonance is fading."` } },
+  { variant: '_bow',   x: monolithCampX + 0.5, z: monolithCampZ - 2.8, rot: -2.0, id: 'monolith-archer',
+    label: 'TALK TO MONOLITH ARCHER',
+    dlg: { title: 'MONOLITH ARCHER', body:
+      `"I loosed a shaft at a Verdant scout last moon. She was near our nursery, close enough to touch our stones.\n\nShe went down with a cry like a child's lullaby.\n\nThe Peace Village says that proves they are like us. I say it proves nothing — wolves can sing too."` } },
+];
+
+for (const def of monolithNpcDefs) {
+  const fname = `alien_monolith${def.variant}.glb`;
+  const bx = def.x, bz = def.z, br = def.rot, bid = def.id, blabel = def.label, bdlg = def.dlg;
+  loader.load(`models/${fname}${CB}`, (gltf) => {
+    const npc = gltf.scene;
+    npc.traverse(obj => { if (obj.isMesh) obj.castShadow = true; });
+    scene.add(npc);
+    const gh = getGroundHeight(bx, bz);
+    npc.position.set(bx, gh, bz);
+    npc.rotation.y = br;
+    monolithInteracts.push({
+      x: bx, z: bz, radius: 2.3,
+      label: blabel, kind: 'monolith-npc', id: bid, done: false,
+      onInteract: (ia) => {
+        openDialog(bdlg.title, bdlg.body);
+        if (!ia.done) {
+          ia.done = true;
+          updateQuest('monolithProof');
+          proofM = Math.min(3, proofM + 1); updateProofHud();
+        }
+      },
+    });
+  }, undefined, (err) => console.warn('Monolith NPC load error:', fname, err));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BATTLEFIELD PROPS — broken weapons, scorched earth, near the center
+// ══════════════════════════════════════════════════════════════════
+const bfMat = new THREE.MeshStandardMaterial({ color: 0x3a1a10, roughness: 1, flatShading: true });
+for (let i = 0; i < 22; i++) {
+  const x = (rand() - 0.5) * 18;
+  const z = (rand() - 0.5) * 80;
+  if (Math.abs(x) > 9) continue;
+  // Broken spear / staff stuck in the ground
+  const group = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5),
+    new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.95, flatShading: true })
+  );
+  shaft.position.y = 0.8;
+  shaft.rotation.z = 0.3 + (rand() - 0.5) * 0.5;
+  shaft.castShadow = true;
+  group.add(shaft);
+  const tip = new THREE.Mesh(
+    new THREE.ConeGeometry(0.08, 0.25, 4),
+    new THREE.MeshStandardMaterial({ color: 0x606070, metalness: 0.7, roughness: 0.3, flatShading: true })
+  );
+  tip.position.set(0.25, 1.55, 0);
+  tip.rotation.z = -Math.PI / 2 + 0.3;
+  group.add(tip);
+  place(group, x, z, 0.1, 0, true);
+}
+
+// Scorched patches
+for (let i = 0; i < 16; i++) {
+  const x = (rand() - 0.5) * 14;
+  const z = (rand() - 0.5) * 80;
+  const patch = new THREE.Mesh(
+    new THREE.CircleGeometry(0.8 + rand() * 1.0, 10),
+    new THREE.MeshStandardMaterial({ color: 0x0a0808, roughness: 1, flatShading: true })
+  );
+  patch.rotation.x = -Math.PI / 2;
+  const gh = getGroundHeight(x, z);
+  patch.position.set(x, gh + 0.02, z);
+  scene.add(patch);
+}
+
+// (Distant armies removed — they read as grass cones on the ground rather
+// than horizon detail. Will revisit if we want a real horizon war layer.)
+const jungleArmy = null, ruinsArmy = null;
+
+// ══════════════════════════════════════════════════════════════════
+// CENTRAL BATTLE STONE — the choice mechanism (built later in choice phase,
+// placeholder here so the player can see where to go)
+// ══════════════════════════════════════════════════════════════════
+const battleStone = new THREE.Group();
+{
+  // Stepped plinth
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(3.0, 3.4, 0.4, 12),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a1a, roughness: 0.9, flatShading: true })
+  );
+  base.position.y = 0.2;
+  base.castShadow = true; base.receiveShadow = true;
+  battleStone.add(base);
+  // Obelisk
+  const obelisk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.6, 1.1, 5.5, 6),
+    new THREE.MeshStandardMaterial({ color: 0x1a0a0a, roughness: 0.6, metalness: 0.4, flatShading: true })
+  );
+  obelisk.position.y = 0.4 + 2.75;
+  obelisk.castShadow = true;
+  battleStone.add(obelisk);
+  // Orb at top
+  const orb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.55, 16, 12),
+    new THREE.MeshStandardMaterial({
+      color: 0xff8060, emissive: 0xff6040, emissiveIntensity: 2.5,
+      roughness: 0.15, metalness: 0.3,
+    })
+  );
+  orb.position.y = 0.4 + 5.5 + 0.3;
+  battleStone.add(orb);
+  battleOrb = orb;
+  const ol = new THREE.PointLight(0xff7050, 6, 20);
+  ol.position.y = 0.4 + 5.5 + 0.3;
+  battleStone.add(ol);
+}
+place(battleStone, 0, 0, 0, 0.85);
+
+// Objective beam over battle stone
+function addObjectiveBeam(x, z, color, h = 20) {
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.28, h, 6, 1, true),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  beam.position.set(x, h / 2 + getGroundHeight(x, z), z);
+  scene.add(beam);
+  const top = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 10, 8),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  top.position.set(x, h + getGroundHeight(x, z), z);
+  scene.add(top);
+  return { beam, top };
+}
+addObjectiveBeam(0, 0, 0xff7050, 22);
+
+// ══════════════════════════════════════════════════════════════════
+// BURIED TRUTHS — evidence both sides lied. 3 finds, scattered:
+//   1. Buried Monolith plow (deep east, evidence they were farmers)
+//   2. Forgotten Verdant war monument (deep west, evidence they were aggressors)
+//   3. A neutral wanderer on the battlefield who tells you both stories
+// ══════════════════════════════════════════════════════════════════
+const truthInteracts = [];
+
+// 1. Buried plow — half-sunk geometric implement on Monolith side
+{
+  const tx = 32, tz = -32;
+  const grp = new THREE.Group();
+  // Wide curved blade (a flat box angled into the ground)
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(1.4, 0.12, 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x504060, roughness: 0.7, metalness: 0.6, flatShading: true })
+  );
+  blade.position.set(0, 0.2, 0);
+  blade.rotation.x = -0.4;
+  blade.castShadow = true;
+  grp.add(blade);
+  // Handle
+  const handle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.06, 1.6, 5),
+    new THREE.MeshStandardMaterial({ color: 0x40305a, roughness: 0.85, flatShading: true })
+  );
+  handle.position.set(0.4, 0.7, 0);
+  handle.rotation.z = -0.6;
+  handle.castShadow = true;
+  grp.add(handle);
+  // Tiny crystal seed-bead at the handle's tip
+  const bead = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.08, 0),
+    new THREE.MeshStandardMaterial({ color: 0xa080ff, emissive: 0x6040c0, emissiveIntensity: 1.5, roughness: 0.2 })
+  );
+  bead.position.set(0.85, 1.15, 0);
+  grp.add(bead);
+  place(grp, tx, tz, 0.4, 0.7);
+  addObjectiveBeam(tx, tz, 0xfff080, 12);
+  truthInteracts.push({
+    x: tx, z: tz, radius: 2.0,
+    label: 'EXAMINE BURIED PLOW', kind: 'truth-plow', done: false,
+    onInteract: (ia) => {
+      openDialog('A BURIED PLOW',
+        `Half-buried in the dust. The blade is Monolith craftsmanship — geometric, precise — but the curve is wrong for a weapon.\n\n` +
+        `It is a plow. A patient tool for breaking soil and planting star-grain.\n\n` +
+        `The High Prism teaches that the Monoliths have always been stone-shapers and warriors.\n` +
+        `That teaching is recent.\n\n` +
+        `<span style="color:#ffd070;">Before the war, before the spires sharpened, the Monoliths were farmers. They grew the food the valley shared. The Verdant traded root-water for it.</span>\n\n` +
+        `Someone, sometime, decided this should be forgotten.`
+      );
+      if (!ia.done) { ia.done = true; updateQuest('truths'); fadeBeamAt(tx, tz); }
+    },
+  });
+}
+
+// 2. Forgotten Verdant war monument — overgrown obelisk in the deep jungle
+{
+  const tx = -55, tz = -25;
+  const grp = new THREE.Group();
+  // Tall stone slab
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 2.6, 0.4),
+    new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.95, flatShading: true })
+  );
+  slab.position.y = 1.3;
+  slab.rotation.z = -0.08;
+  slab.castShadow = true;
+  grp.add(slab);
+  // Crowning leaf-emblem at the top
+  const emblem = new THREE.Mesh(
+    new THREE.ConeGeometry(0.35, 0.5, 6),
+    new THREE.MeshStandardMaterial({ color: 0x205020, emissive: 0x103020, emissiveIntensity: 0.4, roughness: 0.8, flatShading: true })
+  );
+  emblem.position.y = 2.85;
+  grp.add(emblem);
+  // Vines crawling up
+  for (let k = 0; k < 4; k++) {
+    const vine = new THREE.Mesh(
+      new THREE.TorusGeometry(0.45, 0.06, 4, 8),
+      new THREE.MeshStandardMaterial({ color: 0x2a6028, emissive: 0x1a3014, emissiveIntensity: 0.5, roughness: 0.85, flatShading: true })
+    );
+    vine.position.set(0, 0.4 + k * 0.55, 0);
+    vine.rotation.x = Math.PI / 2 + (k % 2 ? 0.18 : -0.18);
+    grp.add(vine);
+  }
+  // Small etched glyphs on the slab
+  for (let r = 0; r < 5; r++) {
+    const etch = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.04, 0.02),
+      new THREE.MeshStandardMaterial({ color: 0x60ff80, emissive: 0x60ff80, emissiveIntensity: 1.2 })
+    );
+    etch.position.set(0, 1.7 - r * 0.18, 0.21);
+    grp.add(etch);
+  }
+  place(grp, tx, tz, 0, 0.7);
+  addObjectiveBeam(tx, tz, 0xfff080, 14);
+  truthInteracts.push({
+    x: tx, z: tz, radius: 2.2,
+    label: 'EXAMINE OLD MONUMENT', kind: 'truth-monument', done: false,
+    onInteract: (ia) => {
+      openDialog('A FORGOTTEN VERDANT MONUMENT',
+        `Vines have nearly eaten the slab. The Verdant chieftain swore his people had never burned a Monolith cradle. The glyphs here say otherwise.\n\n` +
+        `(translated from a script the modern Verdant no longer teach:)\n\n` +
+        `"Praise the Council of the Third Season. Two hundred Monolith nurseries burned. Six hundred root-warriors honoured for the work."\n\n` +
+        `<span style="color:#fff080;">The Verdant struck first, in a season the chieftains have stopped naming. Their current grief is real. Their current innocence is not.</span>\n\n` +
+        `Both kingdoms tell the truth about being wounded.\nBoth kingdoms hide the wound they made first.`
+      );
+      if (!ia.done) { ia.done = true; updateQuest('truths'); fadeBeamAt(tx, tz); }
+    },
+  });
+}
+
+// 3. Battlefield Wanderer — neutral, scavenges in the middle strip
+{
+  const tx = 4, tz = -22;
+  // Will be loaded as alien_wanderer.glb
+  loader.load('models/alien_wanderer.glb' + CB, (gltf) => {
+    const npc = gltf.scene;
+    npc.traverse(obj => { if (obj.isMesh) obj.castShadow = true; });
+    scene.add(npc);
+    const gh = getGroundHeight(tx, tz);
+    npc.position.set(tx, gh, tz);
+    npc.rotation.y = -0.5;
+    addObjectiveBeam(tx, tz, 0xfff080, 12);
+    truthInteracts.push({
+      x: tx, z: tz, radius: 2.4,
+      label: 'TALK TO BATTLEFIELD WANDERER', kind: 'truth-wanderer', done: false,
+      onInteract: (ia) => {
+        openDialog('THE BATTLEFIELD WANDERER',
+          `"You're the one the artefact pulled in. I can smell it on you.\n\n` +
+          `I'm a Wanderer. We do not fight. We picked the bones from this valley before the Verdant ever planted, and before the Monoliths cut their first crystal.\n\n` +
+          `Listen — both of them are lying to you.\n\n` +
+          `<span style="color:#fff080;">The Monoliths were farmers once. They lost the knowledge of growing when the Verdant burned a third of their cradles.</span>\n\n` +
+          `<span style="color:#fff080;">The Verdant burned those cradles in retaliation for a poisoning that may have been an accident, may have been a child's mistake, may have been nothing at all.</span>\n\n` +
+          `Both believe their first wound was unprovoked. Both are wrong.\n\n` +
+          `The artefact will demand you choose. There is no version of this where one side is innocent.\n` +
+          `Pick the one whose ending you can live inside."`
+        );
+        if (!ia.done) { ia.done = true; updateQuest('truths'); fadeBeamAt(tx, tz); }
+      },
+    });
+  }, undefined, (err) => console.warn('Wanderer load error:', err));
+}
+
+// Echo stones on the battlefield — atmospheric whispers (no proof, no quest)
+const echoStones = [
+  { x:  -3, z:  35, line: '"Both armies prayed to the same artefact, in different syllables."' },
+  { x:   6, z: -42, line: '"My grandfather fought beside a Monolith once. He said her armour rang like a hymn."' },
+  { x: -10, z:   2, line: '"Step lightly here. The dead from both kingdoms share this earth without complaint."' },
+];
+for (const e of echoStones) {
+  const grp = new THREE.Group();
+  const stone = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.32, 1.6, 5),
+    new THREE.MeshStandardMaterial({ color: 0x2a1c20, roughness: 0.95, flatShading: true })
+  );
+  stone.position.y = 0.8;
+  stone.rotation.z = (rand() - 0.5) * 0.15;
+  stone.castShadow = true;
+  grp.add(stone);
+  const cap = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.12, 0),
+    new THREE.MeshStandardMaterial({ color: 0xfff080, emissive: 0xfff080, emissiveIntensity: 1.2 })
+  );
+  cap.position.y = 1.7;
+  grp.add(cap);
+  place(grp, e.x, e.z, 0, 0.6);
+  e.triggered = false;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BATTLE STONE — choice interact. Gated behind both proofs.
+// ══════════════════════════════════════════════════════════════════
+const choiceInteracts = [
+  {
+    x: 0, z: 0, radius: 3.6,
+    label: 'APPROACH THE BATTLE STONE', kind: 'battle-stone', done: false,
+    onInteract: (ia) => {
+      if (chosenSide) return;
+      const readyV = proofV >= 3, readyM = proofM >= 3;
+      if (!readyV || !readyM) {
+        const missing = [];
+        if (!readyV) missing.push(`${3 - proofV} more from the Verdant`);
+        if (!readyM) missing.push(`${3 - proofM} more from the Monoliths`);
+        openDialog('THE BATTLE STONE — DORMANT',
+          `The orb is cold under your hand. It does not recognise you.\n\n` +
+          `You need proof from both sides. Still required: ` +
+          `<span style="color:#ffb090;">${missing.join(' and ')}</span>.\n\n` +
+          `Visit both kingdoms. Hear their testimony. Read their tablets.`
+        );
+        return;
+      }
+      openChoiceDialog();
+    },
+  },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// PARTICLES — drifting embers, distant battle sparks
+// ══════════════════════════════════════════════════════════════════
+const dustGeo = new THREE.BufferGeometry();
+const dustPos = new Float32Array(PERF.dustCount * 3);
+for (let i = 0; i < PERF.dustCount; i++) {
+  dustPos[i*3]   = (Math.random() - 0.5) * 200;
+  dustPos[i*3+1] = Math.random() * 8;
+  dustPos[i*3+2] = (Math.random() - 0.5) * 200;
+}
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+  color: 0xffa070, size: 0.06, transparent: true, opacity: 0.5, sizeAttenuation: true,
+  blending: THREE.AdditiveBlending, depthWrite: false,
+}));
+scene.add(dust);
+
+// ══════════════════════════════════════════════════════════════════
+// QUESTS (will grow as we add faction zones)
+// ══════════════════════════════════════════════════════════════════
+const quests = [
+  { id: 'verdantProof',  label: 'Gather proof of the Verdant side',  total: 3, done: 0 },
+  { id: 'monolithProof', label: 'Gather proof of the Monolith side', total: 3, done: 0 },
+  { id: 'truths',        label: 'Find the buried truths',            total: 3, done: 0 },
+  { id: 'choose',        label: 'Choose a side at the Battle Stone', total: 1, done: 0 },
+];
+
+function renderQuests() {
+  const el = document.getElementById('questItems');
+  el.innerHTML = quests.map(q => {
+    const complete = q.done >= q.total;
+    const dot = complete ? '<span style="color:#60ff80;">●</span>' : '<span style="color:rgba(255,255,255,0.35);">○</span>';
+    const lab = complete
+      ? `<span style="color:rgba(255,255,255,0.4);text-decoration:line-through;">${q.label}</span>`
+      : `<span style="color:rgba(255,255,255,0.8);">${q.label}</span>`;
+    const count = q.total > 1 ? ` <span style="color:#ff8060;">${q.done}/${q.total}</span>` : '';
+    return `${dot}&nbsp; ${lab}${count}`;
+  }).join('<br>');
+}
+function updateQuest(id, delta = 1) {
+  const q = quests.find(x => x.id === id);
+  if (!q) return;
+  q.done = Math.min(q.total, q.done + delta);
+  renderQuests();
+}
+renderQuests();
+
+// ══════════════════════════════════════════════════════════════════
+// PLAYER
+// ══════════════════════════════════════════════════════════════════
+const player = {
+  position: new THREE.Vector3(0, 0, 18),
+  velocity: new THREE.Vector3(0, 0, 0),
+  yaw: Math.PI,
+  cameraPitch: -0.18,
+  cameraYaw: Math.PI,
+  cameraDistance: 5,
+  cameraHeight: 2.0,
+  speed: 5.5,
+  runMul: 1.8,
+  jumpVel: 6.5,
+  gravity: 18,
+  onGround: true,
+  isMoving: false,
+  walkPhase: 0,
+};
+const keys = { w: false, a: false, s: false, d: false, shift: false, space: false, ctrl: false };
+let pointerLocked = false;
+let astronautModel = null;
+let mode = 'walk';
+const freeCam = { position: new THREE.Vector3(10, 5, 10), yaw: Math.PI, pitch: -0.25, speed: 12, sprintMul: 3 };
+
+let cutsceneActive = true;
+let cutsceneTime = 0;
+let arrived = false;
+let dialogOpen = false;
+let activeVision = null;
+let chosenSide = null;  // 'verdant' | 'monolith'
+
+const clickToPlay = document.getElementById('clickToPlay');
+let hasStarted = false;
+
+// Hide everything during cutscene
+const _hideInCutscene = [];
+scene.children.forEach(o => {
+  if (o === ground) return;
+  if (o.isLight) return;
+  if (o.isMesh && o.geometry?.type === 'SphereGeometry' && o.material?.side === THREE.BackSide) return;
+  o.visible = false;
+  o.userData._hideInCutscene = true;
+  _hideInCutscene.push(o);
+});
+
+document.querySelector('.hud').style.opacity = '0';
+document.getElementById('controlsHelp').style.opacity = '0';
+document.getElementById('questLog').style.opacity = '0';
+
+// Arrival beam
+const arrivalBeam = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.6, 1.2, 40, 12, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0xff8060, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false })
+);
+arrivalBeam.position.set(0, 20, 18);
+scene.add(arrivalBeam);
+const arrivalLight = new THREE.PointLight(0xff8060, 0, 30);
+arrivalLight.position.set(0, 5, 18);
+scene.add(arrivalLight);
+
+const flashEl = document.createElement('div');
+flashEl.style.cssText = 'position:fixed;inset:0;z-index:150;background:#ffb080;opacity:0;pointer-events:none;transition:opacity 0.4s;';
+document.body.appendChild(flashEl);
+
+// Orbit controls
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.08;
+orbitControls.target.set(player.position.x, 1.5, player.position.z);
+orbitControls.enabled = false;
+
+// ══════════════════════════════════════════════════════════════════
+// INPUT
+// ══════════════════════════════════════════════════════════════════
+clickToPlay.classList.add('hidden');  // hidden during cutscene, shown after
+
+clickToPlay.addEventListener('click', () => {
+  hasStarted = true;
+  clickToPlay.classList.add('hidden');
+  initAudio();
+  try { canvas.requestPointerLock(); } catch (e) {}
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = document.pointerLockElement === canvas;
+});
+canvas.addEventListener('click', () => {
+  if (!hasStarted) return;
+  if (dialogOpen) return;
+  if (!pointerLocked && mode !== 'orbit') {
+    try { canvas.requestPointerLock(); } catch (e) {}
+  }
+});
+document.addEventListener('mousemove', (e) => {
+  if (!pointerLocked) return;
+  const sens = 0.0025;
+  if (mode === 'walk') {
+    player.cameraYaw -= e.movementX * sens;
+    player.cameraPitch -= e.movementY * sens;
+    player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
+  } else if (mode === 'freecam') {
+    freeCam.yaw -= e.movementX * sens;
+    freeCam.pitch -= e.movementY * sens;
+    freeCam.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, freeCam.pitch));
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (dialogOpen) { if (e.code === 'Escape') closeDialog(); return; }
+  switch (e.code) {
+    case 'KeyW': keys.w = true; break;
+    case 'KeyA': keys.a = true; break;
+    case 'KeyS': keys.s = true; break;
+    case 'KeyD': keys.d = true; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.shift = true; break;
+    case 'Space':
+      e.preventDefault(); keys.space = true;
+      if (mode === 'walk' && player.onGround) {
+        player.velocity.y = player.jumpVel;
+        player.onGround = false;
+      }
+      break;
+    case 'ControlLeft': case 'ControlRight': keys.ctrl = true; break;
+    case 'KeyE': tryInteract(); break;
+    case 'KeyF': setMode(mode === 'freecam' ? 'walk' : 'freecam'); break;
+    case 'KeyO': setMode(mode === 'orbit' ? 'walk' : 'orbit'); break;
+    case 'KeyH': document.body.classList.toggle('hide-hud'); break;
+    case 'Escape': if (pointerLocked) document.exitPointerLock(); break;
+  }
+});
+document.addEventListener('keyup', (e) => {
+  switch (e.code) {
+    case 'KeyW': keys.w = false; break;
+    case 'KeyA': keys.a = false; break;
+    case 'KeyS': keys.s = false; break;
+    case 'KeyD': keys.d = false; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.shift = false; break;
+    case 'Space': keys.space = false; break;
+    case 'ControlLeft': case 'ControlRight': keys.ctrl = false; break;
+  }
+});
+
+function setMode(newMode) {
+  mode = newMode;
+  orbitControls.enabled = (mode === 'orbit');
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  if (mode === 'orbit') {
+    if (pointerLocked) document.exitPointerLock();
+    orbitControls.target.copy(player.position).add(new THREE.Vector3(0, 1.5, 0));
+  } else if (mode === 'freecam') {
+    freeCam.position.copy(camera.position);
+    freeCam.yaw = player.cameraYaw + Math.PI;
+    freeCam.pitch = -player.cameraPitch;
+    if (!pointerLocked) canvas.requestPointerLock();
+  } else if (mode === 'walk') {
+    if (!pointerLocked && !dialogOpen) canvas.requestPointerLock();
+  }
+}
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => { e.stopPropagation(); setMode(btn.dataset.mode); });
+});
+
+// Dialogs
+function openDialog(title, body) {
+  dialogOpen = true;
+  if (pointerLocked) document.exitPointerLock();
+  document.getElementById('dlgTitle').textContent = title;
+  document.getElementById('dlgBody').innerHTML = body.replace(/\n/g, '<br>');
+  document.getElementById('dialogScreen').style.display = 'block';
+}
+function closeDialog() {
+  dialogOpen = false;
+  document.getElementById('dialogScreen').style.display = 'none';
+  if (mode === 'walk' && hasStarted) canvas.requestPointerLock();
+}
+document.getElementById('dlgClose').addEventListener('click', closeDialog);
+
+// ══════════════════════════════════════════════════════════════════
+// CHOICE DIALOG — two buttons, picks the ending
+// ══════════════════════════════════════════════════════════════════
+function openChoiceDialog() {
+  dialogOpen = true;
+  if (pointerLocked) document.exitPointerLock();
+  document.getElementById('dlgTitle').textContent = 'THE BATTLE STONE — WAKES';
+  document.getElementById('dlgBody').innerHTML = `
+    <div style="margin-bottom:14px;">
+      The orb flares. Both kingdoms go quiet at the edges of the valley — they feel you about to speak for them.<br><br>
+      You have heard both stories. Both tablets. Both griefs.<br>
+      <span style="color:rgba(255,180,120,0.7);">Both sides believe they are the wounded, never the wolves. One will be proven right. One will be silenced.</span>
+    </div>
+    <div style="display:flex;gap:16px;justify-content:center;margin-top:22px;">
+      <button id="pickVerdant" style="flex:1;padding:14px;background:rgba(40,80,40,0.55);border:1px solid #60ff80;color:#b0ffc0;font-family:inherit;letter-spacing:3px;font-size:12px;cursor:pointer;border-radius:4px;">
+        SIDE WITH THE VERDANT
+      </button>
+      <button id="pickMonolith" style="flex:1;padding:14px;background:rgba(60,40,100,0.55);border:1px solid #c080ff;color:#e0c0ff;font-family:inherit;letter-spacing:3px;font-size:12px;cursor:pointer;border-radius:4px;">
+        SIDE WITH THE MONOLITHS
+      </button>
+    </div>
+    <div style="margin-top:18px;text-align:center;color:rgba(255,255,255,0.4);font-size:10px;letter-spacing:2px;">
+      Both paths lead to an ending. Neither is without cost.
+    </div>
+  `;
+  document.getElementById('dialogScreen').style.display = 'block';
+  document.getElementById('pickVerdant').addEventListener('click', () => pickSide('verdant'));
+  document.getElementById('pickMonolith').addEventListener('click', () => pickSide('monolith'));
+}
+
+function pickSide(side) {
+  if (chosenSide) return;
+  chosenSide = side;
+  closeDialog();
+  const bs = choiceInteracts.find(i => i.kind === 'battle-stone');
+  if (bs) bs.done = true;
+  updateQuest('choose');
+  playChoiceBoom();
+  // Brief revelation before the ending vision
+  const st = document.getElementById('storyText');
+  const ss = document.getElementById('storySub');
+  st.textContent = 'YOU CHOSE';
+  ss.textContent = side === 'verdant' ? 'The root over the stone.' : 'The stone over the root.';
+  st.classList.add('show'); ss.classList.add('show');
+  setTimeout(() => {
+    st.textContent = 'BUT THE PEACE VILLAGE ALWAYS KNEW';
+    ss.textContent = 'Both tablets were lies. Both kingdoms held the knife first, in different centuries.';
+  }, 2800);
+  setTimeout(() => {
+    st.classList.remove('show'); ss.classList.remove('show');
+    triggerEnding(side);
+  }, 7000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ENDING 3D VISIONS — stylized mini-scenes for each side
+// ══════════════════════════════════════════════════════════════════
+function makeSilhouette(color, h = 1.6) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * (h/1.6), 0.26 * (h/1.6), h, 6), mat);
+  body.position.y = h / 2;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22 * (h/1.6), 8, 6), mat);
+  head.position.y = h + 0.2;
+  g.add(head);
+  return g;
+}
+
+function playVision(visionData, onComplete) {
+  activeVision = Object.assign({}, visionData, {
+    time: 0, onComplete,
+    captionsShown: new Set(),
+  });
+}
+
+// ── VERDANT ENDING — lush overgrown world, the Monoliths fallen silent ──
+function buildVerdantEnding() {
+  const vs = new THREE.Scene();
+  vs.background = new THREE.Color(0x1a2a14);
+  vs.fog = new THREE.FogExp2(0x1a3018, 0.012);
+
+  vs.add(new THREE.AmbientLight(0xa0d080, 0.9));
+  const dl = new THREE.DirectionalLight(0xfff0c0, 1.8);
+  dl.position.set(40, 50, 30);
+  vs.add(dl);
+  const rim = new THREE.DirectionalLight(0x60ff80, 0.9);
+  rim.position.set(-30, 20, -20);
+  vs.add(rim);
+
+  // Mossy ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300, 36, 36),
+    new THREE.MeshStandardMaterial({ color: 0x1e4a20, roughness: 0.95, flatShading: true })
+  );
+  const gp = ground.geometry.attributes.position;
+  for (let i = 0; i < gp.count; i++) {
+    const x = gp.getX(i), y = gp.getY(i);
+    gp.setZ(i, (Math.sin(x * 0.08) + Math.cos(y * 0.09)) * 0.5);
+  }
+  gp.needsUpdate = true;
+  ground.geometry.computeVertexNormals();
+  ground.rotation.x = -Math.PI / 2;
+  vs.add(ground);
+
+  // Overgrown ruin shells — crumbled monolith towers wrapped in vines
+  for (let i = 0; i < 18; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 14 + rand() * 40;
+    const col = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 3 + rand() * 2, 1.6),
+      new THREE.MeshStandardMaterial({ color: 0x30204a, roughness: 0.9, flatShading: true })
+    );
+    col.position.set(Math.cos(a) * r, (2 + rand()) / 2, Math.sin(a) * r);
+    col.rotation.z = (rand() - 0.5) * 0.35;
+    vs.add(col);
+    // Vines wrapping around
+    for (let k = 0; k < 3; k++) {
+      const vine = new THREE.Mesh(
+        new THREE.TorusGeometry(1.1, 0.12, 4, 8),
+        new THREE.MeshStandardMaterial({ color: 0x40a030, emissive: 0x2a5018, emissiveIntensity: 0.7, roughness: 0.8, flatShading: true })
+      );
+      vine.position.copy(col.position);
+      vine.position.y = 0.8 + k * 0.9;
+      vine.rotation.x = Math.PI / 2 + (rand() - 0.5) * 0.3;
+      vs.add(vine);
+    }
+  }
+
+  // Lush trees
+  for (let i = 0; i < 40; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 8 + rand() * 55;
+    const treeH = 3 + rand() * 3;
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.24, treeH, 5),
+      new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.95, flatShading: true })
+    );
+    trunk.position.set(Math.cos(a) * r, treeH / 2, Math.sin(a) * r);
+    vs.add(trunk);
+    const canopy = new THREE.Mesh(
+      new THREE.ConeGeometry(1.2 + rand() * 0.8, treeH * 0.9, 6),
+      new THREE.MeshStandardMaterial({ color: 0x2a6030, roughness: 0.85, flatShading: true })
+    );
+    canopy.position.set(Math.cos(a) * r, treeH + 0.6, Math.sin(a) * r);
+    vs.add(canopy);
+  }
+
+  // Luminous flowers scattered (glowing dots)
+  const flowerGeo = new THREE.BufferGeometry();
+  const fPos = new Float32Array(120 * 3);
+  for (let i = 0; i < 120; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 8 + Math.random() * 60;
+    fPos[i*3]   = Math.cos(a) * r;
+    fPos[i*3+1] = 0.4 + Math.random() * 0.5;
+    fPos[i*3+2] = Math.sin(a) * r;
+  }
+  flowerGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3));
+  vs.add(new THREE.Points(flowerGeo, new THREE.PointsMaterial({
+    color: 0x80ffa0, size: 0.35, transparent: true, opacity: 0.9,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  })));
+
+  // Verdant figures living peacefully
+  const verdantFolk = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const r = 10 + rand() * 4;
+    const sil = makeSilhouette(0x2e5030, 1.6);
+    sil.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    sil.rotation.y = a + Math.PI;
+    sil.userData.ang = a;
+    sil.userData.r = r;
+    vs.add(sil);
+    verdantFolk.push(sil);
+  }
+
+  // Peace village silhouette in distance
+  for (let i = 0; i < 5; i++) {
+    const hut = new THREE.Mesh(
+      new THREE.ConeGeometry(1.2, 2.0, 6),
+      new THREE.MeshStandardMaterial({ color: 0x504638, roughness: 0.9, flatShading: true })
+    );
+    hut.position.set(-38 + i * 2.2, 1.0, -30);
+    vs.add(hut);
+  }
+  // Smoke column from peace village
+  const smokeGeo = new THREE.BufferGeometry();
+  const sPos = new Float32Array(40 * 3);
+  for (let i = 0; i < 40; i++) {
+    sPos[i*3]   = -34 + (Math.random() - 0.5) * 2;
+    sPos[i*3+1] = 2 + Math.random() * 15;
+    sPos[i*3+2] = -30 + (Math.random() - 0.5) * 2;
+  }
+  smokeGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+  vs.add(new THREE.Points(smokeGeo, new THREE.PointsMaterial({
+    color: 0xa0a0a0, size: 0.8, transparent: true, opacity: 0.5, depthWrite: false,
+  })));
+
+  // Distant mountains
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const r = 80 + rand() * 20;
+    const mt = new THREE.Mesh(
+      new THREE.ConeGeometry(6 + rand() * 4, 14 + rand() * 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0x24401c, roughness: 1, flatShading: true })
+    );
+    mt.position.set(Math.cos(a) * r, 7, Math.sin(a) * r);
+    vs.add(mt);
+  }
+
+  const vc = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+  const steps = [
+    { t:  0,  cam: [0, 50, 55],   look: [0, 3, 0] },
+    { t:  3,  cam: [0, 18, 24],   look: [0, 2, 0] },
+    { t:  6,  cam: [-10, 6, 14],  look: [0, 2, 0] },
+    { t:  9,  cam: [-25, 8, -8],  look: [-34, 2, -30] },
+    { t: 12,  cam: [0, 35, 40],   look: [0, 4, 0] },
+  ];
+  const captions = [
+    { t:     0, text: 'THE WAR ENDED', sub: 'Seven nights after you chose' },
+    { t:  2600, text: 'THE MONOLITHS FELL SILENT', sub: 'Their spires cracked, then quiet' },
+    { t:  5400, text: 'VINES GREW WHERE THEIR WALLS STOOD', sub: 'The valley remembers the Verdant now' },
+    { t:  8400, text: 'YOU LIVE HERE NOW', sub: 'Sometimes with the tribe. Sometimes with the peace village.' },
+    { t: 11400, text: 'NEITHER ASKS YOU WHICH SIDE YOU CHOSE', sub: '' },
+  ];
+  function tick(vt, dt) {
+    for (const f of verdantFolk) {
+      f.position.y = Math.abs(Math.sin(vt * 1.5 + f.userData.ang)) * 0.1;
+      f.rotation.y += dt * 0.1;
+    }
+  }
+  return { scene: vs, camera: vc, steps, captions, duration: 15, tick };
+}
+
+// ── MONOLITH ENDING — sterile crystalline world, the Verdant withered ──
+function buildMonolithEnding() {
+  const vs = new THREE.Scene();
+  vs.background = new THREE.Color(0x12102a);
+  vs.fog = new THREE.FogExp2(0x1a1a40, 0.014);
+
+  vs.add(new THREE.AmbientLight(0x9088c0, 0.9));
+  const dl = new THREE.DirectionalLight(0xe0d0ff, 1.6);
+  dl.position.set(30, 60, 20);
+  vs.add(dl);
+  const rim = new THREE.DirectionalLight(0xa080ff, 1.0);
+  rim.position.set(-30, 25, -30);
+  vs.add(rim);
+
+  // Crystalline ground
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(300, 300, 36, 36),
+    new THREE.MeshStandardMaterial({
+      color: 0x30284a, emissive: 0x181030, emissiveIntensity: 0.25,
+      roughness: 0.4, metalness: 0.5, flatShading: true,
+    })
+  );
+  const gp = ground.geometry.attributes.position;
+  for (let i = 0; i < gp.count; i++) {
+    const x = gp.getX(i), y = gp.getY(i);
+    gp.setZ(i, (Math.sin(x * 0.1) + Math.cos(y * 0.08)) * 0.3);
+  }
+  gp.needsUpdate = true;
+  ground.geometry.computeVertexNormals();
+  ground.rotation.x = -Math.PI / 2;
+  vs.add(ground);
+
+  // Crystallized tree skeletons — what's left of the Verdant jungle
+  for (let i = 0; i < 22; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 10 + rand() * 50;
+    const treeH = 3 + rand() * 3;
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.14, 0.22, treeH, 5),
+      new THREE.MeshStandardMaterial({
+        color: 0x8070c0, emissive: 0x302060, emissiveIntensity: 0.35,
+        roughness: 0.2, metalness: 0.5, transparent: true, opacity: 0.82,
+        flatShading: true,
+      })
+    );
+    trunk.position.set(Math.cos(a) * r, treeH / 2, Math.sin(a) * r);
+    vs.add(trunk);
+    // Crystal shards where leaves used to be
+    for (let k = 0; k < 3; k++) {
+      const shard = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.32 + rand() * 0.12, 0),
+        new THREE.MeshStandardMaterial({
+          color: 0xa080ff, emissive: 0x6040c0, emissiveIntensity: 1.5,
+          roughness: 0.15, metalness: 0.4, transparent: true, opacity: 0.85,
+        })
+      );
+      shard.position.set(Math.cos(a) * r + (rand() - 0.5) * 0.6, treeH + 0.4 + k * 0.35, Math.sin(a) * r + (rand() - 0.5) * 0.6);
+      vs.add(shard);
+    }
+  }
+
+  // Monolith spires standing tall in the distance
+  for (let i = 0; i < 14; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = 20 + rand() * 35;
+    const spireH = 5 + rand() * 5;
+    const spire = new THREE.Mesh(
+      new THREE.BoxGeometry(1.2, spireH, 1.2),
+      new THREE.MeshStandardMaterial({ color: 0x3a2a60, roughness: 0.7, metalness: 0.45, flatShading: true })
+    );
+    spire.position.set(Math.cos(a) * r, spireH / 2, Math.sin(a) * r);
+    vs.add(spire);
+    const top = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.45, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0xa080ff, emissive: 0xa060ff, emissiveIntensity: 2.2, roughness: 0.15,
+      })
+    );
+    top.position.set(Math.cos(a) * r, spireH + 0.4, Math.sin(a) * r);
+    vs.add(top);
+  }
+
+  // Crystal dust
+  const dustGeo2 = new THREE.BufferGeometry();
+  const dPos = new Float32Array(160 * 3);
+  for (let i = 0; i < 160; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 8 + Math.random() * 60;
+    dPos[i*3]   = Math.cos(a) * r;
+    dPos[i*3+1] = 0.4 + Math.random() * 6;
+    dPos[i*3+2] = Math.sin(a) * r;
+  }
+  dustGeo2.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
+  vs.add(new THREE.Points(dustGeo2, new THREE.PointsMaterial({
+    color: 0xc0a0ff, size: 0.3, transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  })));
+
+  // Monolith figures in formation
+  const monolithFolk = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const r = 10 + rand() * 3;
+    const sil = makeSilhouette(0x402860, 1.7);
+    sil.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    sil.rotation.y = a + Math.PI;
+    sil.userData.ang = a;
+    vs.add(sil);
+    monolithFolk.push(sil);
+  }
+
+  // Peace village in distance
+  for (let i = 0; i < 5; i++) {
+    const hut = new THREE.Mesh(
+      new THREE.ConeGeometry(1.2, 2.0, 6),
+      new THREE.MeshStandardMaterial({ color: 0x504638, roughness: 0.9, flatShading: true })
+    );
+    hut.position.set(-38 + i * 2.2, 1.0, -30);
+    vs.add(hut);
+  }
+  // Smoke column from peace village (still there)
+  const smokeGeo = new THREE.BufferGeometry();
+  const sPos = new Float32Array(40 * 3);
+  for (let i = 0; i < 40; i++) {
+    sPos[i*3]   = -34 + (Math.random() - 0.5) * 2;
+    sPos[i*3+1] = 2 + Math.random() * 15;
+    sPos[i*3+2] = -30 + (Math.random() - 0.5) * 2;
+  }
+  smokeGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+  vs.add(new THREE.Points(smokeGeo, new THREE.PointsMaterial({
+    color: 0xa0a0a0, size: 0.8, transparent: true, opacity: 0.45, depthWrite: false,
+  })));
+
+  // Distant mountains
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const r = 80 + rand() * 20;
+    const mt = new THREE.Mesh(
+      new THREE.ConeGeometry(6 + rand() * 4, 14 + rand() * 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0x1e1a40, roughness: 1, flatShading: true })
+    );
+    mt.position.set(Math.cos(a) * r, 7, Math.sin(a) * r);
+    vs.add(mt);
+  }
+
+  const vc = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 400);
+  const steps = [
+    { t:  0,  cam: [0, 50, 55],   look: [0, 3, 0] },
+    { t:  3,  cam: [0, 18, 24],   look: [0, 2, 0] },
+    { t:  6,  cam: [-10, 6, 14],  look: [0, 2, 0] },
+    { t:  9,  cam: [-25, 8, -8],  look: [-34, 2, -30] },
+    { t: 12,  cam: [0, 35, 40],   look: [0, 4, 0] },
+  ];
+  const captions = [
+    { t:     0, text: 'THE WAR ENDED', sub: 'Seven nights after you chose' },
+    { t:  2600, text: 'THE VERDANT WITHERED', sub: 'Their roots crystallized where they grew' },
+    { t:  5400, text: 'THE VALLEY HARDENED INTO GEOMETRY', sub: 'The Monoliths keep the order now' },
+    { t:  8400, text: 'YOU LIVE HERE NOW', sub: 'Sometimes in the spires. Sometimes with the peace village.' },
+    { t: 11400, text: 'NEITHER ASKS YOU WHICH SIDE YOU CHOSE', sub: '' },
+  ];
+  function tick(vt, dt) {
+    for (const f of monolithFolk) {
+      f.rotation.y = f.userData.ang + Math.PI + Math.sin(vt * 0.6) * 0.08;
+    }
+  }
+  return { scene: vs, camera: vc, steps, captions, duration: 15, tick };
+}
+
+function triggerEnding(side) {
+  const data = side === 'verdant' ? buildVerdantEnding() : buildMonolithEnding();
+  playVision(data, () => {
+    // After vision: fade to THE END screen
+    const overlay = document.getElementById('storyOverlay');
+    overlay.classList.add('fade');
+    const st = document.getElementById('storyText');
+    const ss = document.getElementById('storySub');
+    setTimeout(() => {
+      st.textContent = 'THE END';
+      ss.innerHTML = `<a href="index.html" style="color:#ffb090;text-decoration:none;border-bottom:1px solid rgba(255,176,144,0.4);padding-bottom:2px;">return to the beginning</a>`;
+      st.classList.add('show'); ss.classList.add('show');
+    }, 1200);
+  });
+}
+
+// Interactables — built-in + zone arrays (pushed async as NPCs/models load)
+function allInteractables() {
+  return [
+    ...verdantInteracts,
+    ...(typeof monolithInteracts !== 'undefined' ? monolithInteracts : []),
+    ...(typeof truthInteracts   !== 'undefined' ? truthInteracts   : []),
+    ...(typeof choiceInteracts  !== 'undefined' ? choiceInteracts  : []),
+  ];
+}
+function tryInteract() {
+  if (dialogOpen || mode !== 'walk' || activeVision) return;
+  let nearest = null, nearestD = Infinity;
+  for (const ia of allInteractables()) {
+    if (ia.done) continue;
+    const dx = player.position.x - ia.x;
+    const dz = player.position.z - ia.z;
+    const d = dx*dx + dz*dz;
+    if (d < ia.radius * ia.radius && d < nearestD) { nearestD = d; nearest = ia; }
+  }
+  if (!nearest) return;
+  playInteract();
+  if (nearest.onInteract) nearest.onInteract(nearest);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ASTRONAUT LOAD (loader was hoisted to top of the script so NPC loads
+// that run earlier in the file can use it)
+// ══════════════════════════════════════════════════════════════════
+const joints = {};
+
+loader.load('models/astronaut.glb' + CB, (gltf) => {
+  astronautModel = gltf.scene;
+  astronautModel.traverse(obj => { if (obj.isMesh) obj.castShadow = true; });
+  scene.add(astronautModel);
+  astronautModel.position.copy(player.position);
+  astronautModel.rotation.y = player.yaw;
+  if (cutsceneActive) { astronautModel.visible = false; astronautModel.userData._hideInCutscene = true; _hideInCutscene.push(astronautModel); }
+  joints.hipL      = astronautModel.getObjectByName('HipLeft');
+  joints.hipR      = astronautModel.getObjectByName('HipRight');
+  joints.kneeL     = astronautModel.getObjectByName('KneeJoint_L');
+  joints.kneeR     = astronautModel.getObjectByName('KneeJoint_R');
+  joints.shoulderL = astronautModel.getObjectByName('ShoulderLeft');
+  joints.shoulderR = astronautModel.getObjectByName('ShoulderRight');
+  joints.elbowL    = astronautModel.getObjectByName('ElbowJoint_L');
+  joints.elbowR    = astronautModel.getObjectByName('ElbowJoint_R');
+  joints.neck      = astronautModel.getObjectByName('NeckJoint');
+  joints.torso     = astronautModel.getObjectByName('TorsoRoot');
+  for (const k of Object.keys(joints)) {
+    if (joints[k]) joints[k].userData.basePos = joints[k].position.clone();
+  }
+  document.getElementById('loading').classList.add('hidden');
+}, undefined, (err) => {
+  document.getElementById('loading').textContent = 'ERROR: ' + err.message;
+});
+
+const animState = { walkIntensity: 0, airIntensity: 0 };
+function updateAstronautAnimation(dt) {
+  if (!joints.hipL) return;
+  const targetWalk = player.isMoving && player.onGround ? (keys.shift ? 1.5 : 1.0) : 0;
+  const targetAir = player.onGround ? 0 : 1;
+  animState.walkIntensity += (targetWalk - animState.walkIntensity) * Math.min(1, dt * 9);
+  animState.airIntensity += (targetAir - animState.airIntensity) * Math.min(1, dt * 10);
+  const walk = animState.walkIntensity, air = animState.airIntensity;
+  const phase = player.walkPhase;
+  const legSwing = Math.sin(phase) * 0.55 * walk;
+  joints.hipL.rotation.x = legSwing;
+  joints.hipR.rotation.x = -legSwing;
+  const kneeL = Math.max(0, -Math.sin(phase)) * 0.9 * walk;
+  const kneeR = Math.max(0,  Math.sin(phase)) * 0.9 * walk;
+  if (joints.kneeL) joints.kneeL.rotation.x = kneeL;
+  if (joints.kneeR) joints.kneeR.rotation.x = kneeR;
+  const armSwing = -Math.sin(phase) * 0.5 * walk;
+  if (joints.shoulderL) joints.shoulderL.rotation.x = armSwing;
+  if (joints.shoulderR) joints.shoulderR.rotation.x = -armSwing;
+  const elbowBend = 0.25 + Math.abs(Math.sin(phase)) * 0.3 * walk;
+  if (joints.elbowL) joints.elbowL.rotation.x = -elbowBend;
+  if (joints.elbowR) joints.elbowR.rotation.x = -elbowBend;
+  if (joints.torso && joints.torso.userData.basePos) {
+    joints.torso.rotation.z = Math.sin(phase) * 0.04 * walk;
+    const base = joints.torso.userData.basePos;
+    joints.torso.position.y = base.y + Math.abs(Math.sin(phase * 2)) * 0.015 * walk;
+  }
+  if (joints.neck) joints.neck.rotation.z = -Math.sin(phase) * 0.02 * walk;
+  if (air > 0.01) {
+    joints.hipL.rotation.x += 0.2 * air;
+    joints.hipR.rotation.x += 0.2 * air;
+    if (joints.kneeL) joints.kneeL.rotation.x += 0.6 * air;
+    if (joints.kneeR) joints.kneeR.rotation.x += 0.6 * air;
+    if (joints.shoulderL) joints.shoulderL.rotation.z = 0.3 * air;
+    if (joints.shoulderR) joints.shoulderR.rotation.z = -0.3 * air;
+  } else {
+    if (joints.shoulderL) joints.shoulderL.rotation.z = 0;
+    if (joints.shoulderR) joints.shoulderR.rotation.z = 0;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CUTSCENE
+// ══════════════════════════════════════════════════════════════════
+const cutsceneSteps = [
+  { t: 0,   cam: [0, 45, 40], look: [0, 6, 18], text: 'THE ARTEFACT HAS BROUGHT YOU HERE' },
+  { t: 2.8, cam: [10, 25, 30], look: [0, 5, 18], text: 'BETWEEN TWO KINGDOMS' },
+  { t: 5.2, cam: [4, 10, 24],  look: [0, 2, 18], text: '' },
+  { t: 7.5, cam: [2, 4, 22],   look: [0, 1.2, 18], text: '' },
+];
+const CUTSCENE_END = 9;
+
+// ══════════════════════════════════════════════════════════════════
+// PROOF HUD (shown once you've collected at least 1)
+// ══════════════════════════════════════════════════════════════════
+let proofV = 0, proofM = 0;
+const proofHud = document.getElementById('proofHud');
+function updateProofHud() {
+  document.getElementById('proofV').textContent = proofV;
+  document.getElementById('proofM').textContent = proofM;
+  if (proofV > 0 || proofM > 0) proofHud.style.opacity = '1';
+}
+
+// Zone tag updates as player crosses biomes
+const zoneTag = document.getElementById('zoneTag');
+let lastBiome = null;
+function updateZoneTag(b) {
+  if (b === lastBiome) return;
+  lastBiome = b;
+  footstepBiome = b;
+  if (b === 'jungle')      { zoneTag.textContent = 'VERDANT JUNGLE'; zoneTag.style.color = '#60ff80'; }
+  else if (b === 'ruins')  { zoneTag.textContent = 'MONOLITH RUINS'; zoneTag.style.color = '#c080ff'; }
+  else                     { zoneTag.textContent = 'NEUTRAL GROUND'; zoneTag.style.color = 'rgba(255,255,255,0.3)'; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ANIMATE
+// ══════════════════════════════════════════════════════════════════
+let lastT = performance.now() * 0.001;
+let frameCount = 0, lastFpsUpdate = performance.now(), fps = 0;
+
+function animate() {
+  const t = performance.now() * 0.001;
+  const dt = Math.min(0.05, t - lastT);
+  lastT = t;
+
+  // Vision block (reserved for endings, filled in later)
+  if (activeVision) {
+    activeVision.time += dt;
+    const vt = activeVision.time;
+    const steps = activeVision.steps;
+    let s0 = steps[0], s1 = steps[0];
+    for (let i = 0; i < steps.length - 1; i++) {
+      if (vt >= steps[i].t && vt < steps[i+1].t) { s0 = steps[i]; s1 = steps[i+1]; break; }
+    }
+    if (vt >= steps[steps.length - 1].t) { s0 = s1 = steps[steps.length - 1]; }
+    const frac = s1.t > s0.t ? Math.min(1, (vt - s0.t) / (s1.t - s0.t)) : 1;
+    const smooth = frac * frac * (3 - 2 * frac);
+    const vc = activeVision.camera;
+    vc.position.set(
+      s0.cam[0] + (s1.cam[0] - s0.cam[0]) * smooth,
+      s0.cam[1] + (s1.cam[1] - s0.cam[1]) * smooth,
+      s0.cam[2] + (s1.cam[2] - s0.cam[2]) * smooth,
+    );
+    vc.lookAt(
+      s0.look[0] + (s1.look[0] - s0.look[0]) * smooth,
+      s0.look[1] + (s1.look[1] - s0.look[1]) * smooth,
+      s0.look[2] + (s1.look[2] - s0.look[2]) * smooth,
+    );
+    const tms = vt * 1000;
+    const stEl = document.getElementById('storyText');
+    const ssEl = document.getElementById('storySub');
+    for (const cap of activeVision.captions) {
+      if (tms >= cap.t && !activeVision.captionsShown.has(cap)) {
+        activeVision.captionsShown.add(cap);
+        stEl.textContent = cap.text;
+        ssEl.textContent = cap.sub || '';
+        stEl.classList.add('show');
+        ssEl.classList.add('show');
+      }
+    }
+    if (activeVision.tick) activeVision.tick(vt, dt);
+    renderer.render(activeVision.scene, activeVision.camera);
+    if (vt >= activeVision.duration) {
+      stEl.classList.remove('show'); ssEl.classList.remove('show');
+      const cb = activeVision.onComplete;
+      activeVision.scene.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+        }
+      });
+      while (activeVision.scene.children.length) activeVision.scene.remove(activeVision.scene.children[0]);
+      activeVision = null;
+      if (cb) cb();
+    }
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  // Cutscene
+  if (cutsceneActive) {
+    cutsceneTime += dt;
+    const text = document.getElementById('storyText');
+    let s0 = cutsceneSteps[0], s1 = cutsceneSteps[0];
+    for (let i = 0; i < cutsceneSteps.length - 1; i++) {
+      if (cutsceneTime >= cutsceneSteps[i].t && cutsceneTime < cutsceneSteps[i+1].t) {
+        s0 = cutsceneSteps[i]; s1 = cutsceneSteps[i+1]; break;
+      }
+      if (i === cutsceneSteps.length - 2) { s0 = cutsceneSteps[i+1]; s1 = s0; }
+    }
+    const frac = s1.t > s0.t ? Math.min(1, (cutsceneTime - s0.t) / (s1.t - s0.t)) : 1;
+    const smooth = frac * frac * (3 - 2 * frac);
+    camera.position.set(
+      s0.cam[0] + (s1.cam[0] - s0.cam[0]) * smooth,
+      s0.cam[1] + (s1.cam[1] - s0.cam[1]) * smooth,
+      s0.cam[2] + (s1.cam[2] - s0.cam[2]) * smooth,
+    );
+    camera.lookAt(
+      s0.look[0] + (s1.look[0] - s0.look[0]) * smooth,
+      s0.look[1] + (s1.look[1] - s0.look[1]) * smooth,
+      s0.look[2] + (s1.look[2] - s0.look[2]) * smooth,
+    );
+    if (s0.text) { text.textContent = s0.text; text.classList.add('show'); }
+    else { text.classList.remove('show'); }
+
+    const beamStrength = cutsceneTime < 6 ? Math.min(1, cutsceneTime / 3) : Math.max(0, 1 - (cutsceneTime - 6) / 2);
+    arrivalBeam.material.opacity = beamStrength * 0.8 * (0.7 + 0.3 * Math.sin(cutsceneTime * 8));
+    arrivalBeam.scale.x = 0.8 + beamStrength * 0.4;
+    arrivalBeam.scale.z = 0.8 + beamStrength * 0.4;
+    arrivalLight.intensity = beamStrength * 15;
+
+    if (cutsceneTime > 5 && !arrived) {
+      arrived = true;
+      flashEl.style.opacity = '1';
+      setTimeout(() => { flashEl.style.opacity = '0'; }, 300);
+      for (const o of _hideInCutscene) {
+        o.visible = true; delete o.userData._hideInCutscene;
+      }
+      if (astronautModel) {
+        astronautModel.visible = true;
+        astronautModel.position.set(player.position.x, getGroundHeight(player.position.x, player.position.z), player.position.z);
+      }
+    }
+
+    if (cutsceneTime >= CUTSCENE_END) {
+      cutsceneActive = false;
+      text.classList.remove('show');
+      scene.remove(arrivalBeam); arrivalBeam.geometry.dispose(); arrivalBeam.material.dispose();
+      scene.remove(arrivalLight);
+      flashEl.remove();
+      clickToPlay.classList.remove('hidden');
+      document.querySelector('.hud').style.opacity = '1';
+      document.getElementById('controlsHelp').style.opacity = '1';
+      document.getElementById('questLog').style.opacity = '1';
+      const sub = document.getElementById('storySub');
+      const st = document.getElementById('storyText');
+      st.textContent = 'TWO KINGDOMS. ONE CHOICE.';
+      sub.textContent = 'Visit both sides. Gather proof. Return to the Battle Stone.';
+      st.classList.add('show'); sub.classList.add('show');
+      setTimeout(() => { st.classList.remove('show'); sub.classList.remove('show'); }, 5000);
+    }
+
+    if (composer) composer.render(); else renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  // Modes
+  if (mode === 'orbit') {
+    orbitControls.update();
+  } else if (mode === 'freecam') {
+    let mx = 0, mz = 0, my = 0;
+    if (keys.w) mz -= 1; if (keys.s) mz += 1;
+    if (keys.a) mx -= 1; if (keys.d) mx += 1;
+    if (keys.space) my += 1; if (keys.ctrl) my -= 1;
+    const sp = freeCam.speed * (keys.shift ? freeCam.sprintMul : 1);
+    const fwd = new THREE.Vector3(-Math.sin(freeCam.yaw) * Math.cos(freeCam.pitch), Math.sin(freeCam.pitch), -Math.cos(freeCam.yaw) * Math.cos(freeCam.pitch));
+    const right = new THREE.Vector3(Math.cos(freeCam.yaw), 0, -Math.sin(freeCam.yaw));
+    const mv = new THREE.Vector3();
+    mv.addScaledVector(fwd, -mz);
+    mv.addScaledVector(right, mx);
+    mv.addScaledVector(new THREE.Vector3(0, 1, 0), my);
+    if (mv.length() > 0) mv.normalize();
+    freeCam.position.addScaledVector(mv, sp * dt);
+    const gh = getGroundHeight(freeCam.position.x, freeCam.position.z);
+    if (freeCam.position.y < gh + 0.8) freeCam.position.y = gh + 0.8;
+    camera.position.copy(freeCam.position);
+    camera.lookAt(freeCam.position.clone().add(fwd));
+  } else if (!dialogOpen) {
+    let mx = 0, mz = 0;
+    if (keys.w) mz -= 1; if (keys.s) mz += 1;
+    if (keys.a) mx -= 1; if (keys.d) mx += 1;
+    player.isMoving = (mx !== 0 || mz !== 0);
+
+    if (player.isMoving) {
+      const len = Math.sqrt(mx*mx + mz*mz);
+      mx /= len; mz /= len;
+      const sp = player.speed * (keys.shift ? player.runMul : 1);
+      const fwd = new THREE.Vector3(-Math.sin(player.cameraYaw), 0, -Math.cos(player.cameraYaw));
+      const right = new THREE.Vector3(Math.cos(player.cameraYaw), 0, -Math.sin(player.cameraYaw));
+      const dir = new THREE.Vector3();
+      dir.addScaledVector(fwd, -mz);
+      dir.addScaledVector(right, mx);
+      dir.normalize();
+      const sx = dir.x * sp * dt, sz = dir.z * sp * dt;
+      const PR = 0.45, PH = 1.8, STEP_H = 0.45;
+
+      function collidesY(c) {
+        const feet = player.position.y, top = feet + PH;
+        if (feet > c.maxY - 0.05) return false;
+        if (c.minY > top) return false;
+        const pcx = c.type === 'cyl' ? c.cx : (c.minX + c.maxX) / 2;
+        const pcz = c.type === 'cyl' ? c.cz : (c.minZ + c.maxZ) / 2;
+        const propH = c.maxY - getGroundHeight(pcx, pcz);
+        if (propH < STEP_H && player.onGround) return false;
+        return true;
+      }
+      function pushOut(c) {
+        if (c.type === 'cyl') {
+          const dx = player.position.x - c.cx;
+          const dz = player.position.z - c.cz;
+          const d = Math.sqrt(dx*dx + dz*dz);
+          const mn = PR + c.r;
+          if (d < mn && d > 0.001) {
+            const push = mn - d;
+            player.position.x += (dx / d) * push;
+            player.position.z += (dz / d) * push;
+          }
+        } else {
+          const cx = Math.max(c.minX, Math.min(player.position.x, c.maxX));
+          const cz = Math.max(c.minZ, Math.min(player.position.z, c.maxZ));
+          const dx = player.position.x - cx, dz = player.position.z - cz;
+          const d2 = dx*dx + dz*dz;
+          if (d2 < PR * PR && d2 > 0.0001) {
+            const d = Math.sqrt(d2);
+            const push = PR - d;
+            player.position.x += (dx / d) * push;
+            player.position.z += (dz / d) * push;
+          }
+        }
+      }
+      player.position.x += sx;
+      player.position.z += sz;
+      for (const c of colliders) { if (!collidesY(c)) continue; pushOut(c); }
+
+      const targetYaw = Math.atan2(dir.x, dir.z);
+      let yawDiff = targetYaw - player.yaw;
+      while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+      while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+      player.yaw += yawDiff * Math.min(1, dt * 12);
+
+      player.walkPhase += dt * (keys.shift ? 12 : 8);
+      if (player.onGround) { footstepCooldown -= dt; playFootstep(); }
+    }
+
+    player.velocity.y -= player.gravity * dt;
+    player.position.y += player.velocity.y * dt;
+
+    let surfaceY = getGroundHeight(player.position.x, player.position.z);
+    for (const c of colliders) {
+      let over = false;
+      if (c.type === 'cyl') {
+        const dx = player.position.x - c.cx, dz = player.position.z - c.cz;
+        over = (dx*dx + dz*dz) < (c.r + 0.2) * (c.r + 0.2);
+      } else {
+        over = player.position.x > c.minX - 0.2 && player.position.x < c.maxX + 0.2 &&
+               player.position.z > c.minZ - 0.2 && player.position.z < c.maxZ + 0.2;
+      }
+      if (over && c.maxY > surfaceY && c.maxY <= player.position.y + 0.4) surfaceY = c.maxY;
+    }
+    if (player.position.y <= surfaceY) {
+      player.position.y = surfaceY;
+      player.velocity.y = 0;
+      player.onGround = true;
+    } else {
+      player.onGround = false;
+    }
+
+    if (astronautModel) {
+      astronautModel.position.x = player.position.x;
+      astronautModel.position.z = player.position.z;
+      // Snap Y directly — smoothing caused the model to dip below ground on descents
+      astronautModel.position.y = player.position.y;
+      astronautModel.rotation.y = player.yaw;
+      updateAstronautAnimation(dt);
+    }
+
+    if (typeof player._smoothY === 'undefined') player._smoothY = player.position.y;
+    player._smoothY += (player.position.y - player._smoothY) * Math.min(1, dt * 12);
+    const camOff = new THREE.Vector3(
+      Math.sin(player.cameraYaw) * Math.cos(player.cameraPitch) * player.cameraDistance,
+      Math.sin(-player.cameraPitch) * player.cameraDistance + player.cameraHeight,
+      Math.cos(player.cameraYaw) * Math.cos(player.cameraPitch) * player.cameraDistance,
+    );
+    const targ = new THREE.Vector3(player.position.x, player._smoothY + 1.5, player.position.z);
+    const desired = targ.clone().add(camOff);
+    camera.position.x += (desired.x - camera.position.x) * Math.min(1, dt * 18);
+    camera.position.y += (desired.y - camera.position.y) * Math.min(1, dt * 10);
+    camera.position.z += (desired.z - camera.position.z) * Math.min(1, dt * 18);
+    const cgh = getGroundHeight(camera.position.x, camera.position.z);
+    if (camera.position.y < cgh + 0.5) camera.position.y = cgh + 0.5;
+    camera.lookAt(targ);
+
+    // Barrier push-back
+    const pd = Math.sqrt(player.position.x ** 2 + player.position.z ** 2);
+    if (pd > BARRIER_RADIUS - 0.5) {
+      const pb = (BARRIER_RADIUS - 0.5) / pd;
+      player.position.x *= pb;
+      player.position.z *= pb;
+      if (barrierMsgTimer <= 0) {
+        barrierMsg.textContent = 'BARRIER — You must make the choice inside this valley.';
+        barrierMsg.style.opacity = '1';
+        barrierMsgTimer = 3.5;
+      }
+    }
+
+    // Biome tag
+    updateZoneTag(getBiome(player.position.x, player.position.z));
+
+    // Interact prompt
+    const ip = document.getElementById('interactPrompt');
+    let nearest = null, nearestD = Infinity;
+    for (const ia of allInteractables()) {
+      if (ia.done) continue;
+      const dx = player.position.x - ia.x;
+      const dz = player.position.z - ia.z;
+      const d = dx*dx + dz*dz;
+      if (d < ia.radius * ia.radius && d < nearestD) { nearestD = d; nearest = ia; }
+    }
+    if (nearest) {
+      if (ip._lastLabel !== nearest.label) {
+        document.getElementById('interactLabel').textContent = nearest.label;
+        ip._lastLabel = nearest.label;
+      }
+      if (ip._shown !== true) { ip.style.opacity = '1'; ip._shown = true; }
+    } else if (ip._shown !== false) {
+      ip.style.opacity = '0'; ip._shown = false;
+    }
+  }
+
+  if (barrierMsgTimer > 0) {
+    barrierMsgTimer -= dt;
+    if (barrierMsgTimer <= 0) barrierMsg.style.opacity = '0';
+  }
+
+  // Prop animations — direct iteration, no scene.traverse
+  if (battleOrb) {
+    battleOrb.material.emissiveIntensity = 2.2 + Math.sin(t * 1.3) * 0.8;
+    battleOrb.scale.setScalar(1 + Math.sin(t * 1.3) * 0.07);
+  }
+  for (const cry of ruinCrystals) {
+    cry.rotation.y = t * 0.5 + cry.userData.phase;
+  }
+  for (const fc of floatCrystals) {
+    const child = fc.children[0];
+    child.rotation.y = t * 0.4;
+    child.position.y = fc.userData.baseY + Math.sin(t * 1.2 + fc.userData.phase) * 0.2;
+  }
+  for (const jp of junglePlants) {
+    const intensity = 1.6 + Math.sin(t * 1.5 + jp.userData.phase) * 0.4;
+    for (const m of jp.userData.glowMats) m.emissiveIntensity = intensity;
+  }
+  // Verdant village flame + totem + altar seed
+  if (verdantFlameRefs.flame) {
+    verdantFlameRefs.flame.scale.setScalar(0.9 + Math.abs(Math.sin(t * 6)) * 0.25);
+    verdantFlameRefs.flame.material.emissiveIntensity = 2.2 + Math.abs(Math.sin(t * 6)) * 1.6;
+  }
+  if (verdantFlameRefs.light) {
+    verdantFlameRefs.light.intensity = 4 + Math.abs(Math.sin(t * 6)) * 3;
+  }
+  if (verdantFlameRefs.totemEye) {
+    verdantFlameRefs.totemEye.material.emissiveIntensity = 2.0 + Math.sin(t * 1.3) * 0.8;
+  }
+  if (verdantFlameRefs.seed) {
+    verdantFlameRefs.seed.rotation.y = t * 0.7;
+    verdantFlameRefs.seed.position.y = 1.3 + Math.sin(t * 1.2) * 0.1;
+    verdantFlameRefs.seed.material.emissiveIntensity = 2.2 + Math.sin(t * 1.2) * 0.6;
+  }
+  // Monolith zone
+  if (ruinsFlameRefs.flame) {
+    ruinsFlameRefs.flame.scale.setScalar(0.9 + Math.abs(Math.sin(t * 2.5)) * 0.2);
+    ruinsFlameRefs.flame.material.emissiveIntensity = 2.4 + Math.sin(t * 2.5) * 0.6;
+  }
+  if (ruinsFlameRefs.light) {
+    ruinsFlameRefs.light.intensity = 4.2 + Math.sin(t * 2.5) * 1.6;
+  }
+  if (ruinsFlameRefs.orb) {
+    ruinsFlameRefs.orb.material.emissiveIntensity = 2.6 + Math.sin(t * 1.2) * 0.7;
+    ruinsFlameRefs.orb.rotation.y = t * 0.5;
+    ruinsFlameRefs.orb.rotation.x = t * 0.3;
+  }
+
+  // Echo stones — proximity-trigger whispered captions
+  if (mode === 'walk' && typeof echoStones !== 'undefined') {
+    for (const e of echoStones) {
+      if (e.triggered) continue;
+      const dx = player.position.x - e.x;
+      const dz = player.position.z - e.z;
+      if (dx*dx + dz*dz < 16) {
+        e.triggered = true;
+        const st = document.getElementById('storyText');
+        const ss = document.getElementById('storySub');
+        st.textContent = 'ECHO :: BATTLEFIELD STONE';
+        ss.textContent = e.line;
+        st.classList.add('show'); ss.classList.add('show');
+        setTimeout(() => { st.classList.remove('show'); ss.classList.remove('show'); }, 5000);
+        playInteract();
+      }
+    }
+  }
+
+  // (Distant armies removed for now)
+
+  // Dust drift
+  const dp = dust.geometry.attributes.position;
+  for (let i = 0; i < PERF.dustCount; i++) {
+    dp.array[i*3]   += 0.02;
+    dp.array[i*3+1] += 0.005;
+    if (dp.array[i*3]   > 100) dp.array[i*3]   = -100;
+    if (dp.array[i*3+1] > 8) dp.array[i*3+1] = 0;
+  }
+  dp.needsUpdate = true;
+
+  barrierMat.uniforms.uTime.value = t;
+
+  const pp = mode === 'walk' ? player.position : freeCam.position;
+  sun.position.set(pp.x + 50, 45, pp.z + 10);
+  sun.target.position.set(pp.x, 0, pp.z);
+  sun.target.updateMatrixWorld();
+
+  if (composer) composer.render(); else renderer.render(scene, camera);
+
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsUpdate >= 500) {
+    fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
+    frameCount = 0; lastFpsUpdate = now;
+    document.getElementById('fps').textContent = `${fps} FPS`;
+    document.getElementById('camDist').textContent = `MODE: ${mode.toUpperCase()}`;
+  }
+
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) composer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

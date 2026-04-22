@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The War — Verdant vs Monolith</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#000}
+  #c{display:block;width:100%;height:100%}
+  .ld{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;color:#ff4020;font-family:'SF Mono',monospace;font-size:14px;letter-spacing:5px;z-index:50;transition:opacity 0.8s}
+  .ld.h{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="ld" id="ld">THE WAR</div>
+<canvas id="c"></canvas>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const R = Math.random;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060404);
+scene.fog = new THREE.FogExp2(0x0a0604, 0.007);
+
+const camera = new THREE.PerspectiveCamera(65, innerWidth/innerHeight, 0.1, 400);
+camera.position.set(-2, 3.5, 16);
+
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'), antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
+renderer.shadowMap.enabled = true;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight), 0.9, 0.3, 0.65));
+
+// Sky
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(200,32,16), new THREE.ShaderMaterial({
+  side:THREE.BackSide, depthWrite:false,
+  vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader:`varying vec3 vP;void main(){float y=normalize(vP).y;vec3 c=mix(vec3(0.25,0.08,0.03),vec3(0.03,0.03,0.05),smoothstep(-0.1,0.6,y));gl_FragColor=vec4(c,1.);}`
+})));
+
+function put(mesh, x, y, z, rx, ry, rz, sx, sy, sz) {
+  mesh.position.set(x||0, y||0, z||0);
+  if (rx||ry||rz) mesh.rotation.set(rx||0, ry||0, rz||0);
+  if (sx) mesh.scale.set(sx, sy||sx, sz||sx);
+  return mesh;
+}
+
+// Moons
+for(const[x,y,z,r]of[[-80,55,-100,4],[50,70,-90,2]]){
+  const m=new THREE.Mesh(new THREE.SphereGeometry(r,12,8),new THREE.MeshStandardMaterial({color:0xc0b0a0,roughness:0.9,flatShading:true}));
+  m.position.set(x,y,z); scene.add(m);
+}
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x1a0808, 0.4));
+const sun = new THREE.DirectionalLight(0xff6030, 1.8);
+sun.position.set(-10,20,-15); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-40;sun.shadow.camera.right=40;sun.shadow.camera.top=40;sun.shadow.camera.bottom=-40;
+scene.add(sun);
+scene.add(new THREE.DirectionalLight(0x2040a0,0.3).translateX(20).translateY(10));
+
+const fireLights=[];
+for(let i=0;i<12;i++){const p=new THREE.PointLight(0xff3010,2+R()*4,18);p.position.set((R()-.5)*70,1+R()*2,(R()-.5)*35);scene.add(p);fireLights.push(p);}
+
+// Noise
+function noise(x,y){const a=Math.sin(x*12.9898+y*78.233)*43758.5453;return(a-Math.floor(a))*2-1;}
+function sn(x,y){const fx=Math.floor(x),fy=Math.floor(y),dx=x-fx,dy=y-fy,u=dx*dx*(3-2*dx),v=dy*dy*(3-2*dy);return noise(fx,fy)*(1-u)*(1-v)+noise(fx+1,fy)*u*(1-v)+noise(fx,fy+1)*(1-u)*v+noise(fx+1,fy+1)*u*v;}
+function fbm(x,y,o){let v=0,a=1,f=1,m=0;for(let i=0;i<o;i++){v+=sn(x*f,y*f)*a;m+=a;a*=.5;f*=2;}return v/m;}
+
+// Terrain
+const gGeo=new THREE.PlaneGeometry(160,160,80,80);
+const gP=gGeo.attributes.position, gC=new Float32Array(gP.count*3);
+const craters=[[-5,-3],[3,2],[-1,6],[6,-5],[-8,4],[2,-7],[0,0],[-3,-8],[7,7]];
+function terrainH(x,y){
+  let h=fbm(x*.04,y*.04,4)*4+fbm(x*.02,y*.02,3)*5;
+  h+=Math.abs(y)*.06;
+  if(Math.abs(y)<10)h-=(10-Math.abs(y))*.2;
+  if(Math.abs(x)>25)h+=(Math.abs(x)-25)*.18;
+  for(const[cx,cy]of craters){const d=Math.sqrt((x-cx)**2+(y-cy)**2);if(d<2.5)h-=(2.5-d)*.3;}
+  return h;
+}
+for(let i=0;i<gP.count;i++){
+  const x=gP.getX(i),y=gP.getY(i),h=terrainH(x,y);
+  gP.setZ(i,h);
+  const t=Math.max(0,Math.min(1,(h+3)/12));
+  gC[i*3]=.04+t*.12;gC[i*3+1]=.03+t*.06;gC[i*3+2]=.02+t*.04;
+}
+gP.needsUpdate=true;
+gGeo.setAttribute('color',new THREE.BufferAttribute(gC,3));
+gGeo.computeVertexNormals();
+const ground=new THREE.Mesh(gGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.98,flatShading:true}));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+function getH(wx,wz){return terrainH(wx,-wz);}
+
+// Mountains
+for(let i=0;i<18;i++){
+  const a=(i/18)*Math.PI*2,d=60+R()*30,h=12+R()*22;
+  const mt=new THREE.Mesh(new THREE.ConeGeometry(6+R()*10,h,5),new THREE.MeshStandardMaterial({color:0x0a0606,roughness:1,flatShading:true}));
+  mt.position.set(Math.cos(a)*d,h*.3,Math.sin(a)*d);scene.add(mt);
+}
+
+// Monolith fortress
+{const g=new THREE.Group();for(let i=0;i<5;i++){const h=10+R()*16;
+  const b=new THREE.Mesh(new THREE.BoxGeometry(3+R()*3,h,3+R()*3),new THREE.MeshStandardMaterial({color:0x0a0820,emissive:0x2040a0,emissiveIntensity:.5,roughness:.3,metalness:.6}));
+  b.position.set(i*5-10,h/2,0);g.add(b);}
+g.position.set(55,0,-18);scene.add(g);
+const pl1=new THREE.PointLight(0x4060ff,6,50);pl1.position.set(55,12,-18);scene.add(pl1);}
+
+// Verdant fortress
+{const g=new THREE.Group();for(let i=0;i<5;i++){const h=8+R()*12;
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(1+R()*2,2+R()*2,h,7),new THREE.MeshStandardMaterial({color:0x1a3010,roughness:.85,flatShading:true}));
+  tr.position.set(i*4-8,h/2,R()*3);g.add(tr);
+  const cn=new THREE.Mesh(new THREE.IcosahedronGeometry(3+R()*2,1),new THREE.MeshStandardMaterial({color:0x20a030,emissive:0x108020,emissiveIntensity:.4,roughness:.7,flatShading:true}));
+  cn.position.set(i*4-8,h+R()*2,R()*2);g.add(cn);}
+g.position.set(-55,0,-15);scene.add(g);
+const pl2=new THREE.PointLight(0x40ff60,5,40);pl2.position.set(-55,10,-15);scene.add(pl2);}
+
+// Smoke
+const smokes=[];
+for(let i=0;i<80;i++){
+  const sc=document.createElement('canvas');sc.width=64;sc.height=64;const ctx=sc.getContext('2d');
+  const gr=ctx.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(50,25,12,0.5)');gr.addColorStop(1,'rgba(10,5,3,0)');
+  ctx.fillStyle=gr;ctx.beginPath();ctx.arc(32,32,32,0,Math.PI*2);ctx.fill();
+  const mat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc),transparent:true,depthWrite:false,opacity:.4});
+  const sp=new THREE.Mesh(new THREE.PlaneGeometry(1,1),mat);
+  sp.position.set((R()-.5)*70,R()*8,(R()-.5)*35);const s=3+R()*5;sp.scale.set(s,s,s);
+  sp.userData={spd:.01+R()*.02,drft:.003+R()*.005,sy:sp.position.y,lf:R()};
+  scene.add(sp);smokes.push(sp);
+}
+
+// Fire patches (small campfire sized)
+for(let i=0;i<20;i++){
+  const fire=new THREE.Mesh(new THREE.CircleGeometry(.2+R()*.4,8),new THREE.MeshStandardMaterial({color:0xff4010,emissive:0xff3000,emissiveIntensity:3}));
+  fire.rotation.x=-Math.PI/2;fire.position.set((R()-.5)*50,.08,(R()-.5)*20);scene.add(fire);
+}
+
+// Barricades
+for(let i=0;i<20;i++){for(const sx of[-1,1]){
+  const x=sx*(14+R()*4),z=(R()-.5)*25;const g=new THREE.Group();
+  for(let j=0;j<3;j++){const b=new THREE.Mesh(new THREE.BoxGeometry(.5+R()*.3,.25+R()*.15,.35+R()*.2),new THREE.MeshStandardMaterial({color:0x1a1208,roughness:1,flatShading:true}));
+  b.position.set((R()-.5)*.3,.12+j*.2,(R()-.5)*.3);b.rotation.y=R()*.5;b.castShadow=true;g.add(b);}
+  g.position.set(x,getH(x,z),z);scene.add(g);
+}}
+
+// Rubble
+for(let i=0;i<50;i++){
+  const s=.3+R()*.8;const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),new THREE.MeshStandardMaterial({color:0x120a08,roughness:1,flatShading:true}));
+  r.position.set((R()-.5)*60,s*.15,(R()-.5)*30);r.rotation.set(R()*3,R()*3,R()*3);r.scale.set(1,.3+R()*.3,1);scene.add(r);
+}
+// Fallen bodies
+for(let i=0;i<25;i++){
+  const x=(R()-.5)*25,z=(R()-.5)*20;
+  const fb=new THREE.Mesh(new THREE.BoxGeometry(.3,.12,.7+R()*.3),new THREE.MeshStandardMaterial({color:0x0a0806,roughness:1,flatShading:true}));
+  fb.position.set(x,getH(x,z)+.06,z);fb.rotation.set((R()-.5)*.3,R()*Math.PI*2,0);scene.add(fb);
+}
+
+// Banners
+const flags=[];
+for(let i=0;i<3;i++){for(const[sx,col,em]of[[-1,0x20a040,0x108020],[1,0x4020a0,0x2010a0]]){
+  const g=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,4.5,6),new THREE.MeshStandardMaterial({color:0x3a3020}));
+  pole.position.set(0,2.25,0);g.add(pole);
+  const f=new THREE.Mesh(new THREE.PlaneGeometry(1.8,1),new THREE.MeshStandardMaterial({color:col,emissive:em,emissiveIntensity:.4,side:THREE.DoubleSide}));
+  f.position.set(1,3.8,0);g.add(f);flags.push(f);
+  g.position.set(sx*(20+i*4),0,-6+i*3);scene.add(g);
+}}
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.target.set(0,1.5,0);controls.maxPolarAngle=Math.PI/2-.05;
+
+// ── ARMIES ──
+const loader=new GLTFLoader();
+const soldiers=[];
+let loadCount=0;
+
+function done(){loadCount++;if(loadCount>=2)document.getElementById('ld').classList.add('h');}
+
+function spawnArmy(base, side) {
+  const dir=side==='left'?1:-1;
+  const faceDir=side==='left'?Math.PI/2:-Math.PI/2;
+  // Row 0-1: front line — charges to melee at center
+  // Row 2-3: mid ranks — stops at ±5, fights at range
+  // Row 4-5: rear guard — holds at ±12, idle/defend
+  const stopDist = [0.5, 1.5, 5, 7, 12, 14];
+  for(let row=0;row<6;row++){for(let col=0;col<10;col++){
+    const c=base.clone();
+    const x=dir*-(10+row*3)+(R()-.5)*.6;
+    const z=(col-5)*3+(R()-.5)*.8;
+    c.position.set(x,getH(x,z),z);
+    c.rotation.y=faceDir+(R()-.5)*.15;
+    c.scale.setScalar(1+R()*.15);
+    c.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+    scene.add(c);
+    const sd = stopDist[row]+R()*2;
+    const spd = row<2 ? 2.5+R()*1.5 : row<4 ? 1.5+R()*1 : 0.5+R()*0.5;
+    const st = row>=4 ? 'defend' : 'charge';
+    soldiers.push({obj:c,dir,speed:spd,phase:R()*Math.PI*2,state:st,faceDir,stopAt:sd,row});
+  }}
+}
+
+loader.load('../models/battle_verdant.glb', g=>{try{spawnArmy(g.scene,'left');}catch(e){console.error(e);}done();}, undefined, ()=>done());
+loader.load('../models/battle_monolith.glb', g=>{try{spawnArmy(g.scene,'right');}catch(e){console.error(e);}done();}, undefined, ()=>done());
+setTimeout(()=>document.getElementById('ld').classList.add('h'), 10000);
+
+// ── Animate ──
+const clock=new THREE.Clock();
+let bt=0;
+
+function tick(){
+  const dt=clock.getDelta();
+  bt+=dt;
+
+  for(const s of soldiers){
+    const gh = getH(s.obj.position.x, s.obj.position.z);
+    if(s.state==='charge'){
+      s.obj.position.x += s.dir * s.speed * dt;
+      s.obj.position.z += Math.sin(bt*3+s.phase)*.005;
+      s.obj.position.y = gh + Math.abs(Math.sin(bt*10+s.phase))*.1;
+      s.obj.rotation.x = .15;
+      s.obj.rotation.z = 0;
+      const atStop = s.dir>0 ? s.obj.position.x > -s.stopAt : s.obj.position.x < s.stopAt;
+      if(atStop){
+        s.state='fight'; s.anchorX=s.obj.position.x; s.anchorZ=s.obj.position.z;
+      }
+    }else if(s.state==='fight'){
+      const t2 = bt*3 + s.phase;
+      const lunge = Math.max(0, Math.sin(t2));
+      const strike = Math.max(0, Math.sin(t2*2));
+      s.obj.position.x = s.anchorX + Math.sin(t2) * .5 * s.dir;
+      s.obj.position.z = s.anchorZ + Math.sin(bt*1.3+s.phase*1.7) * .3;
+      s.obj.rotation.y = s.faceDir + strike * .2 * (Math.sin(s.phase)>.5?1:-1);
+      s.obj.rotation.x = lunge * .2 - .05;
+      s.obj.rotation.z = strike * .08 * (Math.sin(s.phase*2)>.5?1:-1);
+      s.obj.position.y = gh + lunge * .06;
+    }else if(s.state==='defend'){
+      const strike = Math.max(0, Math.sin(bt*2.5+s.phase));
+      s.obj.rotation.y = s.faceDir + strike * .15;
+      s.obj.rotation.x = strike * .12;
+      s.obj.position.y = gh;
+    }
+  }
+
+  for(const sp of smokes){sp.userData.lf+=.004;sp.position.y+=sp.userData.spd;sp.position.x+=sp.userData.drft;sp.material.opacity=(1-(sp.userData.lf%1))*.4;if(sp.position.y>12){sp.position.y=sp.userData.sy;sp.position.x=(R()-.5)*70;sp.userData.lf=0;}sp.lookAt(camera.position);}
+  for(const fl of fireLights)fl.intensity=2+Math.sin(bt*5+fl.position.x)*3;
+  for(const f of flags)f.rotation.y=Math.sin(bt*2.5+f.parent.position.x)*.25;
+
+  sun.position.set(camera.position.x-10,20,camera.position.z-15);
+  controls.update();
+  composer.render();
+  requestAnimationFrame(tick);
+}
+tick();
+
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>
