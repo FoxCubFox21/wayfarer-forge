@@ -14,10 +14,83 @@
     font-family: 'SF Mono', ui-monospace, Menlo, Monaco, 'Cascadia Mono', 'Courier New', monospace;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
+    cursor: none;  /* custom cursor on desktop */
+  }
+  @media (pointer: coarse) { html, body { cursor: auto; } }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     CUSTOM SCROLLBAR
+     ═══════════════════════════════════════════════════════════════════════ */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: #0a0408; }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(255,168,112,0.4), rgba(140,40,20,0.6));
+    border: 2px solid #0a0408;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,168,112,0.7); }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     BOOT SEQUENCE
+     ═══════════════════════════════════════════════════════════════════════ */
+  .boot {
+    position: fixed; inset: 0; z-index: 1000;
+    background: #050308;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.6s, visibility 0.6s;
+  }
+  .boot.gone { opacity: 0; visibility: hidden; }
+  .boot-lines {
+    font-size: 11px; letter-spacing: 2px;
+    color: #ffa870;
+    line-height: 2.2;
+  }
+  .boot-line {
+    opacity: 0;
+    animation: bootLine 0.3s steps(1) forwards;
+  }
+  .boot-line.l1 { animation-delay: 0.1s; }
+  .boot-line.l2 { animation-delay: 0.45s; }
+  .boot-line.l3 { animation-delay: 0.85s; }
+  .boot-line.l4 { animation-delay: 1.2s; color: #ffd0a0; }
+  .boot-line::after {
+    content: '_';
+    animation: blink 0.6s infinite steps(1);
+  }
+  @keyframes bootLine { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     CUSTOM CURSOR + TRAIL (desktop)
+     ═══════════════════════════════════════════════════════════════════════ */
+  .cursor-main {
+    position: fixed; z-index: 999; pointer-events: none;
+    width: 20px; height: 20px;
+    border: 1px solid #ffa870;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    mix-blend-mode: screen;
+    transition: width 0.2s, height 0.2s, opacity 0.2s;
+    opacity: 0;
+  }
+  .cursor-main.active { opacity: 1; }
+  .cursor-main.hover { width: 48px; height: 48px; border-color: #ffd0a0; }
+  .cursor-dot {
+    position: fixed; z-index: 999; pointer-events: none;
+    width: 4px; height: 4px;
+    background: #ffa870;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px #ffa870;
+    opacity: 0;
+  }
+  .cursor-main.active + .cursor-dot { opacity: 1; }
+  @media (pointer: coarse) {
+    .cursor-main, .cursor-dot { display: none; }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
-     Film grain overlay — subtle SVG noise
+     Film grain + vignette + aurora
      ═══════════════════════════════════════════════════════════════════════ */
   .grain {
     position: fixed; inset: 0; z-index: 200; pointer-events: none;
@@ -34,10 +107,24 @@
     100% { transform: translate(0,   0); }
   }
 
-  /* Vignette + scanline */
   .vignette {
     position: fixed; inset: 0; z-index: 150; pointer-events: none;
     background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 120%);
+  }
+
+  /* Slow-drifting aurora pulses */
+  .aurora {
+    position: fixed; inset: -20% 0; z-index: 1; pointer-events: none;
+    background:
+      radial-gradient(ellipse 40% 30% at 15% 20%, rgba(255,120,60,0.12), transparent 60%),
+      radial-gradient(ellipse 35% 25% at 85% 70%, rgba(120,60,200,0.09), transparent 60%),
+      radial-gradient(ellipse 30% 40% at 50% 110%, rgba(255,200,120,0.07), transparent 60%);
+    filter: blur(40px);
+    animation: auroraDrift 28s ease-in-out infinite alternate;
+  }
+  @keyframes auroraDrift {
+    0%   { transform: translate(0,   0)   scale(1); }
+    100% { transform: translate(-5%, -3%) scale(1.08); }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -63,10 +150,7 @@
     z-index: 0;
   }
 
-  .hero-text {
-    position: relative;
-    z-index: 3;
-  }
+  .hero-text { position: relative; z-index: 3; }
 
   .kicker {
     display: inline-flex; align-items: center; gap: 12px;
@@ -88,6 +172,7 @@
   }
 
   h1.mega {
+    position: relative;
     font-size: clamp(56px, 11vw, 160px);
     line-height: 0.88;
     letter-spacing: -0.02em;
@@ -100,12 +185,44 @@
     opacity: 0;
     animation: titleIn 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s forwards;
   }
-  h1.mega .line1 { display: block; color: #ffd0a0; }
+  h1.mega .line1 { display: block; color: #ffd0a0; position: relative; }
   h1.mega .line2 {
-    display: block;
+    display: block; position: relative;
     color: transparent;
     -webkit-text-stroke: 2px #ffa870;
     letter-spacing: -0.01em;
+  }
+  /* Glitch ghost layers (only on line2) */
+  h1.mega .line2::before, h1.mega .line2::after {
+    content: attr(data-text);
+    position: absolute; inset: 0;
+    color: transparent;
+    -webkit-text-stroke: 2px currentColor;
+    pointer-events: none;
+    opacity: 0;
+    mix-blend-mode: screen;
+  }
+  h1.mega .line2::before {
+    color: #ff3050;
+    animation: glitchA 6s infinite steps(1);
+  }
+  h1.mega .line2::after {
+    color: #30d0ff;
+    animation: glitchB 6s infinite steps(1) 0.05s;
+  }
+  @keyframes glitchA {
+    0%, 92%, 100% { opacity: 0; transform: translate(0,0); }
+    93% { opacity: 1; transform: translate(-3px, 1px); }
+    94% { opacity: 0; }
+    96% { opacity: 1; transform: translate(2px, -1px); }
+    97% { opacity: 0; }
+  }
+  @keyframes glitchB {
+    0%, 93%, 100% { opacity: 0; transform: translate(0,0); }
+    94% { opacity: 1; transform: translate(3px, -1px); }
+    95% { opacity: 0; }
+    97% { opacity: 1; transform: translate(-2px, 1px); }
+    98% { opacity: 0; }
   }
 
   .lead {
@@ -158,7 +275,7 @@
     color: #ffd0a0;
   }
 
-  /* 3D hero canvas */
+  /* ═════ 3D hero canvas + HUD overlay ═════ */
   .hero-visual {
     position: relative;
     z-index: 2;
@@ -195,6 +312,39 @@
     border: 1px solid rgba(255,168,112,0.2);
     border-radius: 2px;
   }
+  /* HUD readouts floating around the astronaut */
+  .hud-tag {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(255,168,112,0.85);
+    padding: 4px 8px;
+    background: rgba(10,6,8,0.7);
+    border: 1px solid rgba(255,168,112,0.3);
+    border-radius: 2px;
+    pointer-events: none;
+    animation: hudFlicker 4s infinite steps(1);
+  }
+  .hud-tag::before {
+    content: ''; position: absolute;
+    width: 40px; height: 1px; top: 50%;
+    background: linear-gradient(90deg, currentColor, transparent);
+  }
+  .hud-tag.tl { top: 4%;  left: -12%; }
+  .hud-tag.tl::before { right: -40px; }
+  .hud-tag.tr { top: 18%; right: -14%; }
+  .hud-tag.tr::before { left: -40px; transform: scaleX(-1); transform-origin: left; }
+  .hud-tag.bl { bottom: 18%; left: -15%; }
+  .hud-tag.bl::before { right: -40px; }
+  .hud-tag.br { bottom: 6%; right: -12%; animation-delay: 1.2s; }
+  .hud-tag.br::before { left: -40px; transform: scaleX(-1); transform-origin: left; }
+  @keyframes hudFlicker {
+    0%, 90%, 100% { opacity: 0.95; }
+    91%           { opacity: 0.3; }
+    92%           { opacity: 0.95; }
+    93%           { opacity: 0.1; }
+    94%           { opacity: 0.95; }
+  }
 
   /* Scroll indicator */
   .scroll-hint {
@@ -212,6 +362,49 @@
     margin-top: 6px;
     font-size: 14px;
     color: #ffa870;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     MARQUEE BAND
+     ═══════════════════════════════════════════════════════════════════════ */
+  .marquee {
+    position: relative;
+    padding: 28px 0;
+    border-top: 1px solid rgba(255,168,112,0.2);
+    border-bottom: 1px solid rgba(255,168,112,0.2);
+    background: linear-gradient(90deg, transparent, rgba(255,168,112,0.04), transparent);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .marquee-inner {
+    display: inline-block;
+    font-size: clamp(22px, 3vw, 38px);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: #ffd0a0;
+    text-shadow: 0 0 20px rgba(255,168,112,0.3);
+    animation: marquee 36s linear infinite;
+    padding-left: 100%;  /* start off-screen right */
+  }
+  .marquee-inner span { color: #ffa870; }
+  .marquee-inner strong {
+    color: transparent;
+    -webkit-text-stroke: 1.5px #ffa870;
+    font-weight: 900;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-100%); }
+  }
+
+  /* Reverse-direction second marquee */
+  .marquee.reverse .marquee-inner {
+    animation: marqueeReverse 44s linear infinite;
+  }
+  @keyframes marqueeReverse {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(0); }
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -248,7 +441,81 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
-     GAME CARDS (bold edition)
+     KINGDOM SHOWCASE STRIP — the three biomes of Wounded, Never Wolves
+     ═══════════════════════════════════════════════════════════════════════ */
+  .kingdoms {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .kingdom {
+    position: relative;
+    padding: 34px 28px;
+    min-height: 320px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex; flex-direction: column;
+    transition: transform 0.3s;
+  }
+  .kingdom:hover { transform: translateY(-4px); }
+  .kingdom.k1 { background: linear-gradient(165deg, #5a1a0a, #1a0604 80%); border-color: rgba(255,120,60,0.3); }
+  .kingdom.k2 { background: linear-gradient(165deg, #1a1040, #060418 80%); border-color: rgba(160,128,255,0.3); }
+  .kingdom.k3 { background: linear-gradient(165deg, #3a1428, #0a0408 80%); border-color: rgba(255,80,100,0.3); }
+
+  .kingdom::after {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, currentColor, transparent 50%);
+    opacity: 0.18;
+    pointer-events: none;
+  }
+  .kingdom.k1 { color: #ffa870; }
+  .kingdom.k2 { color: #a080ff; }
+  .kingdom.k3 { color: #ff6080; }
+
+  .kingdom .roman {
+    font-size: 120px;
+    font-weight: 900;
+    line-height: 1;
+    color: currentColor;
+    opacity: 0.18;
+    position: absolute;
+    top: 0; right: 14px;
+    user-select: none;
+  }
+  .kingdom > .k-num {
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: currentColor;
+    opacity: 0.8;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .kingdom > .k-name {
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: #fff;
+    margin-bottom: 12px;
+    flex: 1;
+  }
+  .kingdom > .k-tag {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,0.5);
+  }
+  .kingdom > .k-line {
+    font-size: 12px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 16px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     GAME CARDS
      ═══════════════════════════════════════════════════════════════════════ */
   .games {
     display: grid;
@@ -270,7 +537,6 @@
     transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
-  /* Game 1 — desert */
   .game.g1 {
     background: linear-gradient(155deg, #3a1410 0%, #140608 60%, #0a0408 100%);
     border-color: rgba(255,168,112,0.3);
@@ -281,7 +547,6 @@
     pointer-events: none;
   }
 
-  /* Game 2 — crystal */
   .game.g2 {
     background: linear-gradient(155deg, #1a1240 0%, #0a0820 60%, #060410 100%);
     border-color: rgba(160,128,255,0.3);
@@ -292,9 +557,7 @@
     pointer-events: none;
   }
 
-  .game:hover {
-    transform: translateY(-6px);
-  }
+  .game:hover { transform: translateY(-6px); }
 
   .game > * { position: relative; z-index: 2; }
 
@@ -411,7 +674,6 @@
   }
   .manifesto .body em { color: #ffa870; font-style: normal; }
 
-  /* Divider arrows — simple chevrons, no "next up" context needed */
   .quote-div {
     display: flex; justify-content: center;
     margin: 50px 0;
@@ -440,6 +702,24 @@
     color: rgba(255,168,112,0.8);
     font-weight: 700;
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     SCROLL REVEAL
+     ═══════════════════════════════════════════════════════════════════════ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.9s cubic-bezier(0.2, 0.8, 0.2, 1),
+                transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .reveal.shown {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  /* stagger */
+  .reveal.d1 { transition-delay: 0.1s; }
+  .reveal.d2 { transition-delay: 0.2s; }
+  .reveal.d3 { transition-delay: 0.3s; }
 
   /* ═══════════════════════════════════════════════════════════════════════
      ANIMATIONS
@@ -479,11 +759,31 @@
       margin: 0 auto;
     }
     .scroll-hint { display: none; }
+    .hud-tag { display: none; }
+    .kingdoms {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
 </head>
 <body>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BOOT
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="boot" id="boot">
+  <div class="boot-lines">
+    <div class="boot-line l1">&gt; WAYFARER FORGE // INIT</div>
+    <div class="boot-line l2">&gt; HANDSHAKE · VERIFIED</div>
+    <div class="boot-line l3">&gt; LOADING SUBJECT 001</div>
+    <div class="boot-line l4">&gt; READY</div>
+  </div>
+</div>
+
+<div class="cursor-main" id="cursorMain"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+
+<div class="aurora"></div>
 <div class="grain"></div>
 <div class="vignette"></div>
 
@@ -495,7 +795,7 @@
     <div class="kicker">WAYFARER FORGE · EST. 2026</div>
     <h1 class="mega">
       <span class="line1">small</span>
-      <span class="line2">games about</span>
+      <span class="line2" data-text="games about">games about</span>
       <span class="line1">wandering</span>
     </h1>
     <p class="lead">
@@ -513,6 +813,10 @@
     <div class="ring outer"></div>
     <div class="ring"></div>
     <canvas id="heroCanvas"></canvas>
+    <div class="hud-tag tl">COORD · 47.3 / -12.8</div>
+    <div class="hud-tag tr">VITAL · 98%</div>
+    <div class="hud-tag bl">SIGNAL · ACTIVE</div>
+    <div class="hud-tag br">KINGDOM · 03</div>
     <div class="label">SUBJECT · WAYFARER · 001</div>
   </div>
 
@@ -520,19 +824,69 @@
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
+     MARQUEE — band 1
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="marquee">
+  <div class="marquee-inner">
+    FOR THOSE WHO PASS THROUGH <span>★</span>
+    <strong>SMALL GAMES ABOUT WANDERING</strong> <span>★</span>
+    WAYFARER FORGE <span>★</span>
+    NO COMBAT / NO ADS / NO TUTORIAL <span>★</span>
+    <strong>ARRIVE · LISTEN · CHOOSE · LEAVE</strong> <span>★</span>
+    FOR THOSE WHO PASS THROUGH <span>★</span>
+    <strong>SMALL GAMES ABOUT WANDERING</strong> <span>★</span>
+    WAYFARER FORGE <span>★</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     KINGDOMS STRIP — the three biomes of Wounded, Never Wolves
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section>
+  <div class="section-head reveal">
+    <span class="num">01 /</span>
+    <span class="label">THE THREE KINGDOMS</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="kingdoms">
+    <div class="kingdom k1 reveal d1">
+      <div class="roman">I</div>
+      <div class="k-num">KINGDOM · 01</div>
+      <div class="k-name">THE CRASH SITE</div>
+      <div class="k-line">A red desert. Broken rocket. A signal nobody sent for.</div>
+      <div class="k-tag">~6 MIN · TUTORIAL</div>
+    </div>
+    <div class="kingdom k2 reveal d2">
+      <div class="roman">II</div>
+      <div class="k-num">KINGDOM · 02</div>
+      <div class="k-name">THE ARTEFACT</div>
+      <div class="k-line">A crystal valley. A living machine. A village of exiles from both sides.</div>
+      <div class="k-tag">~8 MIN · PUZZLE</div>
+    </div>
+    <div class="kingdom k3 reveal d3">
+      <div class="roman">III</div>
+      <div class="k-num">KINGDOM · 03</div>
+      <div class="k-name">THE WAR</div>
+      <div class="k-line">A valley between two old enemies. A battle stone. A choice you live with.</div>
+      <div class="k-tag">~6 MIN · CHOICE</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
      GAMES
      ═══════════════════════════════════════════════════════════════════════ -->
 <section id="games">
-  <div class="section-head">
-    <span class="num">01 /</span>
+  <div class="section-head reveal">
+    <span class="num">02 /</span>
     <span class="label">GAMES</span>
     <span class="line"></span>
   </div>
 
   <div class="games">
 
-    <!-- Game 1 — playable -->
-    <div class="game g1">
+    <div class="game g1 reveal d1">
       <div class="huge-num">I</div>
       <span class="chip">WAYFARER · I</span>
       <div class="name">The Wounded,<br>Never Wolves</div>
@@ -551,8 +905,7 @@
       <a class="play" href="chapter1.html">PLAY</a>
     </div>
 
-    <!-- Game 2 — in development -->
-    <div class="game g2">
+    <div class="game g2 reveal d2">
       <div class="huge-num">II</div>
       <span class="chip">WAYFARER · II</span>
       <div class="name">Below the Sand</div>
@@ -573,24 +926,44 @@
 </section>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
+     MARQUEE — band 2 (reverse direction)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="marquee reverse">
+  <div class="marquee-inner">
+    <strong>ARRIVE</strong> <span>★</span>
+    <strong>LISTEN</strong> <span>★</span>
+    <strong>CHOOSE</strong> <span>★</span>
+    <strong>LEAVE</strong> <span>★</span>
+    <strong>ARRIVE</strong> <span>★</span>
+    <strong>LISTEN</strong> <span>★</span>
+    <strong>CHOOSE</strong> <span>★</span>
+    <strong>LEAVE</strong> <span>★</span>
+    <strong>ARRIVE</strong> <span>★</span>
+    <strong>LISTEN</strong> <span>★</span>
+    <strong>CHOOSE</strong> <span>★</span>
+    <strong>LEAVE</strong> <span>★</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
      MANIFESTO
      ═══════════════════════════════════════════════════════════════════════ -->
 <section>
-  <div class="section-head">
-    <span class="num">02 /</span>
+  <div class="section-head reveal">
+    <span class="num">03 /</span>
     <span class="label">MANIFESTO</span>
     <span class="line"></span>
   </div>
 
   <div class="manifesto">
-    <div class="big">
+    <div class="big reveal d1">
       Wayfarer Forge builds <em>small, quiet games</em> about strangers who pass through —
       lost astronauts dropped into other peoples' stories, forced to listen, then forced to choose.
     </div>
 
-    <div class="quote-div">· · · · ·</div>
+    <div class="quote-div reveal d2">· · · · ·</div>
 
-    <div class="body">
+    <div class="body reveal d3">
       No combat. No signup. No account. No ads. No DLC. No tutorial.
       Just open a page and walk.<br><br>
       Every entry in the series shares one recurring protagonist and one loop:
@@ -607,6 +980,63 @@
   <div>&copy; 2026 <span class="logo-inline">WAYFARER FORGE</span></div>
   <div>WAYFARERFORGE.GAME</div>
 </footer>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ENHANCEMENTS: boot, cursor, scroll reveals
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+// Boot sequence: drop after 1.5s
+setTimeout(() => {
+  document.getElementById('boot').classList.add('gone');
+}, 1600);
+
+// Custom cursor (desktop only)
+if (!matchMedia('(pointer: coarse)').matches) {
+  const main = document.getElementById('cursorMain');
+  const dot  = document.getElementById('cursorDot');
+  let tx = 0, ty = 0, mx = 0, my = 0;
+
+  document.addEventListener('mousemove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    if (!main.classList.contains('active')) main.classList.add('active');
+    dot.style.left = mx + 'px';
+    dot.style.top  = my + 'px';
+  });
+  // Main ring lags slightly for a trail feel
+  function follow() {
+    tx += (mx - tx) * 0.18;
+    ty += (my - ty) * 0.18;
+    main.style.left = tx + 'px';
+    main.style.top  = ty + 'px';
+    requestAnimationFrame(follow);
+  }
+  follow();
+
+  // Grow on hover over clickable things
+  document.addEventListener('mouseover', (e) => {
+    if (e.target.closest('a, button')) main.classList.add('hover');
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest('a, button')) main.classList.remove('hover');
+  });
+}
+
+// Scroll reveal
+const revealEls = document.querySelectorAll('.reveal');
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    for (const ent of entries) {
+      if (ent.isIntersecting) {
+        ent.target.classList.add('shown');
+        io.unobserve(ent.target);
+      }
+    }
+  }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+  revealEls.forEach(el => io.observe(el));
+} else {
+  revealEls.forEach(el => el.classList.add('shown'));
+}
+</script>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
      Hero 3D astronaut — live rotating model
@@ -626,7 +1056,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const canvas = document.getElementById('heroCanvas');
 const scene = new THREE.Scene();
 
-// Camera
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 60);
 camera.position.set(0, 1.3, 5.5);
 camera.lookAt(0, 0.9, 0);
@@ -636,7 +1065,6 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 
-// Lights — dramatic rim + key
 scene.add(new THREE.AmbientLight(0x604028, 0.4));
 const key = new THREE.DirectionalLight(0xffb080, 2.2);
 key.position.set(4, 5, 4);
@@ -648,7 +1076,6 @@ const fill = new THREE.PointLight(0xff6030, 2, 12);
 fill.position.set(-2, 1, 3);
 scene.add(fill);
 
-// Starfield
 const starGeo = new THREE.BufferGeometry();
 const starPos = new Float32Array(300 * 3);
 for (let i = 0; i < 300; i++) {
@@ -664,7 +1091,6 @@ scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
   color: 0xffd0a0, size: 0.08, transparent: true, opacity: 0.75, sizeAttenuation: true,
 })));
 
-// Orbit ring around the astronaut
 {
   const ringGeo = new THREE.TorusGeometry(1.55, 0.008, 6, 96);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xffa870, transparent: true, opacity: 0.4 });
@@ -680,7 +1106,6 @@ scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
   scene.add(ring2);
 }
 
-// Pedestal disc
 {
   const disc = new THREE.Mesh(
     new THREE.CylinderGeometry(0.9, 1.0, 0.05, 32),
@@ -698,19 +1123,16 @@ scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
   scene.add(glowRing);
 }
 
-// Load astronaut
 let astronaut = null;
 const loader = new GLTFLoader();
 loader.load('models/astronaut.glb', (gltf) => {
   astronaut = gltf.scene;
   astronaut.traverse(o => { if (o.isMesh) o.castShadow = true; });
-  // Re-centre on the pedestal
   const bbox = new THREE.Box3().setFromObject(astronaut);
   astronaut.position.y = 0.03 - bbox.min.y;
   scene.add(astronaut);
 });
 
-// Resize to canvas
 function resize() {
   const r = canvas.getBoundingClientRect();
   const w = r.width, h = r.height;
@@ -722,13 +1144,12 @@ function resize() {
 resize();
 window.addEventListener('resize', resize);
 
-// Animate
 let t = 0;
 function tick() {
   t += 0.006;
   if (astronaut) {
     astronaut.rotation.y = t;
-    astronaut.position.y += Math.sin(t * 3.2) * 0.0008;  // gentle hover
+    astronaut.position.y += Math.sin(t * 3.2) * 0.0008;
   }
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
