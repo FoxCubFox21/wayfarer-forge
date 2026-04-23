@@ -598,6 +598,42 @@ function place(group, x, z, buryFrac = 0, colliderShrink = 0.85, skipCollision =
   scene.add(group);
   seatOnGround(group, x, z, buryFrac);
   if (!skipCollision) addCollider(group, colliderShrink);
+  cullableGroups.push(group);
+}
+
+// ── Dynamic perf: distance-cull decorative groups, cap active point lights ──
+// Every group placed via place() is registered as "cullable" — hidden when
+// farther than CULL_DIST from the player. All PointLights in the scene are
+// collected on first-frame and then only the nearest PL_MAX_ACTIVE stay
+// visible each frame (the rest are toggled invisible so their shader cost
+// drops to zero).
+const cullableGroups = [];
+const pointLightList = [];
+let _perfInit = false;
+const CULL_DIST = 72;          // hide groups beyond this planar distance
+const CULL_DIST_SQ = CULL_DIST * CULL_DIST;
+const PL_MAX_ACTIVE = 6;       // max simultaneously-active point lights
+const _perfTmp = new THREE.Vector3();
+function initDynamicPerf() {
+  scene.traverse(o => { if (o.isPointLight) pointLightList.push(o); });
+}
+function updateDynamicPerf(camPos) {
+  if (!_perfInit) { initDynamicPerf(); _perfInit = true; }
+  // Distance cull decorative groups (planar xz — fast; ignore y)
+  for (const g of cullableGroups) {
+    const dx = g.position.x - camPos.x;
+    const dz = g.position.z - camPos.z;
+    g.visible = (dx * dx + dz * dz) <= CULL_DIST_SQ;
+  }
+  // Dynamic point-light cap — keep the K nearest, hide the rest
+  for (const l of pointLightList) {
+    l.getWorldPosition(_perfTmp);
+    l.userData._d2 = _perfTmp.distanceToSquared(camPos);
+  }
+  pointLightList.sort((a, b) => a.userData._d2 - b.userData._d2);
+  for (let i = 0; i < pointLightList.length; i++) {
+    pointLightList[i].visible = (i < PL_MAX_ACTIVE);
+  }
 }
 
 // Cached animated prop lists — avoids per-frame scene.traverse
@@ -2506,6 +2542,7 @@ function animate() {
       setTimeout(() => { st.classList.remove('show'); sub.classList.remove('show'); }, 5000);
     }
 
+    updateDynamicPerf(camera.position);
     if (composer) composer.render(); else renderer.render(scene, camera);
     requestAnimationFrame(animate);
     return;
@@ -2774,6 +2811,7 @@ function animate() {
   sun.target.position.set(pp.x, 0, pp.z);
   sun.target.updateMatrixWorld();
 
+  updateDynamicPerf(camera.position);
   if (composer) composer.render(); else renderer.render(scene, camera);
 
   frameCount++;
