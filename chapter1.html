@@ -85,35 +85,10 @@
   .terminal-screen .t-close { position: absolute; top: 12px; right: 16px; color: #406080; cursor: pointer; font-size: 11px; letter-spacing: 2px; }
   .terminal-screen .t-close:hover { color: #80c0ff; }
 
-  .mode-buttons {
-    position: fixed; bottom: 16px; right: 16px; z-index: 10;
-    display: flex; gap: 6px;
-  }
-  .mode-btn {
-    padding: 6px 12px;
-    background: rgba(20,10,8,0.7);
-    border: 1px solid rgba(255,168,112,0.25);
-    color: rgba(255,255,255,0.6);
-    font-family: inherit; font-size: 10px; letter-spacing: 2px;
-    cursor: pointer; border-radius: 4px;
-    transition: all 0.15s;
-  }
-  .mode-btn:hover {
-    background: rgba(40,20,16,0.8);
-    color: #ffa870;
-    border-color: rgba(255,168,112,0.5);
-  }
-  .mode-btn.active {
-    background: rgba(255,168,112,0.18);
-    color: #ffc090;
-    border-color: rgba(255,168,112,0.7);
-  }
-
   /* When "H" pressed — hide everything except the scene */
   body.hide-hud .hud,
   body.hide-hud .controls-help,
   body.hide-hud .stats,
-  body.hide-hud .mode-buttons,
   body.hide-hud .crosshair,
   body.hide-hud .vignette {
     display: none !important;
@@ -160,11 +135,6 @@
   <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk &nbsp;·&nbsp; <kbd>SHIFT</kbd> run &nbsp;·&nbsp; <kbd>SPACE</kbd> jump &nbsp;·&nbsp; <kbd>E</kbd> interact<br>
   mouse to look &nbsp;·&nbsp; <kbd>ESC</kbd> release cursor
 </div>
-<div class="mode-buttons">
-  <button class="mode-btn active" data-mode="walk" id="btnWalk">WALK</button>
-  <button class="mode-btn" data-mode="freecam" id="btnFreeCam">FREE CAM</button>
-  <button class="mode-btn" data-mode="orbit" id="btnOrbit">ORBIT</button>
-</div>
 <div class="crosshair"></div>
 <div class="interact-prompt" id="interactPrompt">
   <div class="key">[E]</div>
@@ -186,7 +156,6 @@
   </div>
 </div>
 <div class="stats">
-  <div id="camDist">—</div>
   <div id="fps">—</div>
 </div>
 
@@ -201,7 +170,6 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -1545,7 +1513,7 @@ addInteractable(17.5, -7.5, 3, 'Examine glyph stone', () => {
 
 // E key handler — pick the NEAREST undone interactable in range
 document.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyE' && mode === 'walk' && !terminalOpen) {
+  if (e.code === 'KeyE' && !cutsceneActive && !terminalOpen) {
     let best = null, bestD = Infinity;
     for (const ia of interactables) {
       if (ia.done) continue;
@@ -2184,16 +2152,6 @@ if (PERF.bloom) {
   composer.addPass(bloomPass);
 }
 
-// ── ORBIT CONTROLS (off by default; toggleable with O key) ──
-const orbitControls = new OrbitControls(camera, renderer.domElement);
-orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.08;
-orbitControls.target.set(0, 1, 0);
-orbitControls.minDistance = 3;
-orbitControls.maxDistance = 50;
-orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
-orbitControls.enabled = false;  // start in player mode
-
 // ── PLAYER CONTROLS ──
 const player = {
   position: new THREE.Vector3(3, 0, 2),
@@ -2217,16 +2175,6 @@ const keys = { w: false, a: false, s: false, d: false, shift: false, space: fals
 let pointerLocked = false;
 let storyTriggered = false;
 let astronautModel = null;
-let mode = 'walk';  // 'walk' | 'freecam' | 'orbit'
-
-// Free-cam state
-const freeCam = {
-  position: new THREE.Vector3(10, 5, 10),
-  yaw: Math.PI,
-  pitch: -0.25,
-  speed: 12,
-  sprintMul: 3,
-};
 
 // Pointer lock setup
 const clickToPlay = document.getElementById('clickToPlay');
@@ -2323,7 +2271,7 @@ document.addEventListener('pointerlockchange', () => {
 
 // Also allow clicking the canvas directly to re-capture the cursor later
 canvas.addEventListener('click', () => {
-  if (hasStarted && !pointerLocked && mode !== 'orbit') {
+  if (hasStarted && !pointerLocked) {
     try { canvas.requestPointerLock(); } catch (e) {}
   }
 });
@@ -2332,15 +2280,9 @@ canvas.addEventListener('click', () => {
 document.addEventListener('mousemove', (e) => {
   if (!pointerLocked) return;
   const sensitivity = 0.0025;
-  if (mode === 'walk') {
-    player.cameraYaw -= e.movementX * sensitivity;
-    player.cameraPitch -= e.movementY * sensitivity;
-    player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
-  } else if (mode === 'freecam') {
-    freeCam.yaw -= e.movementX * sensitivity;
-    freeCam.pitch -= e.movementY * sensitivity;
-    freeCam.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, freeCam.pitch));
-  }
+  player.cameraYaw -= e.movementX * sensitivity;
+  player.cameraPitch -= e.movementY * sensitivity;
+  player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
 });
 
 // Keyboard
@@ -2355,7 +2297,7 @@ document.addEventListener('keydown', (e) => {
     case 'Space':
       e.preventDefault();
       keys.space = true;
-      if (mode === 'walk' && player.onGround) {
+      if (player.onGround) {
         player.velocity.y = player.jumpVel;
         player.onGround = false;
       }
@@ -2363,12 +2305,6 @@ document.addEventListener('keydown', (e) => {
     case 'ControlLeft':
     case 'ControlRight':
       keys.ctrl = true;
-      break;
-    case 'KeyF':
-      setMode(mode === 'freecam' ? 'walk' : 'freecam');
-      break;
-    case 'KeyO':
-      setMode(mode === 'orbit' ? 'walk' : 'orbit');
       break;
     case 'KeyH':
       // Toggle HUD — for clean screenshots
@@ -2391,49 +2327,6 @@ document.addEventListener('keyup', (e) => {
     case 'ControlLeft':
     case 'ControlRight': keys.ctrl = false; break;
   }
-});
-
-// ── Mode switcher ──
-function setMode(newMode) {
-  mode = newMode;
-  orbitControls.enabled = (mode === 'orbit');
-
-  // Update button states
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === mode);
-  });
-
-  // Update controls help
-  const helpEl = document.getElementById('controlsHelp');
-  if (mode === 'walk') {
-    helpEl.innerHTML = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk · <kbd>SHIFT</kbd> run · <kbd>SPACE</kbd> jump · <kbd>H</kbd> hide UI<br>mouse to look · <kbd>ESC</kbd> release cursor';
-  } else if (mode === 'freecam') {
-    helpEl.innerHTML = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> fly · <kbd>SPACE</kbd>/<kbd>CTRL</kbd> up/down · <kbd>SHIFT</kbd> boost · <kbd>H</kbd> hide UI<br>mouse to look · <kbd>ESC</kbd> release · <kbd>F</kbd> back to walking';
-  } else if (mode === 'orbit') {
-    helpEl.innerHTML = 'drag to orbit · scroll to zoom · right-drag to pan · <kbd>H</kbd> hide UI<br><kbd>O</kbd> or WALK button to return to third-person';
-  }
-
-  // Cursor handling
-  if (mode === 'orbit') {
-    if (pointerLocked) document.exitPointerLock();
-    orbitControls.target.copy(player.position).add(new THREE.Vector3(0, 1.5, 0));
-  } else if (mode === 'freecam') {
-    // Place freecam where player was looking from, if just activated
-    freeCam.position.copy(camera.position);
-    freeCam.yaw = player.cameraYaw + Math.PI;
-    freeCam.pitch = -player.cameraPitch;
-    if (!pointerLocked) canvas.requestPointerLock();
-  } else if (mode === 'walk') {
-    if (!pointerLocked) canvas.requestPointerLock();
-  }
-}
-
-// Wire up mode buttons
-document.querySelectorAll('.mode-btn').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setMode(btn.dataset.mode);
-  });
 });
 
 // ── Load models ── (cache-bust so browser doesn't serve stale GLBs)
@@ -2704,47 +2597,8 @@ function animate() {
     return;
   }
 
-  if (mode === 'orbit') {
-    orbitControls.update();
-  } else if (mode === 'freecam') {
-    // ── Free-cam: fly anywhere ──
-    let moveX = 0, moveZ = 0, moveY = 0;
-    if (keys.w) moveZ -= 1;
-    if (keys.s) moveZ += 1;
-    if (keys.a) moveX -= 1;
-    if (keys.d) moveX += 1;
-    if (keys.space) moveY += 1;
-    if (keys.ctrl) moveY -= 1;
-
-    const speed = freeCam.speed * (keys.shift ? freeCam.sprintMul : 1);
-
-    // Get look direction from yaw/pitch
-    const forward = new THREE.Vector3(
-      -Math.sin(freeCam.yaw) * Math.cos(freeCam.pitch),
-      Math.sin(freeCam.pitch),
-      -Math.cos(freeCam.yaw) * Math.cos(freeCam.pitch)
-    );
-    const right = new THREE.Vector3(Math.cos(freeCam.yaw), 0, -Math.sin(freeCam.yaw));
-    const up = new THREE.Vector3(0, 1, 0);
-
-    const moveVec = new THREE.Vector3();
-    moveVec.addScaledVector(forward, -moveZ);
-    moveVec.addScaledVector(right, moveX);
-    moveVec.addScaledVector(up, moveY);
-    if (moveVec.length() > 0) moveVec.normalize();
-
-    freeCam.position.addScaledVector(moveVec, speed * dt);
-
-    // Keep above ground
-    const fcGroundH = getGroundHeight(freeCam.position.x, freeCam.position.z);
-    if (freeCam.position.y < fcGroundH + 0.8) freeCam.position.y = fcGroundH + 0.8;
-
-    // Apply to camera
-    camera.position.copy(freeCam.position);
-    const lookTarget = freeCam.position.clone().add(forward);
-    camera.lookAt(lookTarget);
-  } else {
-    // ── Player physics ──
+  // ── Player physics ──
+  {
     let moveX = 0, moveZ = 0;
     if (keys.w) moveZ -= 1;
     if (keys.s) moveZ += 1;
@@ -2951,7 +2805,7 @@ function animate() {
     if (log.userData.collected) continue;
     log.position.y = log.userData.baseY + Math.sin(t * 1.5 + log.userData.phase) * 0.08;
     log.rotation.y += 0.01;
-    if (mode === 'walk') {
+    {
       const dx = player.position.x - log.position.x;
       const dz = player.position.z - log.position.z;
       if (dx*dx + dz*dz < 4) {
@@ -2984,7 +2838,7 @@ function animate() {
     f.children[0].rotation.y += 0.02;
     f.children[0].rotation.x = Math.sin(t * 1.5 + f.userData.phase) * 0.3;
 
-    if (mode === 'walk') {
+    {
       const dx = player.position.x - f.position.x;
       const dz = player.position.z - f.position.z;
       if (dx*dx + dz*dz < 4) collectFragment(i);
@@ -2994,7 +2848,7 @@ function animate() {
   // Interact prompt — show [E] when near an interactable
   const ip = document.getElementById('interactPrompt');
   let nearest = null, nearestD = Infinity;
-  if (mode === 'walk' && !terminalOpen) {
+  if (!terminalOpen) {
     for (const ia of interactables) {
       if (ia.done) continue;
       const dx = player.position.x - ia.x;
@@ -3021,7 +2875,7 @@ function animate() {
     if (cell.userData.collected) continue;
     cell.position.y = cell.userData.baseY + Math.sin(t * 2 + cell.position.x) * 0.1;
     cell.rotation.y += 0.02;
-    if (mode === 'walk') {
+    {
       const dx = player.position.x - cell.position.x;
       const dz = player.position.z - cell.position.z;
       if (dx*dx + dz*dz < 4) {
@@ -3046,7 +2900,7 @@ function animate() {
     drone.position.y = bp.y + Math.sin(t * 0.8) * 0.4;
     drone.position.z = bp.z + Math.cos(t * 0.6) * 1;
     drone.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
-    if (mode === 'walk') {
+    {
       const ddx = player.position.x - drone.position.x;
       const ddz = player.position.z - drone.position.z;
       if (ddx*ddx + ddz*ddz < 64 && !drone.userData.fleeing) {
@@ -3073,7 +2927,7 @@ function animate() {
   }
 
   // Build tower — ALL quests except 'tower' itself must be complete
-  if (mode === 'walk' && !towerBuilt) {
+  if (!towerBuilt) {
     const allDone = quests.every(q => q.id === 'tower' || q.done >= q.total);
     if (allDone) {
       const tPos = signalTower.position;
@@ -3092,7 +2946,7 @@ function animate() {
   });
 
   // Signal tower story trigger — only after tower is built
-  if (mode === 'walk' && !storyTriggered && towerBuilt) {
+  if (!storyTriggered && towerBuilt) {
     const towerPos = signalTower.position;
     const dx = player.position.x - towerPos.x;
     const dz = player.position.z - towerPos.z;
@@ -3189,7 +3043,7 @@ function animate() {
 
   // Force field barrier
   barrierMat.uniforms.uTime.value = t;
-  if (mode === 'walk') {
+  {
     const pd = Math.sqrt(player.position.x ** 2 + player.position.z ** 2);
     if (pd > BARRIER_RADIUS - 0.5) {
       const pushBack = (BARRIER_RADIUS - 0.5) / pd;
@@ -3208,7 +3062,7 @@ function animate() {
   }
 
   // Sun shadow follows player
-  const pp = mode === 'walk' ? player.position : freeCam.position;
+  const pp = player.position;
   sun.position.set(pp.x + 60, 35, pp.z + 20);
   sun.target.position.set(pp.x, 0, pp.z);
   sun.target.updateMatrixWorld();
@@ -3296,7 +3150,6 @@ function animate() {
     frameCount = 0;
     lastFpsUpdate = now;
     document.getElementById('fps').textContent = `${fps} FPS`;
-    document.getElementById('camDist').textContent = `MODE: ${mode.toUpperCase()}`;
   }
 
   requestAnimationFrame(animate);
@@ -3440,7 +3293,7 @@ window.addEventListener('resize', () => {
     const t = e.changedTouches[0];
     const targ = t.target;
     if (targ.closest('#mobControls') || targ.closest('.click-to-play') ||
-        targ.closest('.mode-buttons') || targ.tagName === 'BUTTON') return;
+        targ.tagName === 'BUTTON') return;
     camId = t.identifier; camX = t.clientX; camY = t.clientY;
   }, { passive: true });
   window.addEventListener('touchmove', (e) => {

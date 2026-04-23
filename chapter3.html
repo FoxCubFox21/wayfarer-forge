@@ -87,29 +87,9 @@
   .dialog-screen .t-close { position: absolute; top: 10px; right: 14px; color: #a05040; cursor: pointer; font-size: 11px; letter-spacing: 2px; }
   .dialog-screen .t-close:hover { color: #ff8060; }
 
-  .mode-buttons {
-    position: fixed; bottom: 16px; right: 16px; z-index: 10;
-    display: flex; gap: 6px;
-  }
-  .mode-btn {
-    padding: 6px 12px; background: rgba(20,8,8,0.7);
-    border: 1px solid rgba(255,128,96,0.3);
-    color: rgba(255,255,255,0.6);
-    font-family: inherit; font-size: 10px; letter-spacing: 2px;
-    cursor: pointer; border-radius: 4px; transition: all 0.15s;
-  }
-  .mode-btn:hover {
-    background: rgba(40,18,18,0.85); color: #ff8060;
-    border-color: rgba(255,128,96,0.55);
-  }
-  .mode-btn.active {
-    background: rgba(255,128,96,0.2); color: #ffb090;
-    border-color: rgba(255,128,96,0.7);
-  }
   body.hide-hud .hud,
   body.hide-hud .controls-help,
   body.hide-hud .stats,
-  body.hide-hud .mode-buttons,
   body.hide-hud .crosshair,
   body.hide-hud #questLog,
   body.hide-hud .vignette { display: none !important; }
@@ -171,11 +151,6 @@
   <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk &nbsp;·&nbsp; <kbd>SHIFT</kbd> run &nbsp;·&nbsp; <kbd>SPACE</kbd> jump &nbsp;·&nbsp; <kbd>E</kbd> interact<br>
   mouse to look &nbsp;·&nbsp; <kbd>ESC</kbd> release cursor
 </div>
-<div class="mode-buttons">
-  <button class="mode-btn active" data-mode="walk">WALK</button>
-  <button class="mode-btn" data-mode="freecam">FREE CAM</button>
-  <button class="mode-btn" data-mode="orbit">ORBIT</button>
-</div>
 <div class="crosshair"></div>
 <div class="proof-hud" id="proofHud">
   <span class="v">VERDANT PROOF: <span id="proofV">0</span>/3</span>
@@ -216,7 +191,6 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -1707,9 +1681,6 @@ const player = {
 const keys = { w: false, a: false, s: false, d: false, shift: false, space: false, ctrl: false };
 let pointerLocked = false;
 let astronautModel = null;
-let mode = 'walk';
-const freeCam = { position: new THREE.Vector3(10, 5, 10), yaw: Math.PI, pitch: -0.25, speed: 12, sprintMul: 3 };
-
 let cutsceneActive = true;
 let cutsceneTime = 0;
 let arrived = false;
@@ -1750,13 +1721,6 @@ const flashEl = document.createElement('div');
 flashEl.style.cssText = 'position:fixed;inset:0;z-index:150;background:#ffb080;opacity:0;pointer-events:none;transition:opacity 0.4s;';
 document.body.appendChild(flashEl);
 
-// Orbit controls
-const orbitControls = new OrbitControls(camera, renderer.domElement);
-orbitControls.enableDamping = true;
-orbitControls.dampingFactor = 0.08;
-orbitControls.target.set(player.position.x, 1.5, player.position.z);
-orbitControls.enabled = false;
-
 // ══════════════════════════════════════════════════════════════════
 // INPUT
 // ══════════════════════════════════════════════════════════════════
@@ -1774,22 +1738,16 @@ document.addEventListener('pointerlockchange', () => {
 canvas.addEventListener('click', () => {
   if (!hasStarted) return;
   if (dialogOpen) return;
-  if (!pointerLocked && mode !== 'orbit') {
+  if (!pointerLocked) {
     try { canvas.requestPointerLock(); } catch (e) {}
   }
 });
 document.addEventListener('mousemove', (e) => {
   if (!pointerLocked) return;
   const sens = 0.0025;
-  if (mode === 'walk') {
-    player.cameraYaw -= e.movementX * sens;
-    player.cameraPitch -= e.movementY * sens;
-    player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
-  } else if (mode === 'freecam') {
-    freeCam.yaw -= e.movementX * sens;
-    freeCam.pitch -= e.movementY * sens;
-    freeCam.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, freeCam.pitch));
-  }
+  player.cameraYaw -= e.movementX * sens;
+  player.cameraPitch -= e.movementY * sens;
+  player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
 });
 document.addEventListener('keydown', (e) => {
   if (dialogOpen) { if (e.code === 'Escape') closeDialog(); return; }
@@ -1801,15 +1759,13 @@ document.addEventListener('keydown', (e) => {
     case 'ShiftLeft': case 'ShiftRight': keys.shift = true; break;
     case 'Space':
       e.preventDefault(); keys.space = true;
-      if (mode === 'walk' && player.onGround) {
+      if (!cutsceneActive && player.onGround) {
         player.velocity.y = player.jumpVel;
         player.onGround = false;
       }
       break;
     case 'ControlLeft': case 'ControlRight': keys.ctrl = true; break;
     case 'KeyE': tryInteract(); break;
-    case 'KeyF': setMode(mode === 'freecam' ? 'walk' : 'freecam'); break;
-    case 'KeyO': setMode(mode === 'orbit' ? 'walk' : 'orbit'); break;
     case 'KeyH': document.body.classList.toggle('hide-hud'); break;
     case 'Escape': if (pointerLocked) document.exitPointerLock(); break;
   }
@@ -1826,28 +1782,6 @@ document.addEventListener('keyup', (e) => {
   }
 });
 
-function setMode(newMode) {
-  mode = newMode;
-  orbitControls.enabled = (mode === 'orbit');
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === mode);
-  });
-  if (mode === 'orbit') {
-    if (pointerLocked) document.exitPointerLock();
-    orbitControls.target.copy(player.position).add(new THREE.Vector3(0, 1.5, 0));
-  } else if (mode === 'freecam') {
-    freeCam.position.copy(camera.position);
-    freeCam.yaw = player.cameraYaw + Math.PI;
-    freeCam.pitch = -player.cameraPitch;
-    if (!pointerLocked) canvas.requestPointerLock();
-  } else if (mode === 'walk') {
-    if (!pointerLocked && !dialogOpen) canvas.requestPointerLock();
-  }
-}
-document.querySelectorAll('.mode-btn').forEach(btn => {
-  btn.addEventListener('click', (e) => { e.stopPropagation(); setMode(btn.dataset.mode); });
-});
-
 // Dialogs
 function openDialog(title, body) {
   dialogOpen = true;
@@ -1859,7 +1793,7 @@ function openDialog(title, body) {
 function closeDialog() {
   dialogOpen = false;
   document.getElementById('dialogScreen').style.display = 'none';
-  if (mode === 'walk' && hasStarted) canvas.requestPointerLock();
+  if (hasStarted) canvas.requestPointerLock();
 }
 document.getElementById('dlgClose').addEventListener('click', closeDialog);
 
@@ -2293,7 +2227,7 @@ function allInteractables() {
   ];
 }
 function tryInteract() {
-  if (dialogOpen || mode !== 'walk' || activeVision) return;
+  if (dialogOpen || cutsceneActive || activeVision) return;
   let nearest = null, nearestD = Infinity;
   for (const ia of allInteractables()) {
     if (ia.done) continue;
@@ -2548,28 +2482,8 @@ function animate() {
     return;
   }
 
-  // Modes
-  if (mode === 'orbit') {
-    orbitControls.update();
-  } else if (mode === 'freecam') {
-    let mx = 0, mz = 0, my = 0;
-    if (keys.w) mz -= 1; if (keys.s) mz += 1;
-    if (keys.a) mx -= 1; if (keys.d) mx += 1;
-    if (keys.space) my += 1; if (keys.ctrl) my -= 1;
-    const sp = freeCam.speed * (keys.shift ? freeCam.sprintMul : 1);
-    const fwd = new THREE.Vector3(-Math.sin(freeCam.yaw) * Math.cos(freeCam.pitch), Math.sin(freeCam.pitch), -Math.cos(freeCam.yaw) * Math.cos(freeCam.pitch));
-    const right = new THREE.Vector3(Math.cos(freeCam.yaw), 0, -Math.sin(freeCam.yaw));
-    const mv = new THREE.Vector3();
-    mv.addScaledVector(fwd, -mz);
-    mv.addScaledVector(right, mx);
-    mv.addScaledVector(new THREE.Vector3(0, 1, 0), my);
-    if (mv.length() > 0) mv.normalize();
-    freeCam.position.addScaledVector(mv, sp * dt);
-    const gh = getGroundHeight(freeCam.position.x, freeCam.position.z);
-    if (freeCam.position.y < gh + 0.8) freeCam.position.y = gh + 0.8;
-    camera.position.copy(freeCam.position);
-    camera.lookAt(freeCam.position.clone().add(fwd));
-  } else if (!dialogOpen) {
+  // Walk mode (only mode)
+  if (!dialogOpen) {
     let mx = 0, mz = 0;
     if (keys.w) mz -= 1; if (keys.s) mz += 1;
     if (keys.a) mx -= 1; if (keys.d) mx += 1;
@@ -2774,7 +2688,7 @@ function animate() {
   }
 
   // Echo stones — proximity-trigger whispered captions
-  if (mode === 'walk' && typeof echoStones !== 'undefined') {
+  if (!cutsceneActive && typeof echoStones !== 'undefined') {
     for (const e of echoStones) {
       if (e.triggered) continue;
       const dx = player.position.x - e.x;
@@ -2806,7 +2720,7 @@ function animate() {
 
   barrierMat.uniforms.uTime.value = t;
 
-  const pp = mode === 'walk' ? player.position : freeCam.position;
+  const pp = player.position;
   sun.position.set(pp.x + 50, 45, pp.z + 10);
   sun.target.position.set(pp.x, 0, pp.z);
   sun.target.updateMatrixWorld();
@@ -2820,7 +2734,6 @@ function animate() {
     fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
     frameCount = 0; lastFpsUpdate = now;
     document.getElementById('fps').textContent = `${fps} FPS`;
-    document.getElementById('camDist').textContent = `MODE: ${mode.toUpperCase()}`;
   }
 
   requestAnimationFrame(animate);
@@ -2941,7 +2854,7 @@ window.addEventListener('resize', () => {
     if (camId !== null) return;
     const t = e.changedTouches[0], targ = t.target;
     if (targ.closest('#mobControls') || targ.closest('.click-to-play') ||
-        targ.closest('.mode-buttons') || targ.closest('#dialogScreen') ||
+        targ.closest('#dialogScreen') ||
         targ.tagName === 'BUTTON') return;
     camId = t.identifier; camX = t.clientX; camY = t.clientY;
   }, { passive: true });
