@@ -663,6 +663,106 @@
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
+     SCRAPPED — a quieter, greyer grid for builds that didn't make it
+     ═══════════════════════════════════════════════════════════════════════ */
+  .scrap-intro {
+    max-width: 720px;
+    margin: 0 auto 56px;
+    padding: 0 28px;
+    font-size: 14px; line-height: 1.9;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+  .scrapped-grid {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 28px 80px;
+    display: grid; gap: 24px;
+  }
+  .scrap-card {
+    position: relative;
+    padding: 36px 40px;
+    border-radius: 10px;
+    border: 1px dashed rgba(200,200,210,0.18);
+    background:
+      repeating-linear-gradient(45deg, transparent 0 18px, rgba(255,255,255,0.008) 18px 19px),
+      linear-gradient(155deg, #1a1a22 0%, #0d0d14 60%, #07070c 100%);
+    overflow: hidden;
+    filter: saturate(0.55);
+    transition: filter 0.35s, transform 0.35s;
+  }
+  .scrap-card:hover {
+    filter: saturate(1);
+    transform: translateY(-3px);
+  }
+  .scrap-num {
+    position: absolute;
+    top: -28px; right: -8px;
+    font-size: 180px; line-height: 1;
+    font-weight: 900;
+    color: rgba(255,255,255,0.04);
+    pointer-events: none; user-select: none;
+  }
+  .scrap-tag {
+    display: inline-block;
+    padding: 5px 12px;
+    font-size: 10px; letter-spacing: 3px;
+    border: 1px solid rgba(220,220,240,0.4);
+    border-radius: 20px;
+    color: rgba(220,220,240,0.75);
+    margin-bottom: 22px;
+  }
+  .scrap-strike {
+    position: absolute;
+    top: 60px; left: -20px; right: -20px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    transform: rotate(-3deg);
+    pointer-events: none;
+  }
+  .scrap-name {
+    font-size: clamp(26px, 2.6vw, 36px);
+    font-weight: 900;
+    color: #c8c8d8;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+  }
+  .scrap-meta {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    font-size: 10px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.35);
+    margin-bottom: 22px;
+    padding-bottom: 18px;
+    border-bottom: 1px dashed rgba(255,255,255,0.1);
+  }
+  .scrap-meta span::before { content: '·'; margin-right: 8px; opacity: 0.5; }
+  .scrap-meta span:first-child::before { display: none; }
+  .scrap-desc {
+    font-size: 13px; line-height: 1.8;
+    color: rgba(255,255,255,0.62);
+    margin-bottom: 26px;
+  }
+  .scrap-play {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 22px;
+    font-weight: 700;
+    font-size: 11px; letter-spacing: 3px;
+    color: rgba(230,230,240,0.85);
+    text-decoration: none;
+    border: 1px solid rgba(230,230,240,0.4);
+    border-radius: 3px;
+    transition: all 0.2s;
+  }
+  .scrap-play::after { content: '→'; }
+  .scrap-play:hover {
+    background: rgba(230,230,240,0.08);
+    color: #fff;
+    border-color: rgba(230,230,240,0.7);
+    transform: translateY(-1px);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
      MANIFESTO
      ═══════════════════════════════════════════════════════════════════════ */
   .manifesto {
@@ -914,24 +1014,43 @@
       </div>
     </div>
 
-    <div class="game-block">
-      <div class="game g2 reveal d2">
-        <div class="huge-num">II</div>
-        <span class="chip">WAYFARER · II</span>
-        <div class="name">Below the Sand</div>
-        <div class="meta">
-          <span>IN DEVELOPMENT</span>
-          <span>WEB</span>
-        </div>
-        <div class="desc">
-          Wake on a small dusty planet. Small enough to walk around in an afternoon.
-          Something shy is watching from the dunes. Something louder is <em>humming beneath your feet</em>,
-          just out of reach.
-        </div>
-        <span class="coming-tag">COMING SOON</span>
-      </div>
-    </div>
+  </div>
+</section>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCRAPPED — prototypes that didn't make it but you can still play
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section id="scrapped">
+  <div class="section-head reveal">
+    <span class="num">02 /</span>
+    <span class="label">SCRAPPED</span>
+    <span class="line"></span>
+  </div>
+
+  <div class="scrap-intro reveal d1">
+    Some builds don't survive the forge. These ones still work — more or less —
+    so we left them lit. Walk through, then leave.
+  </div>
+
+  <div class="scrapped-grid">
+    <div class="scrap-card reveal d1">
+      <div class="scrap-tag">SCRAPPED · PROTOTYPE</div>
+      <div class="scrap-num">II</div>
+      <div class="scrap-strike"></div>
+      <div class="scrap-name">Below the Sand</div>
+      <div class="scrap-meta">
+        <span>NEVER SHIPPED</span>
+        <span>STUDY BUILD</span>
+        <span>WEB</span>
+      </div>
+      <div class="scrap-desc">
+        A small dusty planet with calc-rock critters, a hidden underside, and a
+        pod that ferries you to a tiny room near the sun.
+        We pulled the thread and it didn't hold — the "two games in one"
+        mechanic never found its shape. Preserved here as a study build.
+      </div>
+      <a class="scrap-play" href="scrapped/below-the-sand.html">PLAY THE SCRAPPED BUILD</a>
+    </div>
   </div>
 </section>
 
@@ -960,7 +1079,7 @@
      ═══════════════════════════════════════════════════════════════════════ -->
 <section>
   <div class="section-head reveal">
-    <span class="num">02 /</span>
+    <span class="num">03 /</span>
     <span class="label">MANIFESTO</span>
     <span class="line"></span>
   </div>

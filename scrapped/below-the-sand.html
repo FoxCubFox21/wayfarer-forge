@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wayfarer: Below the Sand</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: 'SF Mono', monospace; }
+  #canvas { display: block; width: 100%; height: 100%; }
+  .hud {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.6);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .hud .title { color: #f0c890; font-weight: 700; text-shadow: 0 0 12px rgba(240,200,144,0.5); }
+  .hud .meta { margin-top: 4px; color: rgba(255,255,255,0.35); font-size: 10px; }
+  .controls-help {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    font-size: 10px; letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
+    text-shadow: 0 0 4px rgba(0,0,0,0.8); line-height: 1.7;
+  }
+  .controls-help kbd {
+    display: inline-block; padding: 2px 6px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 3px;
+    font-family: inherit; font-size: 10px; color: #f0c890; margin: 0 2px;
+  }
+  .crosshair {
+    position: fixed; top: 50%; left: 50%; z-index: 10; pointer-events: none;
+    width: 12px; height: 12px; margin: -6px 0 0 -6px;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: 50%;
+  }
+  .click-to-play {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15,10,6,0.88); cursor: pointer;
+    transition: opacity 0.3s;
+  }
+  .click-to-play.hidden { opacity: 0; pointer-events: none; }
+  .click-to-play div { text-align: center; color: #f0c890; letter-spacing: 4px; font-size: 14px; }
+  .click-to-play .small { color: rgba(255,255,255,0.4); font-size: 10px; margin-top: 12px; letter-spacing: 2px; }
+  .loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #0a0806; color: #f0c890; font-size: 12px; letter-spacing: 3px;
+    transition: opacity 0.5s;
+  }
+  .loading.hidden { opacity: 0; pointer-events: none; }
+  .stats {
+    position: fixed; bottom: 16px; right: 16px; z-index: 10;
+    font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.45);
+    text-align: right; text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  }
+  .quest {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    padding: 10px 14px; border: 1px solid rgba(255,220,140,0.25);
+    background: rgba(15,10,6,0.55); color: rgba(255,232,180,0.85);
+    font-size: 11px; letter-spacing: 2px;
+    box-shadow: 0 0 24px rgba(0,0,0,0.6);
+  }
+  .quest .qTitle { color: #f0c890; margin-bottom: 4px; font-weight: 700; }
+  .quest .qBar {
+    margin-top: 6px; height: 3px; width: 140px; background: rgba(255,255,255,0.08);
+    position: relative; overflow: hidden;
+  }
+  .quest .qFill {
+    position: absolute; top: 0; left: 0; bottom: 0; width: 0%;
+    background: linear-gradient(90deg, #ffb080 0%, #ffe8c0 100%);
+    transition: width 0.4s ease-out;
+  }
+  .banner {
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 20; color: #ffe8c0; font-size: 22px; letter-spacing: 8px;
+    text-shadow: 0 0 24px rgba(255,180,100,0.8), 0 0 60px rgba(255,120,60,0.5);
+    opacity: 0; pointer-events: none; text-align: center;
+    transition: opacity 0.6s ease-out;
+  }
+  .banner.show { opacity: 1; }
+  .banner .sub { display: block; margin-top: 10px; font-size: 11px;
+    letter-spacing: 4px; color: rgba(255,232,180,0.6); }
+  .fade-overlay {
+    position: fixed; inset: 0; z-index: 30; background: #000;
+    opacity: 0; pointer-events: none;
+  }
+  .board-prompt {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    z-index: 15; padding: 10px 18px; color: #ffe8c0;
+    border: 1px solid rgba(255,220,140,0.35);
+    background: rgba(15,10,6,0.55); font-size: 12px; letter-spacing: 3px;
+    opacity: 0; transition: opacity 0.25s;
+    text-shadow: 0 0 8px rgba(255,180,100,0.5);
+  }
+  .vignette {
+    position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(20,12,4,0.5) 100%);
+  }
+  body.hide-hud .hud,
+  body.hide-hud .controls-help,
+  body.hide-hud .stats,
+  body.hide-hud .quest,
+  body.hide-hud .crosshair,
+  body.hide-hud .vignette { display: none !important; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">LANDING ON SURFACE...</div>
+<canvas id="canvas"></canvas>
+<div class="vignette"></div>
+<div class="hud">
+  <div class="title">WAYFARER :: BELOW THE SAND</div>
+  <div class="meta">UNNAMED_PLANETOID :: SOL_0</div>
+</div>
+<div class="controls-help">
+  <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> walk · <kbd>SHIFT</kbd> run · <kbd>SPACE</kbd> jump · <kbd>F</kbd> freecam · <kbd>H</kbd> hide UI<br>
+  mouse to look · <kbd>ESC</kbd> release cursor · in freecam: <kbd>SPACE</kbd> up · <kbd>CTRL</kbd> down
+</div>
+<div class="crosshair"></div>
+<div class="quest" id="questPanel">
+  <div class="qTitle">GATHER THE OFFERINGS</div>
+  <div>the calc-rocks hide from you<br>— find all 5 shards to earn their trust</div>
+  <div style="margin-top:8px; color:#ffe8c0; letter-spacing:3px;"><span id="qCount">0</span> / 5</div>
+  <div class="qBar"><div class="qFill" id="qFill"></div></div>
+</div>
+<div class="banner" id="banner"></div>
+<div class="board-prompt" id="boardPrompt">PRESS <kbd>E</kbd> TO BOARD</div>
+<div class="fade-overlay" id="fadeOverlay"></div>
+<div class="click-to-play" id="clickToPlay">
+  <div>CLICK TO BEGIN<br>
+    <div class="small">controls will be captured</div>
+  </div>
+</div>
+<div class="stats">
+  <div id="fps">—</div>
+  <div id="latStat">—</div>
+  <div id="modeTag">WALK</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const canvas = document.getElementById('canvas');
+let seed = 4242;
+function rand() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+
+const IS_EDGE = /Edg\//.test(navigator.userAgent);
+const PERF = {
+  pixelRatio: IS_EDGE ? 1 : Math.min(window.devicePixelRatio, 2),
+  shadowMapSize: IS_EDGE ? 1024 : 2048,
+};
+
+// ══════════════════════════════════════════════════════════════════
+// PLANET CONSTANTS
+// ══════════════════════════════════════════════════════════════════
+const PLANET_RADIUS = 70;
+const PLANET_CENTER = new THREE.Vector3(0, 0, 0);
+
+// ══════════════════════════════════════════════════════════════════
+// SCENE / CAMERA / RENDERER
+// ══════════════════════════════════════════════════════════════════
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05030a);
+
+// Camera — wide far-plane to keep stars visible
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.05, 800);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(PERF.pixelRatio);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+// ── Stars (large sphere of points around the scene) ──
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(900 * 3);
+for (let i = 0; i < 900; i++) {
+  const r = 400 + Math.random() * 100;
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(Math.random() * 2 - 1);
+  starPos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+  starPos[i*3+1] = r * Math.cos(phi);
+  starPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
+  color: 0xffe8c8, size: 0.9, sizeAttenuation: true, transparent: true, opacity: 0.85,
+})));
+
+// Distant nebula — a soft additive sphere
+const nebMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: {
+    cTop: { value: new THREE.Color(0x40183a) },
+    cMid: { value: new THREE.Color(0x1a1230) },
+    cLow: { value: new THREE.Color(0x180810) },
+  },
+  vertexShader: `varying vec3 vN; void main(){ vN=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `varying vec3 vN; uniform vec3 cTop,cMid,cLow;
+    void main(){ float h=vN.y;
+      vec3 c = h>0.0 ? mix(cMid,cTop,smoothstep(0.0,1.0,h)) : mix(cMid,cLow,smoothstep(0.0,-1.0,h));
+      gl_FragColor=vec4(c,1.0);
+    }`,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(380, 32, 16), nebMat));
+
+// ── Lights ── distant star lights the planet from one side
+const sun = new THREE.DirectionalLight(0xffe0b0, 2.4);
+sun.position.set(120, 60, 80);
+sun.castShadow = true;
+sun.shadow.mapSize.width = PERF.shadowMapSize;
+sun.shadow.mapSize.height = PERF.shadowMapSize;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 300;
+sun.shadow.camera.left = -90;
+sun.shadow.camera.right = 90;
+sun.shadow.camera.top = 90;
+sun.shadow.camera.bottom = -90;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+scene.add(sun.target);
+
+const ambient = new THREE.AmbientLight(0x504060, 0.55);
+scene.add(ambient);
+
+const rim = new THREE.DirectionalLight(0x4080ff, 0.5);
+rim.position.set(-60, 20, -40);
+scene.add(rim);
+
+// Visible sun disc (so the player has a sense of orientation)
+const sunDisc = new THREE.Mesh(
+  new THREE.SphereGeometry(8, 24, 16),
+  new THREE.MeshBasicMaterial({ color: 0xfff0c0 })
+);
+sunDisc.position.copy(sun.position).multiplyScalar(2.0);
+scene.add(sunDisc);
+
+// ══════════════════════════════════════════════════════════════════
+// PLANET — IcosahedronGeometry, vertex-displaced for soft dunes,
+// vertex-coloured for warm-cool latitudes (without picking a "down")
+// ══════════════════════════════════════════════════════════════════
+function noise(x, y, z) {
+  // 3D pseudo-noise from sine combos — cheap, deterministic
+  const a = Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453;
+  return (a - Math.floor(a)) * 2 - 1;
+}
+function smoothNoise3(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z);
+  const dx = x - fx, dy = y - fy, dz = z - fz;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const u = dx*dx*(3-2*dx), v = dy*dy*(3-2*dy), w = dz*dz*(3-2*dz);
+  const n000 = noise(fx,fy,fz),     n100 = noise(fx+1,fy,fz);
+  const n010 = noise(fx,fy+1,fz),   n110 = noise(fx+1,fy+1,fz);
+  const n001 = noise(fx,fy,fz+1),   n101 = noise(fx+1,fy,fz+1);
+  const n011 = noise(fx,fy+1,fz+1), n111 = noise(fx+1,fy+1,fz+1);
+  return lerp(
+    lerp(lerp(n000, n100, u), lerp(n010, n110, u), v),
+    lerp(lerp(n001, n101, u), lerp(n011, n111, u), v),
+    w
+  );
+}
+function fbm3(x, y, z, oct = 4) {
+  let v = 0, amp = 1, f = 1, m = 0;
+  for (let i = 0; i < oct; i++) { v += smoothNoise3(x*f, y*f, z*f) * amp; m += amp; amp *= 0.5; f *= 2; }
+  return v / m;
+}
+
+function planetHeight(nx, ny, nz) {
+  // nx,ny,nz is a unit normal direction from planet center
+  let h = fbm3(nx * 2.0, ny * 2.0, nz * 2.0, 4) * 1.4;
+  h += fbm3(nx * 5.0, ny * 5.0, nz * 5.0, 3) * 0.5;
+  h += fbm3(nx * 10.0, ny * 10.0, nz * 10.0, 2) * 0.18;
+  return h;
+}
+
+const planetGeo = new THREE.IcosahedronGeometry(PLANET_RADIUS, 6);
+{
+  const pos = planetGeo.attributes.position;
+  const col = new Float32Array(pos.count * 3);
+  const colDune = new THREE.Color(0xc89060);
+  const colDeep = new THREE.Color(0x603020);
+  const colCrest = new THREE.Color(0xffd0a0);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const len = Math.sqrt(x*x + y*y + z*z);
+    const nx = x / len, ny = y / len, nz = z / len;
+    const h = planetHeight(nx, ny, nz);
+    const newR = PLANET_RADIUS + h;
+    pos.setXYZ(i, nx * newR, ny * newR, nz * newR);
+    // Color by height
+    const t = (h + 1.5) / 3;
+    const c = t < 0.5
+      ? colDeep.clone().lerp(colDune, t * 2)
+      : colDune.clone().lerp(colCrest, (t - 0.5) * 2);
+    col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+  }
+  pos.needsUpdate = true;
+  planetGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  planetGeo.computeVertexNormals();
+}
+const planetMat = new THREE.MeshStandardMaterial({
+  vertexColors: true, roughness: 0.95, flatShading: true,
+});
+// Dome reveal shader — starts whole (revealAmount = 0). Each offering
+// the player gathers peels back more of the south hemisphere; at 1.0 the
+// entire underside is discarded, exposing the station.
+planetMat.onBeforeCompile = (shader) => {
+  shader.uniforms.revealAmount = { value: 0 };
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>',
+      `#include <common>\nvarying vec3 vPlanetPos;`)
+    .replace('#include <worldpos_vertex>',
+      `#include <worldpos_vertex>\nvPlanetPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`);
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>',
+      `#include <common>\nuniform float revealAmount;\nvarying vec3 vPlanetPos;`)
+    .replace('#include <colorspace_fragment>',
+      `// south = 1 at south pole, 0 at equator, -1 at north.
+       // threshold goes 1→0 as revealAmount goes 0→1.
+       float south = -normalize(vPlanetPos).y;
+       float threshold = 1.0 - revealAmount;
+       if (south > threshold) discard;
+       // Thin emissive rim glow right at the cut edge.
+       float rim = smoothstep(threshold - 0.05, threshold, south);
+       gl_FragColor.rgb += vec3(1.0, 0.55, 0.2) * rim * 1.4;
+       #include <colorspace_fragment>`);
+  planetMat.userData.shader = shader;
+};
+const planet = new THREE.Mesh(planetGeo, planetMat);
+planet.castShadow = true;
+planet.receiveShadow = true;
+scene.add(planet);
+
+// ══════════════════════════════════════════════════════════════════
+// DONUT STATION — a proper remodel: habitat modules, solar panels,
+// docking nodes, a central hub with a rotating comms dish, and
+// blinking nav lights. Sits just beneath the dome's rim like a
+// smaller donut under an upside-down bowl.
+// ══════════════════════════════════════════════════════════════════
+const STATION_RADIUS = 48;
+const STATION_TUBE = 4;
+const STATION_Y = -8;
+const station = new THREE.Group();
+station.position.set(0, STATION_Y, 0);
+scene.add(station);
+
+const stationHull = new THREE.MeshStandardMaterial({
+  color: 0x202028, roughness: 0.55, metalness: 0.85, flatShading: true,
+});
+const stationTrim = new THREE.MeshStandardMaterial({
+  color: 0x6a6a80, roughness: 0.3, metalness: 0.95, flatShading: true,
+});
+const stationWindow = new THREE.MeshStandardMaterial({
+  color: 0x80e8ff, emissive: 0x60d8ff, emissiveIntensity: 2.4,
+  roughness: 0.2, metalness: 0.1,
+});
+const stationSolar = new THREE.MeshStandardMaterial({
+  color: 0x1a2860, emissive: 0x182240, emissiveIntensity: 0.4,
+  roughness: 0.2, metalness: 0.6, flatShading: true,
+});
+const stationDark = new THREE.MeshStandardMaterial({
+  color: 0x141418, roughness: 0.8, metalness: 0.6, flatShading: true,
+});
+
+// ── Main ring ────────────────────────────────────────────────────
+const mainRing = new THREE.Mesh(
+  new THREE.TorusGeometry(STATION_RADIUS, STATION_TUBE, 12, 96), stationHull,
+);
+mainRing.rotation.x = Math.PI / 2;
+station.add(mainRing);
+
+const ringOuterTrim = new THREE.Mesh(
+  new THREE.TorusGeometry(STATION_RADIUS + 4.4, 0.6, 6, 96), stationTrim,
+);
+ringOuterTrim.rotation.x = Math.PI / 2;
+station.add(ringOuterTrim);
+
+const ringInnerTrim = new THREE.Mesh(
+  new THREE.TorusGeometry(STATION_RADIUS - 4.4, 0.6, 6, 96), stationTrim,
+);
+ringInnerTrim.rotation.x = Math.PI / 2;
+station.add(ringInnerTrim);
+
+// Window strip around the outer face of the ring
+const winRing = new THREE.Mesh(
+  new THREE.TorusGeometry(STATION_RADIUS, STATION_TUBE * 0.55, 6, 96), stationWindow,
+);
+winRing.rotation.x = Math.PI / 2;
+winRing.scale.set(1, 0.28, 1);
+station.add(winRing);
+
+// ── Habitat modules — 12 boxes bolted to the outer face ─────────
+const MODULE_COUNT = 12;
+const MODULE_RADIUS = STATION_RADIUS + STATION_TUBE + 1.4;
+for (let i = 0; i < MODULE_COUNT; i++) {
+  const a = (i / MODULE_COUNT) * Math.PI * 2;
+  const m = new THREE.Group();
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 3.6), stationHull);
+  m.add(body);
+
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.9, 0.15), stationWindow);
+  stripe.position.set(0, 0.4, 1.83);
+  m.add(stripe);
+
+  const capTop = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.5, 3.8), stationTrim);
+  capTop.position.y = 1.7;
+  m.add(capTop);
+
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.6, 6), stationTrim);
+  mast.position.y = 2.5;
+  m.add(mast);
+
+  m.position.set(Math.cos(a) * MODULE_RADIUS, 0, Math.sin(a) * MODULE_RADIUS);
+  m.rotation.y = -a + Math.PI / 2;
+  station.add(m);
+}
+
+// ── 4 larger "node" modules at cardinal points (between habitats) ─
+const NODE_RADIUS = STATION_RADIUS + STATION_TUBE + 2;
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2 + Math.PI / MODULE_COUNT;
+  const n = new THREE.Group();
+
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 6, 14), stationHull);
+  core.rotation.z = Math.PI / 2;
+  n.add(core);
+
+  const coreWin = new THREE.Mesh(new THREE.CylinderGeometry(2.42, 2.42, 1.2, 14), stationWindow);
+  coreWin.rotation.z = Math.PI / 2;
+  n.add(coreWin);
+
+  const port = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.6, 12), stationTrim);
+  port.rotation.x = Math.PI / 2;
+  port.position.set(0, 0, 2.7);
+  n.add(port);
+
+  const dock = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.6, 12), stationDark);
+  dock.position.set(0, 0, 3.01);
+  n.add(dock);
+
+  n.position.set(Math.cos(a) * NODE_RADIUS, 0, Math.sin(a) * NODE_RADIUS);
+  n.rotation.y = -a + Math.PI / 2;
+  station.add(n);
+}
+
+// ── Central hub + spokes + comms dish ───────────────────────────
+const hub = new THREE.Mesh(new THREE.IcosahedronGeometry(5, 0), stationHull);
+station.add(hub);
+
+const hubBand = new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.35, 6, 24), stationTrim);
+hubBand.rotation.x = Math.PI / 2;
+station.add(hubBand);
+
+const dishPylon = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 4, 6), stationTrim);
+dishPylon.position.y = 6;
+station.add(dishPylon);
+
+const dish = new THREE.Mesh(
+  new THREE.CylinderGeometry(3.4, 0.6, 1.2, 16, 1, true),
+  new THREE.MeshStandardMaterial({
+    color: 0xd8d8e0, roughness: 0.3, metalness: 0.9,
+    side: THREE.DoubleSide, flatShading: true,
+  }),
+);
+dish.position.y = 8.3;
+dish.rotation.z = Math.PI * 0.18;
+station.add(dish);
+
+const dishLight = new THREE.Mesh(
+  new THREE.SphereGeometry(0.3, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0xff3040 }),
+);
+dishLight.position.set(0, 8.9, 0.6);
+station.add(dishLight);
+
+// 4 spokes from hub out to the ring
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2;
+  const spoke = new THREE.Mesh(
+    new THREE.BoxGeometry(STATION_RADIUS - 5, 0.6, 0.8), stationTrim,
+  );
+  spoke.position.set(Math.cos(a) * (STATION_RADIUS / 2 + 2), 0, Math.sin(a) * (STATION_RADIUS / 2 + 2));
+  spoke.rotation.y = -a;
+  station.add(spoke);
+}
+
+// ── Solar panel arrays — 4 sets extending radially (above/below) ─
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+  const cosA = Math.cos(a), sinA = Math.sin(a);
+
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 6, 6), stationTrim);
+  mast.position.set(cosA * (STATION_RADIUS + 6), -3, sinA * (STATION_RADIUS + 6));
+  station.add(mast);
+
+  // Twin panels (above + below the mast)
+  for (const side of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 5), stationSolar);
+    arm.position.set(
+      cosA * (STATION_RADIUS + 6 + side * 5.5),
+      -3,
+      sinA * (STATION_RADIUS + 6 + side * 5.5),
+    );
+    arm.rotation.y = -a + Math.PI / 2;
+    station.add(arm);
+
+    // Dark grid pattern — thin crossing strips
+    const gridA = new THREE.Mesh(new THREE.BoxGeometry(10.1, 0.22, 0.15), stationDark);
+    gridA.position.copy(arm.position);
+    gridA.rotation.copy(arm.rotation);
+    station.add(gridA);
+  }
+}
+
+// ── Blinking navigation lights — 8 around the ring ──────────────
+const navLights = [];
+const navLightMatRed   = new THREE.MeshBasicMaterial({ color: 0xff2040 });
+const navLightMatWhite = new THREE.MeshBasicMaterial({ color: 0xffffe0 });
+const navLightMatOff   = new THREE.MeshBasicMaterial({ color: 0x201010 });
+for (let i = 0; i < 8; i++) {
+  const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+  const isRed = (i % 2) === 0;
+  const light = new THREE.Mesh(
+    new THREE.SphereGeometry(0.35, 8, 8),
+    isRed ? navLightMatRed : navLightMatWhite,
+  );
+  const rr = STATION_RADIUS + STATION_TUBE + 2.5;
+  light.position.set(Math.cos(a) * rr, 1.8, Math.sin(a) * rr);
+  station.add(light);
+  navLights.push({ mesh: light, on: isRed ? navLightMatRed : navLightMatWhite, off: navLightMatOff, phase: i * 0.32, speed: isRed ? 2.2 : 1.5 });
+}
+
+let _stationT = 0;
+function tickStation(dt) {
+  _stationT += dt;
+  station.rotation.y += dt * 0.02;
+  dish.rotation.y += dt * 0.35;
+  stationWindow.emissiveIntensity = 2.1 + 0.5 * Math.sin(_stationT * 0.8);
+  for (const nl of navLights) {
+    nl.mesh.material = (Math.floor(_stationT * nl.speed + nl.phase) % 2) === 0 ? nl.on : nl.off;
+  }
+}
+
+// Hemisphere reveal — driven by quest progress. 0 = whole planet.
+let revealTarget = 0, revealCurrent = 0;
+function tickReveal(dt) {
+  revealCurrent += (revealTarget - revealCurrent) * Math.min(1, dt * 0.9);
+  const sh = planetMat.userData.shader;
+  if (sh) sh.uniforms.revealAmount.value = revealCurrent;
+}
+
+// Sample planet height in the same way the geometry was displaced
+function getSurfaceRadius(nx, ny, nz) {
+  return PLANET_RADIUS + planetHeight(nx, ny, nz);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// PROPS — scattered rocks & a few obelisks across the surface
+// (placeholders so the player can see motion clearly)
+// ══════════════════════════════════════════════════════════════════
+function placeOnSphere(mesh, dir, lift = 0) {
+  const n = dir.clone().normalize();
+  const r = getSurfaceRadius(n.x, n.y, n.z) + lift;
+  mesh.position.copy(n).multiplyScalar(r);
+  // Orient the mesh so its local +Y points along the surface normal
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), n);
+}
+
+// Scatter rocks proportionally to surface area — DOME HEMISPHERE ONLY
+// (anything on the invisible south hemisphere is wasted work)
+for (let i = 0; i < 240; i++) {
+  const dir = new THREE.Vector3(rand()*2-1, rand()*2-1, rand()*2-1).normalize();
+  if (dir.y < 0.05) continue;                            // below the equator rim — skip
+  const size = 0.4 + rand() * 0.7;
+  const rock = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(size, 0),
+    new THREE.MeshStandardMaterial({
+      color: rand() > 0.5 ? 0x6a4028 : 0x4a2818,
+      roughness: 1, flatShading: true,
+    })
+  );
+  rock.castShadow = true;
+  rock.receiveShadow = true;
+  rock.scale.set(1, 0.6 + rand() * 0.3, 1);
+  scene.add(rock);
+  placeOnSphere(rock, dir, -size * 0.25);
+  rock.rotateY(rand() * Math.PI);
+}
+
+// ── Landing pod — the astronaut's ship, anchored on the dome ──────
+// This is the teleport entry point: press E near it to board.
+const shipDir = new THREE.Vector3(0.16, 0.985, 0).normalize();
+const shipGroup = new THREE.Group();
+{
+  const hullMat = new THREE.MeshStandardMaterial({
+    color: 0xe4e4ea, roughness: 0.3, metalness: 0.85, flatShading: true,
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: 0xb23030, roughness: 0.4, metalness: 0.4, flatShading: true,
+  });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x161618, roughness: 0.7, metalness: 0.6, flatShading: true,
+  });
+  const portMat = new THREE.MeshStandardMaterial({
+    color: 0x60e8ff, emissive: 0x60e8ff, emissiveIntensity: 1.8,
+    roughness: 0.3, metalness: 0.1,
+  });
+
+  // Main body — tapered cylinder
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 3.2, 10), hullMat);
+  body.position.y = 1.8;
+  body.castShadow = true;
+  shipGroup.add(body);
+
+  // Nose cone
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.4, 10), hullMat);
+  nose.position.y = 4.1;
+  nose.castShadow = true;
+  shipGroup.add(nose);
+
+  // Red accent band
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.35, 10), accentMat);
+  band.position.y = 3.0;
+  shipGroup.add(band);
+
+  // Porthole window on the side
+  const port = new THREE.Mesh(new THREE.CircleGeometry(0.35, 14), portMat);
+  port.position.set(0, 2.5, 1.26);
+  shipGroup.add(port);
+
+  // Engine bell
+  const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.6, 10), darkMat);
+  bell.position.y = 0.0;
+  bell.castShadow = true;
+  shipGroup.add(bell);
+
+  // 3 landing legs (tripod)
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.6, 6), darkMat);
+    leg.position.set(Math.cos(a) * 1.2, 0.2, Math.sin(a) * 1.2);
+    leg.rotation.z = Math.cos(a) * 0.35;
+    leg.rotation.x = Math.sin(a) * -0.35;
+    leg.castShadow = true;
+    shipGroup.add(leg);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 8), darkMat);
+    foot.position.set(Math.cos(a) * 1.65, -0.5, Math.sin(a) * 1.65);
+    shipGroup.add(foot);
+  }
+
+  // Hatch glow (the "door" the player enters)
+  const hatch = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.5), portMat);
+  hatch.position.set(0, 1.7, 1.4);
+  shipGroup.add(hatch);
+}
+scene.add(shipGroup);
+placeOnSphere(shipGroup, shipDir, 0);
+
+// Obelisks (taller landmarks) for orientation — DOME HEMISPHERE ONLY
+for (let i = 0; i < 28; i++) {
+  const dir = new THREE.Vector3(rand()*2-1, rand()*2-1, rand()*2-1).normalize();
+  if (dir.y < 0.1) continue;                             // below the equator rim
+  const h = 3 + rand() * 2;
+  const ob = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, h, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.9, flatShading: true })
+  );
+  shaft.position.y = h / 2;
+  shaft.castShadow = true; shaft.receiveShadow = true;
+  ob.add(shaft);
+  const cap = new THREE.Mesh(
+    new THREE.OctahedronGeometry(0.32, 0),
+    new THREE.MeshStandardMaterial({ color: 0xf0c890, emissive: 0xf08040, emissiveIntensity: 1.6, roughness: 0.3 })
+  );
+  cap.position.y = h + 0.25;
+  ob.add(cap);
+  scene.add(ob);
+  placeOnSphere(ob, dir, 0);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PLAYER — astronaut model on a sphere
+// Tangent vectors (playerFwd, cameraFwd) are parallel-transported with
+// movement. We never recompute "north" from world-Y, so there is no
+// pole singularity — the camera doesn't snap as you cross the poles.
+// ══════════════════════════════════════════════════════════════════
+const player = {
+  dir: new THREE.Vector3(0, 1, 0),                  // surface direction (unit)
+  fwd: new THREE.Vector3(0, 0, -1),                 // tangent forward (visual)
+  camFwd: new THREE.Vector3(0, 0, -1),              // tangent forward (camera)
+  visFwd: new THREE.Vector3(0, 0, -1),              // tangent forward (model/body facing)
+  lastMoveDir: null,                                // last WASD move direction (tangent, unit)
+  cameraPitch: -0.18,
+  cameraDistance: 5,
+  cameraHeight: 2.0,
+  height: 1.0,
+  vUp: 0,
+  speed: 5.5,
+  runMul: 1.8,
+  jumpVel: 5.5,
+  gravity: 18,
+  onGround: true,
+  isMoving: false,
+  walkPhase: 0,
+};
+
+// Initialize fwd / camFwd / visFwd to be tangent at the starting dir
+{
+  const u = player.dir.clone();
+  // Pick a tangent that's perpendicular to up
+  const ref = Math.abs(u.y) < 0.99 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+  const f = new THREE.Vector3().copy(ref).sub(u.clone().multiplyScalar(ref.dot(u))).normalize();
+  player.fwd.copy(f);
+  player.camFwd.copy(f);
+  player.visFwd.copy(f);
+}
+
+// Mouse delta accumulators — applied during animate so we can use the
+// current up vector (which may have just changed from movement)
+let mouseDX = 0, mouseDY = 0;
+
+// ── Astronaut model (loaded async) — placeholder capsule until it loads ──
+const playerMesh = new THREE.Group();
+scene.add(playerMesh);
+
+// Temporary capsule (will be removed once the GLB loads)
+const tempCapsule = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.35, 1.1, 6, 12),
+  new THREE.MeshStandardMaterial({ color: 0xeaeaee, roughness: 0.4, metalness: 0.6, flatShading: true })
+);
+tempCapsule.castShadow = true;
+playerMesh.add(tempCapsule);
+
+let astronautModel = null;
+let astronautFootOffset = 0;  // computed from model bounds so feet sit on the surface
+const joints = {};
+const animState = { walkIntensity: 0, airIntensity: 0 };
+
+const loader = new GLTFLoader();
+const CB = '?v=' + Date.now();
+loader.load('../models/astronaut.glb' + CB, (gltf) => {
+  astronautModel = gltf.scene;
+  astronautModel.traverse(o => { if (o.isMesh) o.castShadow = true; });
+
+  // Measure the model's local bbox BEFORE parenting it (otherwise setFromObject
+  // returns world coordinates from the moving playerMesh group).
+  astronautModel.updateMatrixWorld(true);
+  const bbox = new THREE.Box3().setFromObject(astronautModel);
+  astronautFootOffset = -bbox.min.y;
+  astronautModel.position.y = astronautFootOffset;
+
+  // Now drop the model into the playerMesh group
+  playerMesh.remove(tempCapsule);
+  tempCapsule.geometry.dispose();
+  tempCapsule.material.dispose();
+  playerMesh.add(astronautModel);
+
+  // Pull joint references for procedural walk animation
+  joints.hipL      = astronautModel.getObjectByName('HipLeft');
+  joints.hipR      = astronautModel.getObjectByName('HipRight');
+  joints.kneeL     = astronautModel.getObjectByName('KneeJoint_L');
+  joints.kneeR     = astronautModel.getObjectByName('KneeJoint_R');
+  joints.shoulderL = astronautModel.getObjectByName('ShoulderLeft');
+  joints.shoulderR = astronautModel.getObjectByName('ShoulderRight');
+  joints.elbowL    = astronautModel.getObjectByName('ElbowJoint_L');
+  joints.elbowR    = astronautModel.getObjectByName('ElbowJoint_R');
+  joints.neck      = astronautModel.getObjectByName('NeckJoint');
+  joints.torso     = astronautModel.getObjectByName('TorsoRoot');
+  for (const k of Object.keys(joints)) {
+    if (joints[k]) joints[k].userData.basePos = joints[k].position.clone();
+  }
+
+});
+
+function updateAstronautAnimation(dt) {
+  if (!joints.hipL) return;
+  const targetWalk = (player.isMoving && player.onGround) ? (keys.shift ? 1.5 : 1.0) : 0;
+  const targetAir = player.onGround ? 0 : 1;
+  animState.walkIntensity += (targetWalk - animState.walkIntensity) * Math.min(1, dt * 9);
+  animState.airIntensity  += (targetAir  - animState.airIntensity)  * Math.min(1, dt * 10);
+  const walk = animState.walkIntensity, air = animState.airIntensity;
+  const phase = player.walkPhase;
+  const legSwing = Math.sin(phase) * 0.55 * walk;
+  joints.hipL.rotation.x = legSwing;
+  joints.hipR.rotation.x = -legSwing;
+  if (joints.kneeL) joints.kneeL.rotation.x = Math.max(0, -Math.sin(phase)) * 0.9 * walk;
+  if (joints.kneeR) joints.kneeR.rotation.x = Math.max(0,  Math.sin(phase)) * 0.9 * walk;
+  const armSwing = -Math.sin(phase) * 0.5 * walk;
+  if (joints.shoulderL) joints.shoulderL.rotation.x = armSwing;
+  if (joints.shoulderR) joints.shoulderR.rotation.x = -armSwing;
+  const elbow = 0.25 + Math.abs(Math.sin(phase)) * 0.3 * walk;
+  if (joints.elbowL) joints.elbowL.rotation.x = -elbow;
+  if (joints.elbowR) joints.elbowR.rotation.x = -elbow;
+  if (joints.torso && joints.torso.userData.basePos) {
+    joints.torso.rotation.z = Math.sin(phase) * 0.04 * walk;
+    const base = joints.torso.userData.basePos;
+    joints.torso.position.y = base.y + Math.abs(Math.sin(phase * 2)) * 0.015 * walk;
+  }
+  if (joints.neck) joints.neck.rotation.z = -Math.sin(phase) * 0.02 * walk;
+  if (air > 0.01) {
+    joints.hipL.rotation.x += 0.2 * air;
+    joints.hipR.rotation.x += 0.2 * air;
+    if (joints.kneeL) joints.kneeL.rotation.x += 0.6 * air;
+    if (joints.kneeR) joints.kneeR.rotation.x += 0.6 * air;
+    if (joints.shoulderL) joints.shoulderL.rotation.z = 0.3 * air;
+    if (joints.shoulderR) joints.shoulderR.rotation.z = -0.3 * air;
+  } else {
+    if (joints.shoulderL) joints.shoulderL.rotation.z = 0;
+    if (joints.shoulderR) joints.shoulderR.rotation.z = 0;
+  }
+}
+
+// Re-orthogonalize a vector v to be tangent to the sphere at up.
+function reTangent(v, up) {
+  v.sub(up.clone().multiplyScalar(v.dot(up))).normalize();
+}
+
+// Keys
+const keys = { w: false, a: false, s: false, d: false, shift: false, space: false, ctrl: false };
+let pointerLocked = false;
+
+// Mode: 'walk' (spherical 3rd person) | 'freecam' (flat fly-around)
+let mode = 'walk';
+const freeCam = {
+  position: new THREE.Vector3(0, PLANET_RADIUS + 8, 0),
+  yaw: 0,     // rotation around world +Y (mouse X)
+  pitch: 0,   // up-down (mouse Y), clamped
+  speed: 14,
+  sprintMul: 3.5,
+};
+function enterFreeCam() {
+  // Start where the current camera already is, pointed at the player
+  freeCam.position.copy(camera.position);
+  const viewDir = playerMesh.position.clone().sub(camera.position).normalize();
+  freeCam.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, Math.asin(viewDir.y)));
+  freeCam.yaw   = Math.atan2(-viewDir.x, -viewDir.z);
+  mode = 'freecam';
+  document.getElementById('modeTag').textContent = 'FREECAM';
+}
+function exitFreeCam() {
+  mode = 'walk';
+  document.getElementById('modeTag').textContent = 'WALK';
+}
+const clickToPlay = document.getElementById('clickToPlay');
+let hasStarted = false;
+
+clickToPlay.addEventListener('click', () => {
+  hasStarted = true;
+  clickToPlay.classList.add('hidden');
+  try { canvas.requestPointerLock(); } catch (e) {}
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = document.pointerLockElement === canvas;
+});
+canvas.addEventListener('click', () => {
+  if (!hasStarted) return;
+  if (!pointerLocked) { try { canvas.requestPointerLock(); } catch (e) {} }
+});
+document.addEventListener('mousemove', (e) => {
+  if (!pointerLocked) return;
+  // Accumulate — applied in animate using the current up vector
+  mouseDX += e.movementX;
+  mouseDY += e.movementY;
+});
+document.addEventListener('keydown', (e) => {
+  switch (e.code) {
+    case 'KeyW': keys.w = true; break;
+    case 'KeyS': keys.s = true; break;
+    case 'KeyA': keys.a = true; break;
+    case 'KeyD': keys.d = true; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.shift = true; break;
+    case 'ControlLeft': case 'ControlRight':
+      e.preventDefault(); keys.ctrl = true; break;
+    case 'Space':
+      e.preventDefault(); keys.space = true;
+      if (mode === 'walk' && player.onGround) { player.vUp = player.jumpVel; player.onGround = false; }
+      break;
+    case 'KeyF':
+      if (mode === 'walk') enterFreeCam();
+      else if (mode === 'freecam') exitFreeCam();
+      // Freecam is disabled while inside the pod.
+      break;
+    case 'KeyE':
+      if (canBoard()) triggerBoardCutscene();
+      else if (canExit()) triggerExitCutscene();
+      break;
+    case 'KeyH': document.body.classList.toggle('hide-hud'); break;
+    case 'Escape': if (pointerLocked) document.exitPointerLock(); break;
+  }
+});
+document.addEventListener('keyup', (e) => {
+  switch (e.code) {
+    case 'KeyW': keys.w = false; break;
+    case 'KeyS': keys.s = false; break;
+    case 'KeyA': keys.a = false; break;
+    case 'KeyD': keys.d = false; break;
+    case 'ShiftLeft': case 'ShiftRight': keys.shift = false; break;
+    case 'ControlLeft': case 'ControlRight': keys.ctrl = false; break;
+    case 'Space': keys.space = false; break;
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// CALC-ROCKS — shy little calculator-faced robots that hide as a rock
+// when the player is close, pop up + scuttle toward the player when
+// the player is far enough away.
+//
+// Each one is anchored to a unit `dir` on the planet sphere. When a rock
+// "scuttles", we rotate its dir along the surface toward the player.
+// Burrow progress (0–1) drives the show/hide of the calculator body.
+// ══════════════════════════════════════════════════════════════════
+
+const calcRocks = [];
+let calcRocksFriendly = false;  // flips to true after the save-species quest
+
+const ROCK_NEAR_BURROW = 4.5;   // metres — closer than this, burrow
+const ROCK_FAR_EMERGE  = 7.0;   // metres — farther than this, emerge (hysteresis gap stops flicker)
+const ROCK_STOP_DIST   = 5.5;   // metres — stop scuttling once this close
+const ROCK_SCUTTLE_SP  = 1.6;   // metres / sec along the surface
+
+const rockMatBody = new THREE.MeshStandardMaterial({ color: 0xb0b6c4, roughness: 0.55, metalness: 0.45, flatShading: true });
+const rockMatCap  = new THREE.MeshStandardMaterial({ color: 0x6a4028, roughness: 1.0, flatShading: true });
+const rockMatScreen = new THREE.MeshStandardMaterial({
+  color: 0x60ff80, emissive: 0x40c060, emissiveIntensity: 1.6,
+  roughness: 0.3, metalness: 0.1,
+});
+const rockMatLeg = new THREE.MeshStandardMaterial({ color: 0x40444a, roughness: 0.7, flatShading: true });
+
+// Body height drives how far the assembly sinks to fully burrow
+const ROCK_BODY_HEIGHT = 0.55;
+const ROCK_BURROW_Y = -0.85;  // sink the body well below ground level so terrain noise doesn't expose it
+
+function makeCalcRock(dir) {
+  const root = new THREE.Group();          // anchored on the surface, +Y = up
+  scene.add(root);
+
+  // Movable assembly: body + cap on top. Translates down (and the whole
+  // thing wiggles/jumps) when burrowing.
+  const assembly = new THREE.Group();
+  root.add(assembly);
+
+  // Body — the calculator, base at y=0
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, ROCK_BODY_HEIGHT, 0.42),
+    rockMatBody
+  );
+  body.position.y = ROCK_BODY_HEIGHT / 2;
+  body.castShadow = true;
+  assembly.add(body);
+
+  // Screen on the front face
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.42, 0.28),
+    rockMatScreen
+  );
+  screen.position.set(0, ROCK_BODY_HEIGHT * 0.55, 0.211);
+  assembly.add(screen);
+
+  // Two little eye dots
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x002010 });
+  const eyeL = new THREE.Mesh(new THREE.CircleGeometry(0.04, 8), eyeMat);
+  eyeL.position.set(-0.08, ROCK_BODY_HEIGHT * 0.6, 0.212);
+  assembly.add(eyeL);
+  const eyeR = new THREE.Mesh(new THREE.CircleGeometry(0.04, 8), eyeMat);
+  eyeR.position.set( 0.08, ROCK_BODY_HEIGHT * 0.6, 0.212);
+  assembly.add(eyeR);
+
+  // Two little legs sticking down from the body
+  const legL = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 0.18, 5),
+    rockMatLeg
+  );
+  legL.position.set(-0.13, -0.05, 0);
+  assembly.add(legL);
+  const legR = legL.clone();
+  legR.position.set( 0.13, -0.05, 0);
+  assembly.add(legR);
+
+  // Rock cap on TOP of the body. Wider than the body so when the assembly
+  // sinks all the way, only the cap is visible above the ground —
+  // looks like a regular rock sitting in the dust.
+  const cap = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(0.46, 0),
+    rockMatCap
+  );
+  cap.scale.set(1.05, 0.4, 1.05);
+  cap.position.y = ROCK_BODY_HEIGHT + 0.08;  // sits just above the body
+  cap.rotation.y = Math.random() * Math.PI;
+  cap.castShadow = true; cap.receiveShadow = true;
+  assembly.add(cap);
+
+  // Tangent forward — direction the rock "faces" / scuttles in
+  const upInit = dir.clone();
+  const refSafe = Math.abs(upInit.y) < 0.99 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+  const fwdInit = new THREE.Vector3().copy(refSafe).sub(upInit.clone().multiplyScalar(refSafe.dot(upInit))).normalize();
+
+  const rec = {
+    dir: dir.clone(),
+    fwd: fwdInit,
+    state: 'burrowed',     // 'up' | 'burrowed' | 'going-down' | 'coming-up'
+    transT: 0,              // seconds since current transition started
+    walkPhase: Math.random() * Math.PI * 2,
+    moving: false,
+    bodyBob: 0,             // small idle bob phase
+    body, screen, eyeL, eyeR, legL, legR, cap, assembly, root,
+  };
+  calcRocks.push(rec);
+  return rec;
+}
+
+// Scatter calc-rocks across the planet. Avoid spawning too close to the
+// astronaut's start position so the player doesn't see them all at once.
+{
+  const N = 22;
+  let placed = 0, attempts = 0;
+  while (placed < N && attempts < 200) {
+    attempts++;
+    const d = new THREE.Vector3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalize();
+    if (d.y < 0.1) continue;                  // dome hemisphere only
+    if (d.dot(player.dir) > 0.96) continue;  // skip if very close to start
+    makeCalcRock(d);
+    placed++;
+  }
+}
+
+// Helper: arc distance between two unit dirs on the sphere
+function arcDist(a, b) {
+  return Math.acos(Math.min(1, Math.max(-1, a.dot(b)))) * PLANET_RADIUS;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// QUEST — gather the 5 offering-shards. Each shard is a glowing
+// octahedron anchored to a unit direction on the sphere. Walk within
+// arc-distance 2.5 to absorb it; collecting all 5 flips the
+// `calcRocksFriendly` flag so the calc-rocks stop hiding.
+// ══════════════════════════════════════════════════════════════════
+const offerings = [];
+const OFFER_COUNT = 5;
+const OFFER_PICKUP_DIST = 2.5;
+{
+  let placed = 0, attempts = 0;
+  while (placed < OFFER_COUNT && attempts < 400) {
+    attempts++;
+    const d = new THREE.Vector3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalize();
+    if (d.y < 0.15) continue;                             // dome hemisphere only
+    if (d.dot(player.dir) > 0.92) continue;               // not too close to spawn
+    let tooClose = false;
+    for (const o of offerings) if (arcDist(d, o.dir) < 18) { tooClose = true; break; }
+    if (tooClose) continue;
+    const root = new THREE.Group();
+    const shard = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.55, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0xffe0a0, emissive: 0xffa040, emissiveIntensity: 2.4,
+        roughness: 0.25, metalness: 0.3, flatShading: true,
+      }),
+    );
+    shard.position.y = 1.4;
+    root.add(shard);
+    // Soft glow pedestal
+    const halo = new THREE.Mesh(
+      new THREE.TorusGeometry(0.9, 0.08, 6, 18),
+      new THREE.MeshBasicMaterial({
+        color: 0xffb060, transparent: true, opacity: 0.55,
+      }),
+    );
+    halo.rotation.x = Math.PI / 2;
+    halo.position.y = 0.05;
+    root.add(halo);
+    // Beacon point light
+    const beam = new THREE.PointLight(0xffa060, 1.6, 14);
+    beam.position.y = 1.4;
+    root.add(beam);
+    scene.add(root);
+    // Anchor on surface
+    const r = getSurfaceRadius(d.x, d.y, d.z);
+    root.position.copy(d).multiplyScalar(r);
+    root.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+    offerings.push({ dir: d.clone(), root, shard, halo, phase: Math.random() * Math.PI * 2, collected: false });
+    placed++;
+  }
+}
+
+let offeringsCollected = 0;
+function updateQuest(dt) {
+  const t = performance.now() * 0.001;
+  for (const o of offerings) {
+    if (o.collected) continue;
+    // Hover + spin
+    o.shard.rotation.y += dt * 1.8;
+    o.shard.position.y = 1.3 + Math.sin(t * 1.8 + o.phase) * 0.2;
+    o.halo.scale.setScalar(1 + 0.12 * Math.sin(t * 3 + o.phase));
+    // Collection check
+    if (arcDist(player.dir, o.dir) < OFFER_PICKUP_DIST) {
+      o.collected = true;
+      scene.remove(o.root);
+      o.root.traverse(n => {
+        if (n.geometry) n.geometry.dispose();
+        if (n.material) n.material.dispose();
+      });
+      offeringsCollected++;
+      document.getElementById('qCount').textContent = offeringsCollected;
+      document.getElementById('qFill').style.width =
+        (offeringsCollected / OFFER_COUNT * 100).toFixed(0) + '%';
+      showBanner('+ OFFERING GATHERED', `${offeringsCollected} / ${OFFER_COUNT}`, 1800);
+      // Each offering peels back more of the south hemisphere
+      revealTarget = offeringsCollected / OFFER_COUNT;
+      if (offeringsCollected >= OFFER_COUNT) {
+        calcRocksFriendly = true;
+        revealTarget = 1;   // fully open the underside
+        setTimeout(() => {
+          showBanner('THE SURFACE GIVES WAY', 'something vast was always beneath', 4200);
+          document.getElementById('questPanel').style.opacity = '0.35';
+        }, 1400);
+      }
+    }
+  }
+}
+
+let _bannerTimeout = null;
+function showBanner(text, sub, ms) {
+  const el = document.getElementById('banner');
+  el.innerHTML = text + (sub ? `<span class="sub">${sub}</span>` : '');
+  el.classList.add('show');
+  clearTimeout(_bannerTimeout);
+  _bannerTimeout = setTimeout(() => el.classList.remove('show'), ms || 2400);
+}
+
+// Burrow + emerge animations — staged so the calc-rock feels alive
+const BURROW_DUR = 1.0;  // going-down total duration
+const EMERGE_DUR = 0.6;  // coming-up total duration
+
+// Returns { y, roll } for a calc-rock currently in the going-down animation
+function burrowFrame(t) {
+  const tN = Math.min(1, t / BURROW_DUR);
+  let y, roll;
+  if (tN < 0.15) {
+    // Anticipation hop
+    y = 0.18 * (tN / 0.15);
+    roll = 0;
+  } else if (tN < 0.55) {
+    // Hover + wiggle side to side
+    const w = (tN - 0.15) / 0.4;
+    y = 0.18 - w * 0.03;
+    roll = Math.sin(w * Math.PI * 4) * 0.18;
+  } else {
+    // Drop fast into the ground
+    const d = (tN - 0.55) / 0.45;
+    y = 0.15 + (ROCK_BURROW_Y - 0.15) * (d * d);
+    roll = 0;
+  }
+  return { y, roll };
+}
+function emergeFrame(t) {
+  const tN = Math.min(1, t / EMERGE_DUR);
+  let y;
+  if (tN < 0.6) {
+    // Pop up with overshoot
+    const e = tN / 0.6;
+    y = ROCK_BURROW_Y + (0.15 - ROCK_BURROW_Y) * (1 - (1 - e) * (1 - e));
+  } else {
+    // Settle down
+    const s = (tN - 0.6) / 0.4;
+    y = 0.15 - s * 0.15;
+  }
+  return { y, roll: 0 };
+}
+
+// Per-frame update for all calc-rocks
+function updateCalcRocks(dt) {
+  for (const r of calcRocks) {
+    const dist = arcDist(r.dir, player.dir);
+
+    // ── State transitions ──
+    if (calcRocksFriendly) {
+      if (r.state === 'burrowed') { r.state = 'coming-up'; r.transT = 0; }
+    } else {
+      if (r.state === 'burrowed' && dist > ROCK_FAR_EMERGE) {
+        r.state = 'coming-up'; r.transT = 0;
+      } else if (r.state === 'up' && dist < ROCK_NEAR_BURROW) {
+        r.state = 'going-down'; r.transT = 0;
+      }
+    }
+    if (r.state === 'going-down' || r.state === 'coming-up') r.transT += dt;
+    if (r.state === 'going-down' && r.transT >= BURROW_DUR) { r.state = 'burrowed'; r.transT = 0; }
+    if (r.state === 'coming-up'  && r.transT >= EMERGE_DUR) { r.state = 'up'; r.transT = 0; }
+
+    // ── Movement (only when fully up, not during transitions) ──
+    r.moving = false;
+    if (r.state === 'up') {
+      const up = r.dir.clone();
+
+      // Find nearest other non-burrowed rock + its separation direction
+      let nearest = Infinity;
+      const sep = new THREE.Vector3();
+      for (const o of calcRocks) {
+        if (o === r || o.state === 'burrowed' || o.state === 'going-down') continue;
+        const od = arcDist(r.dir, o.dir);
+        if (od < nearest) nearest = od;
+        if (od < 2.6) sep.add(r.dir.clone().sub(o.dir));
+      }
+
+      // Hysteresis: enter separate mode when very close, exit only once well apart.
+      // The dead zone (1.6–2.6) removes the oscillation we had before.
+      if (!r.moveMode) r.moveMode = 'chase';
+      if (r.moveMode === 'chase'    && nearest < 1.6) r.moveMode = 'separate';
+      if (r.moveMode === 'separate' && nearest > 2.6) r.moveMode = 'chase';
+
+      let moveDir = null;
+      if (r.moveMode === 'separate') {
+        sep.sub(up.clone().multiplyScalar(sep.dot(up)));
+        if (sep.lengthSq() > 1e-6) moveDir = sep.normalize();
+      } else {
+        const wantMove = (!calcRocksFriendly && dist > ROCK_STOP_DIST) ||
+                        ( calcRocksFriendly && dist > 1.6);
+        if (wantMove) {
+          const toward = player.dir.clone().sub(up.clone().multiplyScalar(player.dir.dot(up)));
+          if (toward.lengthSq() > 1e-6) moveDir = toward.normalize();
+        }
+      }
+
+      if (moveDir) {
+        const sp = calcRocksFriendly ? ROCK_SCUTTLE_SP * 0.6 :
+                    (r.moveMode === 'separate' ? ROCK_SCUTTLE_SP * 0.8 : ROCK_SCUTTLE_SP);
+        const angle = (sp * dt) / PLANET_RADIUS;
+        const axis = new THREE.Vector3().crossVectors(up, moveDir).normalize();
+        const q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+        r.dir.applyQuaternion(q).normalize();
+        r.fwd.copy(moveDir);
+        r.moving = true;
+        r.walkPhase += dt * 14;
+      }
+    }
+
+    // ── Place + orient the root on the sphere ──
+    const surfaceR = getSurfaceRadius(r.dir.x, r.dir.y, r.dir.z);
+    r.root.position.copy(r.dir).multiplyScalar(surfaceR);
+    // Re-project fwd onto the current tangent plane (numeric drift)
+    r.fwd.sub(r.dir.clone().multiplyScalar(r.fwd.dot(r.dir))).normalize();
+    const m = new THREE.Matrix4().lookAt(
+      new THREE.Vector3(0, 0, 0),
+      r.fwd.clone().multiplyScalar(-1),
+      r.dir,
+    );
+    r.root.quaternion.setFromRotationMatrix(m);
+
+    // ── Assembly animation: position + roll from the state machine ──
+    let assemblyY = 0, roll = 0;
+    let visible01 = 1;
+    if (r.state === 'burrowed') {
+      assemblyY = ROCK_BURROW_Y;
+      visible01 = 0;
+    } else if (r.state === 'up') {
+      // Idle bob + a tiny wiggle when scuttling
+      r.bodyBob += dt * (r.moving ? 10 : 2);
+      assemblyY = r.moving ? Math.abs(Math.sin(r.bodyBob)) * 0.04 : Math.sin(r.bodyBob) * 0.015;
+      visible01 = 1;
+    } else if (r.state === 'going-down') {
+      const f = burrowFrame(r.transT);
+      assemblyY = f.y; roll = f.roll;
+      visible01 = 1 - Math.max(0, (r.transT / BURROW_DUR - 0.6) / 0.4);
+    } else if (r.state === 'coming-up') {
+      const f = emergeFrame(r.transT);
+      assemblyY = f.y; roll = f.roll;
+      visible01 = Math.min(1, (r.transT / EMERGE_DUR) / 0.3);
+    }
+    r.assembly.position.y = assemblyY;
+    r.assembly.rotation.z = roll;
+
+    // Screen dims as the rock sinks
+    r.screen.material.emissiveIntensity = 1.6 * visible01;
+
+    // Leg shuffle when scuttling
+    const shuffle = r.moving ? Math.sin(r.walkPhase) * 0.06 : 0;
+    r.legL.position.y = -0.05 + shuffle;
+    r.legR.position.y = -0.05 - shuffle;
+
+    // Eyes track the player while visible
+    if (visible01 > 0.4) {
+      const playerWorld = player.dir.clone().multiplyScalar(getSurfaceRadius(player.dir.x, player.dir.y, player.dir.z));
+      const local = playerWorld.clone().sub(r.root.position);
+      const localLook = local.clone().applyQuaternion(r.root.quaternion.clone().invert()).normalize();
+      const ex = Math.max(-0.02, Math.min(0.02, localLook.x * 0.04));
+      const ey = Math.max(-0.012, Math.min(0.012, localLook.y * 0.03));
+      r.eyeL.position.x = -0.08 + ex;
+      r.eyeR.position.x =  0.08 + ex;
+      const baseY = ROCK_BODY_HEIGHT * 0.6;
+      r.eyeL.position.y = baseY + ey;
+      r.eyeR.position.y = baseY + ey;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INTERIOR — the real level the player walks in lives far from the
+// planet, tucked near the in-world sun so it's effectively invisible
+// from the dome. The player enters via a teleport cutscene, not by
+// walking there. Fake-view window screens simulate looking "outside"
+// (a parallax shader is stubbed for now with a starfield gradient).
+// ══════════════════════════════════════════════════════════════════
+const INTERIOR_CENTER = new THREE.Vector3(260, 130, 170);  // near sun disc
+const interior = new THREE.Group();
+interior.position.copy(INTERIOR_CENTER);
+interior.visible = false;   // only rendered when the player's inside
+scene.add(interior);
+
+const interiorShell  = new THREE.MeshStandardMaterial({
+  color: 0x3a3a46, roughness: 0.65, metalness: 0.35, flatShading: true,
+});
+const interiorFloor  = new THREE.MeshStandardMaterial({
+  color: 0x1e1e26, roughness: 0.9, metalness: 0.15, flatShading: true,
+});
+const interiorPanel  = new THREE.MeshStandardMaterial({
+  color: 0x4e4e5c, roughness: 0.5, metalness: 0.55, flatShading: true,
+});
+const interiorLight  = new THREE.MeshBasicMaterial({ color: 0xfff0d0 });
+
+const ROOM_W = 18, ROOM_H = 4, ROOM_D = 12;
+
+// Floor + ceiling
+const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.25, ROOM_D), interiorFloor);
+floor.position.y = 0;
+interior.add(floor);
+const ceil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.25, ROOM_D), interiorShell);
+ceil.position.y = ROOM_H;
+interior.add(ceil);
+
+// Walls with window cutouts — build as 4 solid walls, add emissive
+// window panels in the middle of each (fake views).
+function addWall(x, z, rotY, width) {
+  const wall = new THREE.Group();
+  const solid = new THREE.Mesh(new THREE.BoxGeometry(width, ROOM_H, 0.25), interiorShell);
+  solid.position.y = ROOM_H / 2;
+  wall.add(solid);
+  // Window — emissive panel
+  const winW = Math.min(width * 0.6, 6);
+  const winH = ROOM_H * 0.5;
+  const winMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uBase:  { value: new THREE.Color(0x05030a) },
+      uStar:  { value: new THREE.Color(0xffe8c0) },
+      uTime:  { value: 0 },
+      uView:  { value: new THREE.Vector3(0, 0, 1) },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vWorldPos;
+      void main() {
+        vUv = uv;
+        vNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      varying vec2 vUv;
+      varying vec3 vNormal;
+      varying vec3 vWorldPos;
+      uniform vec3 uBase;
+      uniform vec3 uStar;
+      uniform float uTime;
+      uniform vec3 uView;
+      float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      void main() {
+        // Parallax shift — uv moves with the viewing angle so the stars
+        // drift when the player turns their head.
+        vec3 v = normalize(cameraPosition - vWorldPos);
+        vec2 par = vec2(dot(v, vec3(1.0, 0.0, 0.0)), dot(v, vec3(0.0, 1.0, 0.0))) * 0.4;
+        vec2 uv = vUv * vec2(6.0, 4.0) + par;
+        vec2 ci = floor(uv);
+        vec2 cf = fract(uv);
+        float r = hash(ci);
+        float d = distance(cf, vec2(0.5));
+        float star = smoothstep(0.08, 0.0, d) * step(0.93, r);
+        vec3 col = mix(uBase, uStar, star);
+        // Slight vertical gradient for atmosphere
+        col += vec3(0.1, 0.05, 0.15) * smoothstep(0.0, 1.0, 1.0 - vUv.y) * 0.5;
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  });
+  const win = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), winMat);
+  win.position.set(0, ROOM_H / 2, 0.14);  // slightly forward of the wall
+  wall.add(win);
+  // Thin frame around the window
+  for (const [sx, sy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+    const fh = sx === 0 ? 0.15 : winH + 0.3;
+    const fw = sy === 0 ? 0.15 : winW + 0.3;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.1), interiorPanel);
+    frame.position.set(sy * (winW / 2 + 0.075), ROOM_H / 2 + sx * (winH / 2 + 0.075), 0.16);
+    wall.add(frame);
+  }
+  wall.position.set(x, 0, z);
+  wall.rotation.y = rotY;
+  interior.add(wall);
+  return winMat;
+}
+
+const windowShaders = [];
+windowShaders.push(addWall(0, -ROOM_D / 2, 0,          ROOM_W));   // north wall
+windowShaders.push(addWall(0,  ROOM_D / 2, Math.PI,    ROOM_W));   // south wall
+windowShaders.push(addWall(-ROOM_W / 2, 0, -Math.PI / 2, ROOM_D)); // west wall
+windowShaders.push(addWall( ROOM_W / 2, 0,  Math.PI / 2, ROOM_D)); // east wall
+
+// Ceiling lights (purely decorative — scene already has ambient)
+for (let i = -1; i <= 1; i++) {
+  const lp = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.12, 0.6), interiorLight);
+  lp.position.set(i * 5, ROOM_H - 0.08, 0);
+  interior.add(lp);
+}
+
+// A simple console against the north wall
+const consoleDesk = new THREE.Mesh(
+  new THREE.BoxGeometry(4, 1.1, 1.1), interiorPanel,
+);
+consoleDesk.position.set(0, 0.65, -ROOM_D / 2 + 1);
+interior.add(consoleDesk);
+const consoleScreen = new THREE.Mesh(
+  new THREE.PlaneGeometry(3.4, 0.6),
+  new THREE.MeshBasicMaterial({ color: 0x60ffa0 }),
+);
+consoleScreen.position.set(0, 1.35, -ROOM_D / 2 + 1.56);
+interior.add(consoleScreen);
+
+// Ambient point light inside the room so the interior reads even
+// though it's nowhere near the sun's direction.
+const interiorAmbient = new THREE.PointLight(0xfff0d0, 2.0, 24);
+interiorAmbient.position.set(0, ROOM_H - 0.5, 0);
+interior.add(interiorAmbient);
+
+// ══════════════════════════════════════════════════════════════════
+// TELEPORT + CUTSCENE — press E near the ship to board. The fade
+// covers the actual teleport so the player never sees the world
+// swap. Inside, press E to exit and return to the ship.
+// ══════════════════════════════════════════════════════════════════
+const INTERACT_DIST = 4.5;
+let cutsceneActive = false;
+let cutsceneT = 0;
+let cutscenePhase = 'idle';   // 'fadeout' | 'hold' | 'fadein' | 'idle'
+let cutsceneAction = null;    // 'enter' | 'exit' — what to run mid-fade
+
+// Inside-mode player state (local to INTERIOR_CENTER)
+const interiorPlayer = {
+  localPos: new THREE.Vector3(0, 1, 2),
+  yaw: 0,
+  pitch: -0.08,
+  vy: 0,
+  onGround: true,
+};
+
+function canBoard() {
+  if (cutsceneActive) return false;
+  if (mode !== 'walk') return false;
+  if (!astronautModel) return false;
+  return shipGroup.position.distanceTo(playerMesh.position) < INTERACT_DIST;
+}
+function canExit() {
+  return !cutsceneActive && mode === 'inside';
+}
+
+function triggerBoardCutscene() {
+  cutsceneActive = true;
+  cutsceneT = 0;
+  cutscenePhase = 'fadeout';
+  cutsceneAction = 'enter';
+  const fade = document.getElementById('fadeOverlay');
+  fade.style.transition = 'opacity 1.4s ease-in';
+  void fade.offsetWidth;
+  fade.style.opacity = '1';
+  showBanner('ENTERING THE POD', 'transitioning…', 2600);
+}
+function triggerExitCutscene() {
+  cutsceneActive = true;
+  cutsceneT = 0;
+  cutscenePhase = 'fadeout';
+  cutsceneAction = 'exit';
+  const fade = document.getElementById('fadeOverlay');
+  fade.style.transition = 'opacity 1.4s ease-in';
+  void fade.offsetWidth;
+  fade.style.opacity = '1';
+  showBanner('DISEMBARKING', 'returning to the surface…', 2600);
+}
+
+function enterInterior() {
+  interior.visible = true;
+  mode = 'inside';
+  player.isMoving = false;
+  interiorPlayer.localPos.set(0, 1, 2);
+  interiorPlayer.yaw = 0;
+  interiorPlayer.pitch = -0.08;
+  interiorPlayer.vy = 0;
+  interiorPlayer.onGround = true;
+}
+function exitInterior() {
+  interior.visible = false;
+  mode = 'walk';
+  // Drop the player next to the ship, not inside it
+  const t = new THREE.Vector3(0, 0, 1);   // seed tangent
+  const tan = t.sub(shipDir.clone().multiplyScalar(t.dot(shipDir))).normalize();
+  const stepAngle = 2.2 / PLANET_RADIUS;
+  const q = new THREE.Quaternion().setFromAxisAngle(tan, stepAngle);
+  player.dir.copy(shipDir).applyQuaternion(q).normalize();
+  player.height = 0;
+  player.vUp = 0;
+  // Re-tangent forward vectors against the new up; face the ship
+  const u = player.dir.clone();
+  const toShip = shipDir.clone().sub(u.clone().multiplyScalar(shipDir.dot(u))).normalize();
+  player.fwd.copy(toShip);
+  player.camFwd.copy(toShip);
+  player.visFwd.copy(toShip);
+  player.isMoving = false;
+}
+
+function updateCutscene(dt) {
+  if (!cutsceneActive) return;
+  cutsceneT += dt;
+  if (cutscenePhase === 'fadeout' && cutsceneT > 1.4) {
+    cutscenePhase = 'hold';
+    if (cutsceneAction === 'enter') enterInterior();
+    else if (cutsceneAction === 'exit') exitInterior();
+  } else if (cutscenePhase === 'hold' && cutsceneT > 2.6) {
+    cutscenePhase = 'fadein';
+    const fade = document.getElementById('fadeOverlay');
+    fade.style.transition = 'opacity 1.4s ease-out';
+    fade.style.opacity = '0';
+    if (cutsceneAction === 'enter') showBanner('ARRIVED', 'interior systems online', 2400);
+    else                             showBanner('BACK ON THE SURFACE', '', 2200);
+  } else if (cutscenePhase === 'fadein' && cutsceneT > 4.1) {
+    cutscenePhase = 'idle';
+    cutsceneActive = false;
+    cutsceneAction = null;
+  }
+}
+
+// Prompt element shown when player is near the ship, or inside
+const boardPrompt = document.getElementById('boardPrompt');
+function updateBoardPrompt() {
+  if (cutsceneActive) { boardPrompt.style.opacity = '0'; return; }
+  if (canBoard())  { boardPrompt.innerHTML = 'PRESS <kbd>E</kbd> TO BOARD'; boardPrompt.style.opacity = '1'; return; }
+  if (canExit())   { boardPrompt.innerHTML = 'PRESS <kbd>E</kbd> TO DISEMBARK'; boardPrompt.style.opacity = '1'; return; }
+  boardPrompt.style.opacity = '0';
+}
+
+// Tick the window shader uniforms so the parallax responds to time
+let _interiorT = 0;
+function tickInterior(dt) {
+  _interiorT += dt;
+  for (const sh of windowShaders) sh.uniforms.uTime.value = _interiorT;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ANIMATE
+// ══════════════════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+let frameCount = 0, lastFpsUpdate = performance.now(), fps = 0;
+
+document.getElementById('loading').classList.add('hidden');
+
+function animate() {
+  const dt = Math.min(0.05, clock.getDelta());
+  const sens = 0.0025;
+
+  // ── Freecam branch: flat fly-around; player + planet physics paused ──
+  // ── Inside branch: flat 3rd-person walk inside the interior room ──
+  if (mode === 'inside') {
+    interiorPlayer.yaw   -= mouseDX * sens;
+    interiorPlayer.pitch -= mouseDY * sens;
+    interiorPlayer.pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 4, interiorPlayer.pitch));
+    mouseDX = 0; mouseDY = 0;
+
+    const cy = Math.cos(interiorPlayer.yaw), sy = Math.sin(interiorPlayer.yaw);
+    const iFwd   = new THREE.Vector3(-sy, 0, -cy);
+    const iRight = new THREE.Vector3( cy, 0, -sy);
+
+    let mvF = 0, mvR = 0;
+    if (keys.w) mvF += 1;
+    if (keys.s) mvF -= 1;
+    if (keys.d) mvR += 1;
+    if (keys.a) mvR -= 1;
+    const isMov = (mvF !== 0 || mvR !== 0);
+    player.isMoving = isMov;
+
+    if (isMov) {
+      const sp = 4.5 * (keys.shift ? 1.8 : 1);
+      const mv = new THREE.Vector3()
+        .addScaledVector(iFwd, mvF)
+        .addScaledVector(iRight, mvR)
+        .normalize();
+      interiorPlayer.localPos.addScaledVector(mv, sp * dt);
+      player.walkPhase += dt * (keys.shift ? 12 : 8);
+    }
+
+    // Gravity + floor contact (floor at localPos.y = 1 = feet-level)
+    interiorPlayer.vy -= 18 * dt;
+    interiorPlayer.localPos.y += interiorPlayer.vy * dt;
+    if (interiorPlayer.localPos.y <= 1) {
+      interiorPlayer.localPos.y = 1;
+      interiorPlayer.vy = 0;
+      interiorPlayer.onGround = true;
+    } else {
+      interiorPlayer.onGround = false;
+    }
+    if (keys.space && interiorPlayer.onGround) {
+      interiorPlayer.vy = 5.5;
+      interiorPlayer.onGround = false;
+    }
+    // Clamp inside the room (leave a small margin for the player's body)
+    const halfW = ROOM_W / 2 - 0.7;
+    const halfD = ROOM_D / 2 - 0.7;
+    interiorPlayer.localPos.x = Math.max(-halfW, Math.min(halfW, interiorPlayer.localPos.x));
+    interiorPlayer.localPos.z = Math.max(-halfD, Math.min(halfD, interiorPlayer.localPos.z));
+
+    // Place + orient the astronaut in world space (interior is a Group
+    // positioned at INTERIOR_CENTER, but playerMesh is a scene child)
+    const worldPos = interiorPlayer.localPos.clone().add(INTERIOR_CENTER);
+    playerMesh.position.copy(worldPos);
+    playerMesh.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), interiorPlayer.yaw);
+
+    // Third-person camera behind player
+    const cp = Math.cos(interiorPlayer.pitch), ip = Math.sin(interiorPlayer.pitch);
+    const camPos = worldPos.clone().add(new THREE.Vector3(
+      sy * 4.2 * cp,
+      1.4 + 4.2 * -ip,
+      cy * 4.2 * cp,
+    ));
+    camera.position.copy(camPos);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(worldPos.x, worldPos.y + 1.0, worldPos.z);
+
+    updateAstronautAnimation(dt);
+    tickStation(dt);
+    tickReveal(dt);
+    tickInterior(dt);
+    updateCutscene(dt);
+    updateBoardPrompt();
+
+    frameCount++;
+    const _now = performance.now();
+    if (_now - lastFpsUpdate >= 500) {
+      fps = Math.round(frameCount * 1000 / (_now - lastFpsUpdate));
+      frameCount = 0; lastFpsUpdate = _now;
+      document.getElementById('fps').textContent = `${fps} FPS`;
+    }
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  if (mode === 'freecam') {
+    freeCam.yaw   -= mouseDX * sens;
+    freeCam.pitch -= mouseDY * sens;
+    freeCam.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, freeCam.pitch));
+    mouseDX = 0; mouseDY = 0;
+
+    const cy = Math.cos(freeCam.yaw), sy = Math.sin(freeCam.yaw);
+    const cp = Math.cos(freeCam.pitch), sp = Math.sin(freeCam.pitch);
+    const fwd   = new THREE.Vector3(-sy * cp, sp, -cy * cp);
+    const right = new THREE.Vector3(cy, 0, -sy);     // strafe in world xz plane
+    const worldUp = new THREE.Vector3(0, 1, 0);
+
+    const mv = new THREE.Vector3();
+    if (keys.w) mv.add(fwd);
+    if (keys.s) mv.sub(fwd);
+    if (keys.d) mv.add(right);
+    if (keys.a) mv.sub(right);
+    if (keys.space) mv.add(worldUp);
+    if (keys.ctrl)  mv.sub(worldUp);
+    if (mv.lengthSq() > 0) mv.normalize();
+    const spd = freeCam.speed * (keys.shift ? freeCam.sprintMul : 1);
+    freeCam.position.addScaledVector(mv, spd * dt);
+
+    camera.position.copy(freeCam.position);
+    camera.up.copy(worldUp);
+    camera.lookAt(freeCam.position.clone().add(fwd));
+
+    // Keep wildlife + joints alive so the world isn't frozen
+    player.isMoving = false;   // astronaut eases to idle while we fly
+    updateAstronautAnimation(dt);
+    updateCalcRocks(dt);
+    updateQuest(dt);
+    tickStation(dt);
+    tickReveal(dt);
+    tickInterior(dt);
+    updateCutscene(dt);
+    updateBoardPrompt();
+
+    // FPS
+    frameCount++;
+    const _now = performance.now();
+    if (_now - lastFpsUpdate >= 500) {
+      fps = Math.round(frameCount * 1000 / (_now - lastFpsUpdate));
+      frameCount = 0; lastFpsUpdate = _now;
+      document.getElementById('fps').textContent = `${fps} FPS`;
+    }
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+    return;
+  }
+
+  // 1) Apply mouse input to camFwd (rotate around up) + cameraPitch
+  const up = player.dir.clone();
+  // Re-orthogonalize tangent vectors against the (possibly new) up
+  reTangent(player.fwd, up);
+  reTangent(player.camFwd, up);
+  if (mouseDX !== 0) {
+    const yawQ = new THREE.Quaternion().setFromAxisAngle(up, -mouseDX * sens);
+    player.camFwd.applyQuaternion(yawQ);
+    reTangent(player.camFwd, up);
+  }
+  // Standard look: mouse-up looks up, mouse-down looks down
+  player.cameraPitch -= mouseDY * sens;
+  player.cameraPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 4, player.cameraPitch));
+  mouseDX = 0; mouseDY = 0;
+
+  // ── WASD in the tangent plane ──
+  // W/S: forward/back along camFwd
+  // A/D: strafe left/right along camRight
+  //
+  // camRight = camFwd × up   (right-hand rule, Y-up, fwd = -Z world)
+  //   Verify: camFwd=(0,0,-1), up=(0,1,0)
+  //     (0,0,-1)×(0,1,0) = ( 0·0 − (−1)·1 ,  (−1)·0 − 0·0 ,  0·1 − 0·0 )
+  //                      = ( 1, 0, 0 )  → +X = the player's RIGHT ✓
+  let mvF = 0, mvR = 0;
+  if (keys.w) mvF += 1;
+  if (keys.s) mvF -= 1;
+  if (keys.d) mvR += 1;
+  if (keys.a) mvR -= 1;
+  player.isMoving = (mvF !== 0 || mvR !== 0);
+
+  if (player.isMoving) {
+    const sp = player.speed * (keys.shift ? player.runMul : 1);
+
+    const camRight = new THREE.Vector3().crossVectors(player.camFwd, up).normalize();
+    const moveDir = new THREE.Vector3()
+      .addScaledVector(player.camFwd, mvF)
+      .addScaledVector(camRight, mvR)
+      .normalize();
+
+    // Walk on the sphere: rotate player.dir around (up × moveDir) by sp·dt/R
+    const angle = (sp * dt) / PLANET_RADIUS;
+    const axis = new THREE.Vector3().crossVectors(up, moveDir).normalize();
+    const q = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+    player.dir.applyQuaternion(q).normalize();
+    player.camFwd.applyQuaternion(q);   // keep camera tangent to the surface
+    player.visFwd.applyQuaternion(q);   // keep body-facing tangent too
+
+    player.lastMoveDir = moveDir;
+    player.walkPhase += dt * (keys.shift ? 12 : 8);
+  }
+
+  // 4) Radial physics (height above surface)
+  player.vUp -= player.gravity * dt;
+  player.height += player.vUp * dt;
+  if (player.height <= 0) {
+    player.height = 0; player.vUp = 0; player.onGround = true;
+  } else {
+    player.onGround = false;
+  }
+
+  // 5) Position + orient the player mesh
+  const upNow = player.dir.clone();
+  reTangent(player.camFwd, upNow);
+  reTangent(player.visFwd, upNow);
+  player.visFwd.normalize();
+
+  const surfaceR = getSurfaceRadius(player.dir.x, player.dir.y, player.dir.z);
+  const playerR = surfaceR + player.height;
+  playerMesh.position.copy(player.dir).multiplyScalar(playerR);
+
+  // Smoothly turn the body toward the last movement direction
+  if (player.isMoving && player.lastMoveDir) {
+    const target = player.lastMoveDir.clone();
+    reTangent(target, upNow);
+    target.normalize();
+    const t = Math.min(1, dt * 10);  // turn speed (higher = snappier)
+    player.visFwd.lerp(target, t);
+    reTangent(player.visFwd, upNow);
+    player.visFwd.normalize();
+  }
+
+  // Build a rotation matrix from 3 orthogonal world-space axes.
+  // The astronaut model's face points along its LOCAL +Z axis, so:
+  //   local +Y → upNow          (head)
+  //   local +Z → visFwd         (face / direction of motion)
+  //   local +X → upNow × visFwd (right shoulder)  — right-hand: X × Y = Z
+  const bodyRight = new THREE.Vector3().crossVectors(upNow, player.visFwd).normalize();
+  const bodyZ     = player.visFwd.clone();
+  const basisM    = new THREE.Matrix4().makeBasis(bodyRight, upNow, bodyZ);
+  const facingQ   = new THREE.Quaternion().setFromRotationMatrix(basisM);
+  playerMesh.quaternion.copy(facingQ);
+
+  // Animate joints
+  updateAstronautAnimation(dt);
+
+  // Update wildlife + offering shards
+  updateCalcRocks(dt);
+  updateQuest(dt);
+
+  // 6) Third-person orbit camera (K1-style: sin/cos decomposition).
+  //    Camera target = a point above the player's feet at chest height.
+  //    Camera position = target + (-camFwd * cos(pitch) * dist) + (up * (sin(-pitch) * dist + cameraHeight))
+  const lookAtTarget = playerMesh.position.clone()
+    .add(upNow.clone().multiplyScalar(1.5));  // chest
+
+  const camOffset = new THREE.Vector3()
+    .addScaledVector(player.camFwd, -Math.cos(player.cameraPitch) * player.cameraDistance)
+    .addScaledVector(upNow, player.cameraHeight + Math.sin(-player.cameraPitch) * player.cameraDistance);
+  const camDesired = playerMesh.position.clone().add(camOffset);
+
+  // Clamp camera above the surface (don't let it dive into terrain)
+  const camLen = camDesired.length();
+  const camUnit = camDesired.clone().normalize();
+  const surfaceUnderCam = getSurfaceRadius(camUnit.x, camUnit.y, camUnit.z) + 0.5;
+  if (camLen < surfaceUnderCam) camDesired.copy(camUnit).multiplyScalar(surfaceUnderCam);
+
+  camera.position.lerp(camDesired, Math.min(1, dt * 14));
+  camera.up.copy(upNow);
+  camera.lookAt(lookAtTarget);
+
+  tickStation(dt);
+  tickReveal(dt);
+  tickInterior(dt);
+  updateCutscene(dt);
+  updateBoardPrompt();
+
+  // FPS + lat/long
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsUpdate >= 500) {
+    fps = Math.round(frameCount * 1000 / (now - lastFpsUpdate));
+    frameCount = 0; lastFpsUpdate = now;
+    document.getElementById('fps').textContent = `${fps} FPS`;
+    const lat = (Math.asin(player.dir.y) * 180 / Math.PI).toFixed(1);
+    const lon = (Math.atan2(player.dir.z, player.dir.x) * 180 / Math.PI).toFixed(1);
+    document.getElementById('latStat').textContent = `LAT ${lat}° · LON ${lon}°`;
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
