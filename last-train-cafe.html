@@ -1,0 +1,3250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Wayfarer V :: The Last Train Café</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #000;
+    color: #d8c8a4; font-family: 'EB Garamond', 'Georgia', serif;
+    user-select: none; }
+  #canvas { display: block; width: 100%; height: 100%; cursor: default; }
+
+  .title { position: fixed; top: 22px; left: 0; right: 0; text-align: center; z-index: 10;
+    pointer-events: none; }
+  .title .name { font-size: 14px; letter-spacing: 18px; color: #ffe8c0;
+    text-shadow: 0 0 12px rgba(0,0,0,0.8); font-weight: 400; }
+  .title .meta { margin-top: 4px; font-size: 9px; letter-spacing: 6px;
+    color: rgba(240,224,184,0.55); text-shadow: 0 0 6px rgba(0,0,0,0.7);
+    font-family: 'SF Mono', monospace; font-style: italic; }
+
+  /* Coin HUD top-left */
+  .coins { position: fixed; top: 22px; left: 22px; z-index: 10;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(20, 14, 4, 0.65);
+    border: 1px solid rgba(240, 200, 120, 0.3);
+    padding: 8px 16px; border-radius: 2px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+  .coins .pip { width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffea90, #b87a1a 70%, #6a4010);
+    box-shadow: 0 0 8px rgba(240, 200, 120, 0.55); }
+  .coins .label { font-size: 11px; letter-spacing: 4px; color: #ffe8c0;
+    font-family: 'SF Mono', monospace; font-weight: 700;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+
+  /* Tip popup — floats up over the served passenger */
+  .tip-popup { position: fixed; z-index: 11; pointer-events: none;
+    color: #ffe8b0; font-family: 'SF Mono', monospace; font-size: 14px; font-weight: 700;
+    letter-spacing: 3px; text-shadow: 0 0 12px rgba(255,200,100,0.8);
+    transform: translate(-50%, -50%); opacity: 0;
+    transition: transform 1.6s ease-out, opacity 1.6s ease-out; }
+  .tip-popup.show { opacity: 1; }
+
+  /* Dialog */
+  .dialog { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); z-index: 12;
+    width: min(820px, 80vw);
+    background: linear-gradient(to bottom, rgba(12, 8, 4, 0.88), rgba(12, 8, 4, 0.7));
+    border: 1px solid rgba(240, 200, 140, 0.3);
+    padding: 22px 32px; border-radius: 2px;
+    box-shadow: 0 8px 38px rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    opacity: 0; transition: opacity 0.4s;
+    pointer-events: none; }    /* let clicks fall through to the canvas to advance the line */
+  .dialog.show { opacity: 1; }
+  .dialog .speaker { font-size: 10px; letter-spacing: 4px; color: rgba(255,224,168,0.7);
+    margin-bottom: 8px; font-family: 'SF Mono', monospace; }
+  .dialog .line { font-size: 17px; line-height: 1.55; color: #f4e4c4;
+    font-style: italic; }
+  .dialog .line em { font-style: normal; font-weight: 700; color: #ffe8b0; }
+  .dialog .next { position: absolute; bottom: 8px; right: 14px;
+    font-size: 9px; letter-spacing: 3px; color: rgba(240,216,164,0.4);
+    font-family: 'SF Mono', monospace; }
+
+  /* Drink HUD */
+  .drink-hud { position: fixed; top: 50%; right: 28px; transform: translateY(-50%); z-index: 12;
+    background: rgba(12, 8, 4, 0.85);
+    border: 1px solid rgba(240, 200, 140, 0.32);
+    padding: 14px 18px; border-radius: 2px; min-width: 200px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(6px);
+    font-family: 'SF Mono', monospace; }
+  .drink-hud.show { opacity: 1; }
+  .drink-hud .order { font-size: 10px; letter-spacing: 3px; color: rgba(255,224,168,0.65);
+    margin-bottom: 8px; }
+  .drink-hud .order span { color: #ffe8b0; }
+  .drink-hud .meter { width: 100%; height: 10px; background: rgba(255,255,255,0.06);
+    margin: 8px 0; position: relative; overflow: hidden; border-radius: 1px;
+    border: 1px solid rgba(240,200,140,0.18); }
+  .drink-hud .meter .target { position: absolute; top: 0; bottom: 0;
+    background: rgba(120, 200, 120, 0.22); border-left: 1px solid rgba(180,255,180,0.4);
+    border-right: 1px solid rgba(180,255,180,0.4); }
+  .drink-hud .meter .fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0%;
+    background: linear-gradient(90deg, #6a4830, #b89060);
+    transition: width 0.05s linear; }
+  .drink-hud .hint { font-size: 9px; letter-spacing: 2px; color: rgba(240,216,164,0.5);
+    margin-top: 6px; }
+  .drink-hud .quality { font-size: 9px; letter-spacing: 3px; color: rgba(240,216,164,0.7);
+    margin-top: 4px; font-style: italic; }
+
+  /* Bottom-right context */
+  .stats { position: fixed; bottom: 22px; right: 22px; z-index: 10;
+    font-size: 10px; letter-spacing: 3px; color: rgba(240,216,164,0.55);
+    text-align: right; font-family: 'SF Mono', monospace;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+  .clock { position: fixed; bottom: 22px; left: 22px; z-index: 10;
+    font-size: 10px; letter-spacing: 4px; color: rgba(240,216,164,0.55);
+    font-family: 'SF Mono', monospace; text-shadow: 0 0 4px rgba(0,0,0,0.8); }
+
+  .vignette { position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.55) 100%); }
+  .tunnel { position: fixed; inset: 0; z-index: 6; pointer-events: none;
+    background: rgba(0, 0, 0, 0); transition: background 0.05s linear; }
+
+  /* Title gate */
+  .gate { position: fixed; inset: 0; z-index: 100;
+    background: radial-gradient(ellipse at center, #2a1a08 0%, #050302 80%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 20px; transition: opacity 0.6s; }
+  .gate.hidden { opacity: 0; pointer-events: none; }
+  .gate h1 { font-size: 36px; letter-spacing: 22px; color: #ffe8b0; font-weight: 400;
+    text-shadow: 0 0 22px rgba(240,180,80,0.4); margin-bottom: 14px; }
+  .gate .sub { font-size: 12px; letter-spacing: 6px; color: rgba(240,216,164,0.6);
+    font-style: italic; margin-bottom: 36px; font-family: 'SF Mono', monospace; }
+  .gate button { padding: 14px 32px; font-family: inherit; font-size: 11px;
+    letter-spacing: 5px; color: #ffe8b0; background: transparent;
+    border: 1px solid rgba(255, 232, 176, 0.5); cursor: pointer;
+    transition: all 0.25s; }
+  .gate button:hover { color: #fff; background: rgba(255,232,176,0.08);
+    border-color: rgba(255,232,176,0.85); transform: translateY(-1px); }
+  .gate .resume { font-size: 10px; letter-spacing: 4px; color: rgba(240,200,140,0.55);
+    font-family: 'SF Mono', monospace; margin-top: 18px; min-height: 14px; }
+  .gate .reset-save { margin-top: 10px; padding: 6px 16px; font-size: 9px;
+    letter-spacing: 3px; opacity: 0.6; border-color: rgba(255,232,176,0.25); }
+  .gate .reset-save:hover { opacity: 1; }
+
+  /* STATION OVERLAY (between rides) */
+  .station { position: fixed; inset: 0; z-index: 120;
+    background:
+      radial-gradient(ellipse at top, rgba(80, 50, 12, 0.5) 0%, transparent 60%),
+      radial-gradient(ellipse at center, #1a1208 0%, #050302 80%);
+    display: flex; flex-direction: column; align-items: center; padding: 60px 30px 40px;
+    opacity: 0; pointer-events: none; transition: opacity 0.6s;
+    overflow-y: auto; }
+  .station.show { opacity: 1; pointer-events: all; }
+  .station h1 { font-size: 32px; letter-spacing: 18px; color: #ffe8b0; font-weight: 400;
+    text-shadow: 0 0 24px rgba(240,180,80,0.45); margin-bottom: 8px; }
+  .station .subtitle { font-size: 11px; letter-spacing: 6px; color: rgba(240,216,164,0.55);
+    font-style: italic; font-family: 'SF Mono', monospace; margin-bottom: 32px; }
+  .station .stop-name { font-size: 14px; letter-spacing: 8px; color: rgba(255, 200, 130, 0.85);
+    margin-bottom: 30px; font-family: 'SF Mono', monospace; }
+  .station .summary { display: flex; gap: 30px; margin-bottom: 38px;
+    background: rgba(20, 14, 6, 0.55);
+    border: 1px solid rgba(240,200,140,0.18);
+    padding: 16px 28px; border-radius: 2px; }
+  .station .summary div { font-family: 'SF Mono', monospace; font-size: 11px;
+    letter-spacing: 3px; color: rgba(240,216,164,0.6); text-align: center; }
+  .station .summary .v { display: block; color: #ffe8b0; font-size: 22px;
+    margin-bottom: 4px; font-weight: 700; }
+  .station h2 { font-size: 14px; letter-spacing: 8px; color: #ffe8b0;
+    margin-bottom: 18px; font-weight: 400; }
+  .upgrades { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px; max-width: 920px; width: 100%; margin-bottom: 30px; }
+  .upgrade { background: linear-gradient(180deg, rgba(40,28,14,0.7), rgba(20,14,6,0.7));
+    border: 1px solid rgba(240,200,140,0.25);
+    padding: 18px 20px; border-radius: 2px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.6); }
+  .upgrade.locked { opacity: 0.45; }
+  .upgrade.owned { border-color: rgba(180, 240, 180, 0.45); background: linear-gradient(180deg, rgba(40,60,30,0.7), rgba(15,25,10,0.7)); }
+  .upgrade .name { font-size: 14px; letter-spacing: 4px; color: #ffe8b0;
+    font-weight: 400; margin-bottom: 6px; }
+  .upgrade .desc { font-size: 11px; line-height: 1.6; color: rgba(240,216,164,0.7);
+    font-style: italic; margin-bottom: 14px; }
+  .upgrade .cost-row { display: flex; align-items: center; justify-content: space-between; }
+  .upgrade .cost { font-family: 'SF Mono', monospace; font-size: 11px; letter-spacing: 3px;
+    color: rgba(255,224,168,0.85); display: flex; align-items: center; gap: 6px; }
+  .upgrade .cost .pip { width: 10px; height: 10px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffea90, #b87a1a 70%, #6a4010); }
+  .upgrade button { font-family: inherit; font-size: 10px; letter-spacing: 4px;
+    color: #ffe8b0; background: transparent;
+    border: 1px solid rgba(240,200,140,0.5);
+    padding: 7px 14px; cursor: pointer; transition: all 0.2s; }
+  .upgrade button:hover:not(:disabled) { background: rgba(240,200,140,0.12);
+    border-color: rgba(255,232,176,0.85); transform: translateY(-1px); }
+  .upgrade button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .upgrade.owned button { color: rgba(180,240,180,0.85); border-color: rgba(180,240,180,0.5); }
+  .station .depart { padding: 14px 36px; margin-top: 6px;
+    font-family: inherit; font-size: 12px; letter-spacing: 5px;
+    color: #ffe8b0; background: transparent;
+    border: 1px solid rgba(255,232,176,0.55); cursor: pointer;
+    transition: all 0.25s; }
+  .station .depart:hover { color: #fff; background: rgba(255,232,176,0.10);
+    border-color: rgba(255,232,176,0.85); transform: translateY(-1px); }
+  .station .depart.next-train { border-color: rgba(140, 220, 255, 0.7);
+    color: #c0e8ff;
+    box-shadow: 0 0 22px rgba(120, 200, 255, 0.25); }
+
+  /* GUIDE BOOK modal */
+  .guide-overlay { position: fixed; inset: 0; z-index: 90;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.35s; }
+  .guide-overlay.show { opacity: 1; pointer-events: auto; }
+  .guide-book { width: min(560px, 90vw); padding: 36px 44px;
+    background: linear-gradient(135deg, #6a3018 0%, #3a1810 100%);
+    border: 6px double rgba(240, 200, 140, 0.35);
+    border-radius: 4px;
+    box-shadow:
+      0 24px 60px rgba(0,0,0,0.85),
+      inset 0 0 80px rgba(0,0,0,0.4),
+      inset 0 0 0 2px rgba(240, 200, 140, 0.15);
+    position: relative;
+    color: #f4e4c4; }
+  .guide-book::before {
+    content: ''; position: absolute; inset: 8px;
+    border: 1px solid rgba(240, 200, 140, 0.18);
+    pointer-events: none; }
+  .guide-book .pageno { font-family: 'SF Mono', monospace; font-size: 9px;
+    letter-spacing: 5px; color: rgba(240, 200, 140, 0.55);
+    text-align: center; margin-bottom: 14px; }
+  .guide-book h2 { font-size: 22px; letter-spacing: 8px; color: #ffe8b0;
+    text-align: center; margin-bottom: 6px; font-weight: 400;
+    text-shadow: 0 0 14px rgba(240,180,80,0.4); }
+  .guide-book .subtitle { font-style: italic; font-size: 11px; letter-spacing: 4px;
+    color: rgba(240,200,140,0.6); text-align: center; margin-bottom: 22px;
+    font-family: 'SF Mono', monospace; }
+  .guide-book ol { list-style: none; counter-reset: step; margin: 0; padding: 0; }
+  .guide-book ol li { counter-increment: step;
+    padding: 10px 14px 10px 50px; position: relative;
+    font-size: 14px; line-height: 1.6; color: rgba(244, 228, 196, 0.9);
+    border-bottom: 1px dotted rgba(240, 200, 140, 0.2);
+    transition: background 0.2s; }
+  .guide-book ol li::before { content: counter(step, upper-roman) '.';
+    position: absolute; left: 14px; top: 11px;
+    font-family: 'SF Mono', monospace; font-size: 12px;
+    color: rgba(240, 200, 140, 0.55); }
+  .guide-book ol li.active { background: rgba(240, 200, 140, 0.12);
+    color: #fff; font-weight: 700; }
+  .guide-book ol li.done { color: rgba(180, 240, 180, 0.6); text-decoration: line-through; }
+  .guide-book .closehint { margin-top: 22px; text-align: center;
+    font-size: 9px; letter-spacing: 4px; color: rgba(240,200,140,0.4);
+    font-family: 'SF Mono', monospace; font-style: italic; }
+
+  /* Tool prompt — appears over the active tool */
+  .tool-prompt { position: fixed; z-index: 11; pointer-events: none;
+    color: #ffe8b0; font-family: 'SF Mono', monospace; font-size: 11px; font-weight: 700;
+    letter-spacing: 3px; text-shadow: 0 0 10px rgba(255,200,100,0.8);
+    transform: translate(-50%, -180%); padding: 6px 12px;
+    background: rgba(20, 12, 4, 0.85); border: 1px solid rgba(255, 220, 140, 0.6);
+    border-radius: 2px; opacity: 0; transition: opacity 0.18s;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.6), 0 0 18px rgba(255,200,100,0.3); }
+  .tool-prompt.show { opacity: 1; }
+
+  /* The big pulsing circle — wraps around the active tool on screen */
+  .click-target { position: fixed; z-index: 10; pointer-events: none;
+    width: 90px; height: 90px; transform: translate(-50%, -50%);
+    border: 3px solid #ffe080;
+    border-radius: 50%;
+    box-shadow: 0 0 28px rgba(255,224,128,0.85),
+                0 0 60px rgba(255,200,100,0.55),
+                inset 0 0 22px rgba(255,224,128,0.45);
+    opacity: 0;
+    animation: ctPulse 1.2s ease-in-out infinite; }
+  .click-target.show { opacity: 1; }
+  .click-target::before {
+    content: ''; position: absolute; inset: -8px;
+    border: 1px solid rgba(255,224,128,0.45); border-radius: 50%;
+    animation: ctRing 1.6s ease-out infinite; }
+  @keyframes ctPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); border-color: #ffe080; }
+    50%      { transform: translate(-50%, -50%) scale(1.10); border-color: #fff8c0; }
+  }
+  @keyframes ctRing {
+    0%   { transform: scale(0.8); opacity: 0.9; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* Drink HUD step display */
+  .drink-hud .step { font-size: 11px; letter-spacing: 4px; color: #ffe8b0;
+    margin: 6px 0 4px; font-weight: 700; }
+  .drink-hud .step-list { font-size: 9px; letter-spacing: 3px; line-height: 1.6;
+    color: rgba(240,200,140,0.55); margin-bottom: 6px; }
+  .drink-hud .step-list .done { color: rgba(180, 240, 180, 0.7); }
+  .drink-hud .step-list .active { color: #ffe8b0; font-weight: 700; }
+  .drink-hud .open-guide,
+  .drink-hud .restart-order { display: block; margin-top: 6px;
+    background: transparent; border: 1px solid rgba(240,200,140,0.35);
+    color: rgba(240,216,164,0.85); padding: 6px 10px;
+    font-family: inherit; font-size: 9px; letter-spacing: 3px;
+    cursor: pointer; width: 100%; transition: all 0.18s; }
+  .drink-hud .open-guide:hover { background: rgba(240,200,140,0.12); color: #ffe8b0; }
+  .drink-hud .restart-order { color: rgba(240,180,140,0.85);
+    border-color: rgba(240,180,140,0.45); }
+  .drink-hud .restart-order:hover { background: rgba(180,80,60,0.18); color: #ffd0b0;
+    border-color: rgba(255,200,140,0.7); }
+
+  body.hide-hud .title, body.hide-hud .stats, body.hide-hud .clock,
+  body.hide-hud .vignette, body.hide-hud .coins { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="vignette"></div>
+<div class="tunnel" id="tunnel"></div>
+
+<div class="title">
+  <div class="name">T H E&nbsp;&nbsp;L A S T&nbsp;&nbsp;T R A I N&nbsp;&nbsp;C A F É</div>
+  <div class="meta" id="trainNameMeta">CARRIAGE 3 · LATE TRAIN · NORTHBOUND</div>
+</div>
+
+<div class="coins">
+  <div class="pip"></div>
+  <div class="label"><span id="coinAmount">0</span> COINS</div>
+</div>
+
+<div class="stats">
+  <div id="passengerCount">— passengers</div>
+  <div id="modeReadout">approaching</div>
+</div>
+
+<div class="clock" id="clock">— : —</div>
+
+<div class="dialog" id="dialog">
+  <div class="speaker" id="dialogSpeaker">—</div>
+  <div class="line" id="dialogLine">…</div>
+  <div class="next">click to continue</div>
+</div>
+
+<div class="drink-hud" id="drinkHud">
+  <div class="order">ORDER · <span id="orderText">—</span></div>
+  <div class="step" id="stepLabel">—</div>
+  <div class="meter"><div class="target" id="meterTarget"></div><div class="fill" id="meterFill"></div></div>
+  <div class="hint" id="drinkHint">—</div>
+  <div class="step-list" id="stepList"></div>
+  <div class="quality" id="drinkQuality"></div>
+  <button class="open-guide" id="openGuideBtn">📖 OPEN GUIDE BOOK</button>
+  <button class="restart-order" id="restartOrderBtn">↺ RESTART ORDER</button>
+</div>
+
+<div class="tool-prompt" id="toolPrompt">CLICK</div>
+
+<div class="guide-overlay" id="guideOverlay">
+  <div class="guide-book">
+    <div class="pageno" id="guidePageNo">— RECIPE №01 —</div>
+    <h2 id="guideTitle">—</h2>
+    <div class="subtitle" id="guideSubtitle">— a barista's note —</div>
+    <ol id="guideSteps"></ol>
+    <div class="closehint">click anywhere outside to close · or <kbd>ESC</kbd></div>
+  </div>
+</div>
+
+<div class="gate" id="gate">
+  <h1>T H E&nbsp;&nbsp;L A S T&nbsp;&nbsp;T R A I N</h1>
+  <div class="sub">a café for the last passengers · click to begin your shift</div>
+  <button id="gateBtn">BOARD CARRIAGE 3</button>
+  <div class="resume" id="gateResume"></div>
+  <button class="reset-save" id="resetSaveBtn" style="display:none;">↺ start over</button>
+</div>
+
+<div class="station" id="station">
+  <h1>S T A T I O N&nbsp;&nbsp;S T O P</h1>
+  <div class="subtitle">the train idles · spend your tips · then board again</div>
+  <div class="stop-name" id="stopName">— ROSEMARY HALT —</div>
+  <div class="summary">
+    <div><span class="v" id="sumPassengers">0</span>passengers served</div>
+    <div><span class="v" id="sumPerfects">0</span>perfect pours</div>
+    <div><span class="v" id="sumTips">0</span>coins earned</div>
+  </div>
+  <h2>U P G R A D E S</h2>
+  <div class="upgrades" id="upgradeGrid"></div>
+  <button class="depart" id="departBtn">BOARD AGAIN</button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ══════════════════════════════════════════════════════════════════
+// THREE.JS SCENE
+// ══════════════════════════════════════════════════════════════════
+const canvas = document.getElementById('canvas');
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x06080c);
+scene.fog = new THREE.Fog(0x140e08, 9, 30);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 80);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+// Lock pixel ratio to 1 — HiDPI is a 4x fragment-shader hit on retina
+renderer.setPixelRatio(1);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.65;
+// Shadows OFF — biggest single perf win, the carriage doesn't need them
+renderer.shadowMap.enabled = false;
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Performance: objects that only matter in WIDE camera mode are
+// pushed here at creation time. When the camera zooms in for the
+// drink-making close-up they're toggled .visible = false, which
+// also disables their contribution to lighting + shadow passes.
+const WIDE_ONLY = [];
+function addWideOnly(obj) {
+  scene.add(obj);
+  WIDE_ONLY.push(obj);
+  return obj;
+}
+function setCarriageVisible(v) {
+  for (const o of WIDE_ONLY) o.visible = v;
+}
+
+// ── Materials (Lux Train palette: gold / burgundy / mahogany) ─────
+const matMahogany   = new THREE.MeshStandardMaterial({ color: 0x6a3018, roughness: 0.55, metalness: 0.05, flatShading: true });
+const matMahoganyDk = new THREE.MeshStandardMaterial({ color: 0x32160c, roughness: 0.7, flatShading: true });
+const matGold       = new THREE.MeshStandardMaterial({ color: 0xf5d57a, roughness: 0.18, metalness: 0.95, flatShading: true });
+const matGoldDk     = new THREE.MeshStandardMaterial({ color: 0xa07a3a, roughness: 0.4, metalness: 0.85, flatShading: true });
+const matBurgundy   = new THREE.MeshStandardMaterial({ color: 0x4a1418, roughness: 0.9, flatShading: true });
+const matBurgundyDk = new THREE.MeshStandardMaterial({ color: 0x2a0a10, roughness: 0.95, flatShading: true });
+const matVelvet     = new THREE.MeshStandardMaterial({ color: 0x5a0c14, roughness: 0.95, flatShading: true });
+const matEmerald    = new THREE.MeshStandardMaterial({ color: 0x1a4a2a, roughness: 0.7, flatShading: true });
+const matCarpet     = new THREE.MeshStandardMaterial({ color: 0x4a1414, roughness: 0.98, flatShading: true });
+const matCarpetTrim = new THREE.MeshStandardMaterial({ color: 0xa08040, roughness: 0.85, flatShading: true });
+const matFloorWood  = new THREE.MeshStandardMaterial({ color: 0x3a2412, roughness: 0.85, flatShading: true });
+const matCeiling    = new THREE.MeshStandardMaterial({ color: 0xefe2c4, roughness: 0.95, flatShading: true });
+const matCeilRosette= new THREE.MeshStandardMaterial({ color: 0xc8a060, roughness: 0.7, metalness: 0.4, flatShading: true });
+const matLinen      = new THREE.MeshStandardMaterial({ color: 0xeee2c8, roughness: 0.95, flatShading: true });
+const matMarble     = new THREE.MeshStandardMaterial({ color: 0x1c1c22, roughness: 0.25, metalness: 0.3, flatShading: true });
+const matMarbleVein = new THREE.MeshStandardMaterial({ color: 0x4a4248, roughness: 0.4, flatShading: true });
+const matCounterTop = new THREE.MeshStandardMaterial({ color: 0xeee2c4, roughness: 0.32, metalness: 0.18, flatShading: true });
+const matCounterVein= new THREE.MeshStandardMaterial({ color: 0xa0907a, roughness: 0.45, flatShading: true });
+const matCrystalLamp= new THREE.MeshBasicMaterial({ color: 0xfff2c8 });
+const matSconce     = new THREE.MeshBasicMaterial({ color: 0xfff0c0 });
+const matCandle     = new THREE.MeshBasicMaterial({ color: 0xffe0a0 });
+// Rain-streaked window glass — dark blue tint + animated diagonal rain
+// streaks + a few static droplets. The uTime uniform is ticked per frame.
+const matWindowGlass = new THREE.ShaderMaterial({
+  transparent: true,
+  uniforms: {
+    uTime: { value: 0 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    precision mediump float;
+    varying vec2 vUv;
+    uniform float uTime;
+    float rand(vec2 co) {
+      return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+    void main() {
+      vec2 uv = vUv;
+      // Almost no glass tint — landscape behind reads at near-full brightness
+      vec3 col = vec3(0.005, 0.012, 0.025);
+      float streakSum = 0.0;
+      // Four layers of rain streaks for visibility
+      for (int i = 0; i < 4; i++) {
+        float layer = float(i);
+        vec2 ruv = uv;
+        ruv.x *= 16.0 + layer * 8.0;       // denser columns
+        float colId = floor(ruv.x);
+        float speed = 1.4 + rand(vec2(colId, layer)) * 2.2;
+        ruv.y += uTime * speed;
+        ruv.y *= 4.0 + layer * 1.8;
+        float row = floor(ruv.y);
+        float r = rand(vec2(colId, row + layer * 17.0));
+        float streak = smoothstep(0.93, 1.0, r);   // more streaks per cell
+        float tail   = fract(ruv.y);
+        streakSum += streak * tail;
+      }
+      col += vec3(0.65, 0.78, 0.95) * streakSum * 0.85;
+      // Static droplets clinging to the pane
+      vec2 dropUv = uv * vec2(35.0, 22.0);
+      float dropId = floor(dropUv.x) * 13.0 + floor(dropUv.y) * 41.0;
+      float dropMask = step(0.965, rand(vec2(dropId, 7.0)));
+      vec2 dropFract = fract(dropUv) - 0.5;
+      float drop = dropMask * (1.0 - smoothstep(0.05, 0.30, length(dropFract))) * 0.85;
+      col += vec3(0.50, 0.65, 0.85) * drop;
+      // Mostly transparent — only opaque where streaks/droplets sit
+      float alpha = 0.18 + streakSum * 0.85 + drop * 0.85;
+      gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.95));
+    }
+  `,
+});
+const matCup        = new THREE.MeshStandardMaterial({ color: 0xece4d2, roughness: 0.4, flatShading: true });
+const matLiquidCoffee = new THREE.MeshStandardMaterial({ color: 0x2a160a, roughness: 0.3 });
+const matLiquidTea    = new THREE.MeshStandardMaterial({ color: 0x6a4020, roughness: 0.3 });
+const matLiquidWhisky = new THREE.MeshStandardMaterial({ color: 0xc88040, roughness: 0.3 });
+const matLiquidChoc   = new THREE.MeshStandardMaterial({ color: 0x3a200e, roughness: 0.4 });
+const matFlowerRed    = new THREE.MeshStandardMaterial({ color: 0xc8344a, roughness: 0.7, flatShading: true });
+const matFlowerLeaf   = new THREE.MeshStandardMaterial({ color: 0x4a6a30, roughness: 0.85, flatShading: true });
+
+// ══════════════════════════════════════════════════════════════════
+// CARRIAGE INTERIOR
+// ══════════════════════════════════════════════════════════════════
+const CAR_LEN = 18, CAR_W = 4.4, CAR_H = 2.8;
+
+// ── Floor: parquet planks ──
+{
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(CAR_LEN, CAR_W), matFloorWood);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+  // Inlaid plank seams (every 1.0 unit, alternating)
+  for (let i = -CAR_LEN/2 + 0.5; i <= CAR_LEN/2 - 0.5; i += 1.0) {
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.005, CAR_W - 0.4), matMahoganyDk);
+    seam.position.set(i, 0.003, 0);
+    scene.add(seam);
+  }
+}
+// ── Carpet runner down the centre of the aisle (burgundy + gold trim) ──
+{
+  const carpet = new THREE.Mesh(new THREE.BoxGeometry(CAR_LEN - 1.5, 0.03, 1.6), matCarpet);
+  carpet.position.set(0, 0.03, 0);
+  carpet.receiveShadow = true;
+  scene.add(carpet);
+  // Gold border strips
+  for (const side of [-1, 1]) {
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(CAR_LEN - 1.5, 0.035, 0.08), matCarpetTrim);
+    trim.position.set(0, 0.034, side * 0.74);
+    scene.add(trim);
+  }
+  // Subtle pattern motifs (small gold diamonds along the carpet)
+  for (let x = -CAR_LEN/2 + 1.5; x <= CAR_LEN/2 - 1.5; x += 1.4) {
+    for (const z of [-0.45, 0.0, 0.45]) {
+      const motif = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.034, 0.25), matCarpetTrim);
+      motif.position.set(x, 0.034, z);
+      motif.rotation.y = Math.PI / 4;
+      scene.add(motif);
+    }
+  }
+}
+
+// ── Ceiling: cream with rosettes ──
+{
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(CAR_LEN, CAR_W), matCeiling);
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.y = CAR_H;
+  ceil.receiveShadow = true;
+  scene.add(ceil);
+  // Decorative rosettes around each chandelier
+  const chandelierX = [-6, -2, 2, 6];
+  for (const x of chandelierX) {
+    const rosette = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 0.08, 18), matCeilRosette);
+    rosette.position.set(x, CAR_H - 0.04, 0);
+    scene.add(rosette);
+    const inner = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.08, 16), matGoldDk);
+    inner.position.set(x, CAR_H - 0.06, 0);
+    scene.add(inner);
+  }
+}
+
+// ── End walls ──
+{
+  const farWall = new THREE.Mesh(new THREE.BoxGeometry(0.18, CAR_H, CAR_W), matMahogany);
+  farWall.position.set(CAR_LEN/2, CAR_H/2, 0);
+  scene.add(farWall);
+  // Door: dark with a glass pane and brass kick
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.20, 2.1, 1.2), matMahoganyDk);
+  door.position.set(CAR_LEN/2, 1.05, 0);
+  scene.add(door);
+  const dw = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.7, 0.55), matWindowGlass);
+  dw.position.set(CAR_LEN/2, 1.7, 0);
+  scene.add(dw);
+  // Brass kick + ornate handle
+  const kick = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 1.2), matGold);
+  kick.position.set(CAR_LEN/2, 0.1, 0);
+  scene.add(kick);
+  const handle = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), matGold);
+  handle.position.set(CAR_LEN/2 - 0.05, 1.05, 0.45);
+  scene.add(handle);
+  // Gold-framed art panel above the door
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 1.4), matGoldDk);
+  panel.position.set(CAR_LEN/2 - 0.05, 2.45, 0);
+  scene.add(panel);
+
+  const nearWall = new THREE.Mesh(new THREE.BoxGeometry(0.18, CAR_H, CAR_W), matMahogany);
+  nearWall.position.set(-CAR_LEN/2, CAR_H/2, 0);
+  // Save the reference so we can hide it when the wide camera pulls
+  // back behind the carriage
+  window._nearWall = nearWall;
+  scene.add(nearWall);
+  // Everything behind the bar is collected into a group so it can be
+  // toggled when the camera pulls back behind the carriage.
+  const barBack = new THREE.Group();
+  // Behind-bar large gilded mirror
+  const mirrorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.4, 3.4), matGold);
+  mirrorFrame.position.set(-CAR_LEN/2 + 0.10, 1.65, 0);
+  barBack.add(mirrorFrame);
+  const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.2, 3.0), matMarble);
+  mirror.position.set(-CAR_LEN/2 + 0.13, 1.65, 0);
+  barBack.add(mirror);
+  for (const z of [-1.7, 1.7]) {
+    const col = new THREE.Mesh(new THREE.BoxGeometry(0.10, CAR_H, 0.18), matMahogany);
+    col.position.set(-CAR_LEN/2 + 0.15, CAR_H/2, z);
+    barBack.add(col);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.26), matGold);
+    cap.position.set(-CAR_LEN/2 + 0.14, CAR_H - 0.18, z);
+    barBack.add(cap);
+    const base = cap.clone();
+    base.position.y = 0.08;
+    barBack.add(base);
+  }
+  const decanterColours = [0x8a3020, 0xc89060, 0x4a6a30, 0x3a3068, 0x6a4020, 0xc0a060, 0x1a4a2a, 0x80a8c8, 0xc8a8c0];
+  for (let i = 0; i < 12; i++) {
+    const x = -CAR_LEN/2 + 0.12 + (Math.random() - 0.5) * 0.04;
+    const z = -1.2 + (i % 6) * 0.45 + (Math.random() - 0.5) * 0.06;
+    const y = 1.55 + Math.floor(i / 6) * 0.35 + 0.18;
+    const r = 0.07 + Math.random() * 0.04;
+    const h = 0.36 + Math.random() * 0.16;
+    const col = decanterColours[i % decanterColours.length];
+    const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.18, metalness: 0.1, transparent: true, opacity: 0.92, flatShading: true });
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.95, h, 14), mat);
+    bottle.position.set(x, y, z);
+    bottle.castShadow = true;
+    barBack.add(bottle);
+    const cork = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.45, r * 0.55, 0.12, 8), matGold);
+    cork.position.set(x, y + h / 2 + 0.06, z);
+    barBack.add(cork);
+  }
+  const shelfMat = new THREE.MeshStandardMaterial({ color: 0x2a1a10, roughness: 0.9, flatShading: true });
+  for (const sy of [1.50, 1.85, 2.20]) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 3.4), shelfMat);
+    shelf.position.set(-CAR_LEN/2 + 0.12, sy, 0);
+    barBack.add(shelf);
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.02, 3.4), matGold);
+    trim.position.set(-CAR_LEN/2 + 0.115, sy + 0.026, 0);
+    barBack.add(trim);
+  }
+  scene.add(barBack);
+  window._barBack = barBack;
+}
+
+// ── Side walls — windows + velvet curtains framing each ──
+const SIDE_Z = CAR_W / 2;
+function buildSideWall(zSign) {
+  const z = zSign * SIDE_Z;
+  const winWidth = 2.4, gap = 0.6;
+  const totalSpan = 5 * winWidth + 4 * gap;
+  const startX = -totalSpan / 2;
+  let cursor = -CAR_LEN / 2;
+  const winCenters = [];
+  for (let i = 0; i < 5; i++) {
+    const winCenterX = startX + winWidth / 2 + i * (winWidth + gap);
+    winCenters.push(winCenterX);
+    const segL = winCenterX - winWidth / 2 - cursor;
+    if (segL > 0.05) {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(segL, CAR_H, 0.12), matMahogany);
+      seg.position.set(cursor + segL / 2, CAR_H / 2, z);
+      scene.add(seg);
+      // Wainscot: lighter wood lower section
+      const wainscot = new THREE.Mesh(new THREE.BoxGeometry(segL, 0.7, 0.13), matMahoganyDk);
+      wainscot.position.set(cursor + segL / 2, 0.35, z + (zSign * 0.005));
+      scene.add(wainscot);
+    }
+    // Window opening framing
+    const top = new THREE.Mesh(new THREE.BoxGeometry(winWidth, 0.65, 0.12), matMahogany);
+    top.position.set(winCenterX, CAR_H - 0.32, z);
+    scene.add(top);
+    const bot = new THREE.Mesh(new THREE.BoxGeometry(winWidth, 0.85, 0.12), matMahogany);
+    bot.position.set(winCenterX, 0.42, z);
+    scene.add(bot);
+    // Window glass
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(winWidth, 1.3, 0.04), matWindowGlass);
+    glass.position.set(winCenterX, 1.45, z);
+    scene.add(glass);
+    // Brass frame on top + bottom
+    for (const fy of [0.83, 2.02]) {
+      const fm = new THREE.Mesh(new THREE.BoxGeometry(winWidth, 0.05, 0.14), matGold);
+      fm.position.set(winCenterX, fy, z);
+      scene.add(fm);
+    }
+    // Pelmet box (decorative valance above window)
+    const pelmet = new THREE.Mesh(new THREE.BoxGeometry(winWidth + 0.4, 0.18, 0.22), matGoldDk);
+    pelmet.position.set(winCenterX, 2.32, z + zSign * -0.10);
+    scene.add(pelmet);
+    // Velvet curtains tied back at each side
+    for (const csx of [-1, 1]) {
+      // Pleat geometry — a stretched cylinder with displaced normals
+      const curtainGeo = new THREE.CylinderGeometry(0.10, 0.10, 1.20, 8, 4);
+      // Squash the cylinder slightly
+      const curtain = new THREE.Mesh(curtainGeo, matVelvet);
+      curtain.scale.set(1.0, 1.0, 0.6);
+      curtain.position.set(winCenterX + csx * (winWidth / 2 - 0.15), 1.55, z + zSign * -0.05);
+      curtain.castShadow = true;
+      scene.add(curtain);
+      // Tie-back rope
+      const tie = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 6, 16), matGold);
+      tie.position.set(winCenterX + csx * (winWidth / 2 - 0.15), 1.30, z + zSign * -0.10);
+      tie.rotation.y = Math.PI / 2;
+      scene.add(tie);
+      // Tassel
+      const tassel = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), matGold);
+      tassel.position.set(winCenterX + csx * (winWidth / 2 - 0.15), 1.18, z + zSign * -0.18);
+      scene.add(tassel);
+    }
+    cursor = winCenterX + winWidth / 2;
+  }
+  if (cursor < CAR_LEN / 2) {
+    const segL = CAR_LEN / 2 - cursor;
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(segL, CAR_H, 0.12), matMahogany);
+    seg.position.set(cursor + segL / 2, CAR_H / 2, z);
+    scene.add(seg);
+  }
+  return winCenters;
+}
+buildSideWall(-1);
+buildSideWall( 1);
+
+// ── Wall sconces between windows (warm, bright) ──
+// Visible bulbs on both sides; only ONE actual point light per pair.
+const SCONCE_X = [-7.0, -4.0, -1.0, 1.5, 4.5, 7.0];
+for (const sx of SCONCE_X) {
+  for (const sz of [-1, 1]) {
+    const z = sz * (SIDE_Z - 0.06);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.14), matGold);
+    arm.position.set(sx, 1.85, z + (-sz) * 0.10);
+    addWideOnly(arm);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), matSconce);
+    bulb.position.set(sx, 1.93, z + (-sz) * 0.18);
+    addWideOnly(bulb);
+  }
+  // Single shared point light overhead between the two bulbs
+  const sconceLight = new THREE.PointLight(0xffd070, 1.0, 5, 1.4);
+  sconceLight.position.set(sx, 1.93, 0);
+  sconceLight.userData.flicker = true;
+  addWideOnly(sconceLight);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CHANDELIERS — multi-bulb crystal fixtures
+// ══════════════════════════════════════════════════════════════════
+const CHANDELIER_X = [-6, -2, 2, 6];
+for (const cx of CHANDELIER_X) {
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.4, 8), matGold);
+  pole.position.set(cx, CAR_H - 0.30, 0);
+  addWideOnly(pole);
+  const hub = new THREE.Mesh(new THREE.SphereGeometry(0.10, 14, 10), matGold);
+  hub.position.set(cx, CAR_H - 0.55, 0);
+  addWideOnly(hub);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.018, 6, 24), matGold);
+  ring.position.set(cx, CAR_H - 0.62, 0);
+  ring.rotation.x = Math.PI / 2;
+  addWideOnly(ring);
+  // 6 visible bulbs + crystals (cosmetic only) — all illuminated by ONE
+  // central point light per chandelier instead of 6, saves 20+ lights
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const armLen = 0.36;
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, armLen, 6), matGold);
+    arm.position.set(cx + Math.cos(a) * armLen / 2, CAR_H - 0.55, Math.sin(a) * armLen / 2);
+    arm.rotation.z = -Math.PI / 2;
+    arm.rotation.y = a;
+    addWideOnly(arm);
+    const bx = cx + Math.cos(a) * armLen;
+    const bz = Math.sin(a) * armLen;
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), matCrystalLamp);
+    bulb.position.set(bx, CAR_H - 0.62, bz);
+    addWideOnly(bulb);
+    const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), new THREE.MeshStandardMaterial({ color: 0xffe8b0, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.7 }));
+    crystal.position.set(bx, CAR_H - 0.78, bz);
+    addWideOnly(crystal);
+  }
+  // ONE strong point light per chandelier (was 6) — perf win
+  const cLight = new THREE.PointLight(0xffe0a0, 2.4, 8, 1.4);
+  cLight.position.set(cx, CAR_H - 0.62, 0);
+  cLight.userData.flicker = true;
+  addWideOnly(cLight);
+  const centerCrystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.10, 0), new THREE.MeshStandardMaterial({ color: 0xffe8b0, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.65 }));
+  centerCrystal.position.set(cx, CAR_H - 0.85, 0);
+  addWideOnly(centerCrystal);
+}
+
+// ── Counter + bar lighting ──
+const counterLamp = new THREE.PointLight(0xffe0a0, 3.0, 8, 1.2);
+counterLamp.position.set(-CAR_LEN/2 + 0.85, CAR_H - 0.4, 0);
+scene.add(counterLamp);
+// Focused work light right over the espresso machine
+const workLight = new THREE.PointLight(0xfff2c4, 2.4, 5, 1.1);
+workLight.position.set(-CAR_LEN/2 + 0.55, CAR_H - 0.5, 0.5);
+scene.add(workLight);
+// A second work light to wash the bar back
+const barWash = new THREE.PointLight(0xffd690, 1.3, 6, 1.4);
+barWash.position.set(-CAR_LEN/2 + 0.85, 1.7, -1.0);
+scene.add(barWash);
+scene.add(new THREE.HemisphereLight(0xc8a880, 0x2a1410, 0.85));
+const fillLight = new THREE.DirectionalLight(0xfff0c0, 0.50);
+fillLight.position.set(0, 4, 0);
+scene.add(fillLight);
+
+// ── Close-up studio lights — only active when making a drink. They
+// replace the chandeliers (which are hidden in close mode) so the
+// machine + tools stay bright and readable.
+const closeKey = new THREE.PointLight(0xfff0c8, 12.0, 9, 1.0);
+closeKey.position.set(-CAR_LEN/2 + 2.20, 2.10, 0.55);
+closeKey.visible = false;
+scene.add(closeKey);
+const closeFill = new THREE.PointLight(0xffe0b0, 6.0, 9, 1.2);
+closeFill.position.set(-CAR_LEN/2 + 0.55, 2.55, 0.55);
+closeFill.visible = false;
+scene.add(closeFill);
+const closeRim = new THREE.PointLight(0xffd590, 4.0, 6, 1.4);
+closeRim.position.set(-CAR_LEN/2 + 0.55, 1.30, 1.55);
+closeRim.visible = false;
+scene.add(closeRim);
+const closeAmbient = new THREE.AmbientLight(0xfff0d0, 0.55);
+closeAmbient.visible = false;
+scene.add(closeAmbient);
+const closeUpLights = [closeKey, closeFill, closeRim, closeAmbient];
+
+// ══════════════════════════════════════════════════════════════════
+// COUNTER + ESPRESSO MACHINE
+// ══════════════════════════════════════════════════════════════════
+const COUNTER_X = -CAR_LEN/2 + 1.6;
+let espressoMachineRoot = null;
+{
+  // Counter base — mahogany with gold trim
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 3.6), matMahogany);
+  base.position.set(-CAR_LEN/2 + 0.85, 0.5, 0);
+  base.castShadow = true; base.receiveShadow = true;
+  scene.add(base);
+  // Gold trim band
+  const trimBand = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.06, 3.62), matGold);
+  trimBand.position.set(-CAR_LEN/2 + 0.85, 0.97, 0);
+  scene.add(trimBand);
+  // Cream-marble counter top with golden veining (much more visible)
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 3.7), matCounterTop);
+  top.position.set(-CAR_LEN/2 + 0.85, 1.05, 0);
+  top.castShadow = true; top.receiveShadow = true;
+  scene.add(top);
+  for (let i = 0; i < 6; i++) {
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.085, 0.03), matCounterVein);
+    v.position.set(-CAR_LEN/2 + 0.85 + (Math.random() - 0.5) * 1.2, 1.052, (Math.random() - 0.5) * 3.3);
+    v.rotation.y = Math.random() * Math.PI;
+    scene.add(v);
+  }
+  // Brass front rail + foot rail
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 3.7), matGold);
+  rail.position.set(-CAR_LEN/2 + 0.85 + 0.85, 0.65, 0);
+  scene.add(rail);
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 3.7), matGold);
+  foot.position.set(-CAR_LEN/2 + 0.85 + 0.85, 0.18, 0);
+  scene.add(foot);
+
+  // ESPRESSO MACHINE — commercial 2-group, glossy black + chrome
+  // Modeled after a La Carimali style café machine
+  const eMachine = new THREE.Group();
+  espressoMachineRoot = eMachine;
+  // ── Local materials ──
+  const matMachineBlack = new THREE.MeshStandardMaterial({ color: 0x12120e, roughness: 0.45, metalness: 0.55, flatShading: false });
+  const matMachineGloss = new THREE.MeshStandardMaterial({ color: 0x3c3834, roughness: 0.6, metalness: 0.20, flatShading: false });
+  const matChrome       = new THREE.MeshStandardMaterial({ color: 0xeaeaec, roughness: 0.18, metalness: 1.0,  flatShading: false });
+  const matChromeDk     = new THREE.MeshStandardMaterial({ color: 0x9c9c9e, roughness: 0.32, metalness: 0.92, flatShading: false });
+  const matBlackPlastic = new THREE.MeshStandardMaterial({ color: 0x1a1a18, roughness: 0.55, metalness: 0.20, flatShading: false });
+  const matLCD          = new THREE.MeshStandardMaterial({ color: 0x40b0e8, emissive: 0x40b0e8, emissiveIntensity: 1.6, roughness: 0.2 });
+  const matCream        = new THREE.MeshStandardMaterial({ color: 0xece2c4, roughness: 0.6, flatShading: false });
+  const matSwitchOn     = new THREE.MeshStandardMaterial({ color: 0xff8030, emissive: 0xff5020, emissiveIntensity: 0.6, roughness: 0.4 });
+
+  // ── Drip tray base (sits on counter) ──
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(1.50, 0.05, 0.65), matMachineGloss);
+  tray.position.y = 0.025;
+  tray.castShadow = true;
+  eMachine.add(tray);
+
+  // ── Two grates on the drip tray (where cups sit) ──
+  for (const sx of [-0.30, 0.30]) {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.012, 0.30), matChromeDk);
+    frame.position.set(sx, 0.060, 0);
+    eMachine.add(frame);
+    // Long parallel grate bars
+    for (let i = -3; i <= 3; i++) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.014, 0.005), matMachineBlack);
+      line.position.set(sx, 0.066, i * 0.045);
+      eMachine.add(line);
+    }
+  }
+
+  // ── Stainless steel back panel under the group heads (mirror finish) ──
+  const ssBack = new THREE.Mesh(new THREE.BoxGeometry(1.00, 0.32, 0.02), matChrome);
+  ssBack.position.set(0, 0.21, 0.20);
+  eMachine.add(ssBack);
+
+  // ── Main body (black housing) ──
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.50, 0.36, 0.62), matMachineGloss);
+  body.position.y = 0.58;
+  body.castShadow = true;
+  eMachine.add(body);
+  // Chrome edge trim under the body
+  const bodyEdge = new THREE.Mesh(new THREE.BoxGeometry(1.50, 0.02, 0.64), matChrome);
+  bodyEdge.position.y = 0.39;
+  eMachine.add(bodyEdge);
+
+  // ── Top: chrome warming tray + black slats ──
+  const warmTop = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.04, 0.56), matChromeDk);
+  warmTop.position.y = 0.78;
+  eMachine.add(warmTop);
+  for (let i = 0; i < 14; i++) {
+    const slat = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.50), matMachineBlack);
+    slat.position.set(-0.65 + i * 0.10, 0.825, 0);
+    eMachine.add(slat);
+  }
+  // Back lip behind the slats
+  const backLip = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.10, 0.04), matMachineGloss);
+  backLip.position.set(0, 0.85, -0.30);
+  eMachine.add(backLip);
+
+  // ── Two large chrome side knobs (steam control dials) ──
+  for (const sx of [-0.62, 0.62]) {
+    const knobBase = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.05, 16), matChrome);
+    knobBase.rotation.x = Math.PI / 2;
+    knobBase.position.set(sx, 0.62, 0.31);
+    eMachine.add(knobBase);
+    const knobTop = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.025, 16), matMachineGloss);
+    knobTop.rotation.x = Math.PI / 2;
+    knobTop.position.set(sx, 0.62, 0.34);
+    eMachine.add(knobTop);
+    const knobIndicator = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.04, 0.005), matChrome);
+    knobIndicator.position.set(sx, 0.65, 0.355);
+    eMachine.add(knobIndicator);
+  }
+
+  // ── LCD display (centre) ──
+  const lcdFrame = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.08, 0.04), matBlackPlastic);
+  lcdFrame.position.set(0, 0.62, 0.30);
+  eMachine.add(lcdFrame);
+  const lcd = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.02), matLCD);
+  lcd.position.set(0, 0.62, 0.32);
+  eMachine.add(lcd);
+
+  // ── Two button-strip control panels (left + right of the LCD) ──
+  // The RIGHT panel is what the player CLICKS to pull the shot.
+  const buttonPanels = { left: new THREE.Group(), right: new THREE.Group() };
+  for (const side of ['left', 'right']) {
+    const sx = side === 'left' ? -0.30 : 0.30;
+    const panelGroup = buttonPanels[side];
+    // Black plastic backing
+    const backing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.10, 0.04), matBlackPlastic);
+    backing.position.set(0, 0, 0);
+    panelGroup.add(backing);
+    // 5 small chrome buttons in a row, last one is the "pull" indicator
+    for (let i = 0; i < 5; i++) {
+      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.02, 14),
+        i === 4 ? matChrome : matChromeDk);
+      btn.rotation.x = Math.PI / 2;
+      btn.position.set(-0.16 + i * 0.08, 0, 0.025);
+      panelGroup.add(btn);
+    }
+    panelGroup.position.set(sx, 0.50, 0.31);
+    eMachine.add(panelGroup);
+  }
+
+  // ── Two GROUP HEADS (chrome cylinders that hold the portafilters) ──
+  for (const sx of [-0.30, 0.30]) {
+    // Body of the group head
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.10, 16), matChrome);
+    head.position.set(sx, 0.34, 0.27);
+    head.castShadow = true;
+    eMachine.add(head);
+    // Bottom shower screen
+    const shower = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.012, 16), matChromeDk);
+    shower.position.set(sx, 0.286, 0.27);
+    eMachine.add(shower);
+    // PORTAFILTER — black handle hanging forward and down
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.18, 8), matBlackPlastic);
+    handle.position.set(sx, 0.18, 0.39);
+    handle.rotation.x = -Math.PI / 5;
+    eMachine.add(handle);
+    // Portafilter cup (the metal basket holder)
+    const pCup = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.05, 14), matChrome);
+    pCup.position.set(sx, 0.235, 0.30);
+    eMachine.add(pCup);
+    // Two pour spouts under each portafilter
+    for (const sx2 of [-0.018, 0.018]) {
+      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.030, 6), matChrome);
+      sp.position.set(sx + sx2, 0.198, 0.295);
+      eMachine.add(sp);
+    }
+  }
+
+  // ── Pressure gauge (left of the left group head) ──
+  const gaugeBezel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.025, 16), matChrome);
+  gaugeBezel.rotation.x = Math.PI / 2;
+  gaugeBezel.position.set(-0.46, 0.21, 0.225);
+  eMachine.add(gaugeBezel);
+  const gaugeFace = new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), matCream);
+  gaugeFace.position.set(-0.46, 0.21, 0.241);
+  eMachine.add(gaugeFace);
+  const needle = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.044, 0.003), matMachineBlack);
+  needle.position.set(-0.46, 0.225, 0.243);
+  needle.rotation.z = Math.PI / 4;
+  needle.userData.gaugeNeedle = true;
+  eMachine.add(needle);
+
+  // ── Hot water tap + handle on the left ──
+  const tapHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.10, 8), matChrome);
+  tapHandle.position.set(-0.42, 0.30, 0.30);
+  tapHandle.rotation.x = Math.PI / 4;
+  eMachine.add(tapHandle);
+  const tapBall = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10), matChromeDk);
+  tapBall.position.set(-0.42, 0.34, 0.30);
+  eMachine.add(tapBall);
+  // Orange power switch
+  const switchO = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.012), matSwitchOn);
+  switchO.position.set(-0.42, 0.21, 0.265);
+  eMachine.add(switchO);
+
+  // ── Steam wand on the right (chrome arm) ──
+  const wandBase = new THREE.Mesh(new THREE.SphereGeometry(0.025, 12, 10), matChromeDk);
+  wandBase.position.set(0.42, 0.32, 0.30);
+  eMachine.add(wandBase);
+  const wand = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 8), matChrome);
+  wand.position.set(0.45, 0.18, 0.34);
+  wand.rotation.x = -Math.PI / 6;
+  wand.rotation.z = -Math.PI / 14;
+  eMachine.add(wand);
+  const wandTip = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.04, 8), matChromeDk);
+  wandTip.position.set(0.49, 0.045, 0.36);
+  eMachine.add(wandTip);
+
+  // ── Brand plate at the front bottom ──
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.04, 0.005), matChromeDk);
+  plate.position.set(0, 0.04, 0.331);
+  eMachine.add(plate);
+
+  // ── Tag the right control panel as the "pull" tool ──
+  buttonPanels.right.userData.toolId = 'pull';
+  buttonPanels.right.userData.toolLabel = 'PULL';
+  buttonPanels.right.traverse(o => { if (o.isMesh) { o.userData.toolId = 'pull'; o.userData.toolLabel = 'PULL'; } });
+
+  eMachine.position.set(-CAR_LEN/2 + 0.55, 1.09, 0.5);
+  eMachine.rotation.y = Math.PI / 2;   // 90° CCW — front faces the camera
+  scene.add(eMachine);
+  // Make the right button panel registerable for hit testing.
+  // (Pushed into the tools array later, after the array is created.)
+  window._pullPanel = buttonPanels.right;
+
+  // Sugar jar + brass milk pitcher
+  const sugar = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.20, 14), matCup);
+  sugar.position.set(-CAR_LEN/2 + 0.55, 1.19, -0.5);
+  scene.add(sugar);
+  const sugarTop = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 14), matGold);
+  sugarTop.position.set(-CAR_LEN/2 + 0.55, 1.31, -0.5);
+  scene.add(sugarTop);
+  const pitcher = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.10, 0.28, 14), matGold);
+  pitcher.position.set(-CAR_LEN/2 + 0.55, 1.23, -1.05);
+  scene.add(pitcher);
+  // Pitcher handle
+  const handleMilk = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.018, 6, 14, Math.PI), matGold);
+  handleMilk.position.set(-CAR_LEN/2 + 0.55 + 0.18, 1.23, -1.05);
+  handleMilk.rotation.y = Math.PI / 2;
+  scene.add(handleMilk);
+  // A stack of saucers
+  for (let i = 0; i < 4; i++) {
+    const sauc = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.012, 18), matCup);
+    sauc.position.set(-CAR_LEN/2 + 0.55, 1.10 + i * 0.014, 1.0);
+    scene.add(sauc);
+  }
+  // ACTIVE CUP (hidden until used)
+  const cupOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.18, 18), matCup);
+  // Cup sits on the drip tray, directly under the right group head
+  // (machine rotated 90° CCW: local +x → world -z, local +z → world +x)
+  cupOuter.position.set(-CAR_LEN/2 + 0.82, 1.20, 0.20);
+  cupOuter.visible = false; cupOuter.castShadow = true;
+  scene.add(cupOuter);
+  const cupSaucer = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 20), matCup);
+  cupSaucer.position.copy(cupOuter.position).add(new THREE.Vector3(0, -0.10, 0));
+  cupSaucer.visible = false;
+  scene.add(cupSaucer);
+  const cupHandle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 5, 12, Math.PI), matCup);
+  cupHandle.position.copy(cupOuter.position).add(new THREE.Vector3(0.10, 0, 0));
+  cupHandle.rotation.y = Math.PI / 2;
+  cupHandle.visible = false;
+  scene.add(cupHandle);
+  const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.065, 0.16, 18), matLiquidCoffee);
+  liquid.position.copy(cupOuter.position);
+  liquid.scale.y = 0.001;
+  liquid.visible = false;
+  scene.add(liquid);
+  const steam = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 6), new THREE.MeshStandardMaterial({ color: 0xc8c4be, transparent: true, opacity: 0.0, roughness: 1.0 }));
+  steam.position.copy(cupOuter.position).add(new THREE.Vector3(0, 0.20, 0));
+  scene.add(steam);
+
+  window._activeCup = { outer: cupOuter, saucer: cupSaucer, handle: cupHandle, liquid, steam, machine: eMachine };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BARISTA TOOLS — clickable meshes on the counter, each tagged with
+// userData.toolId so the raycaster can identify what the player hit.
+// All tools are added to the `tools` array for easy iteration.
+// ══════════════════════════════════════════════════════════════════
+const tools = [];
+function addTool(mesh, toolId, label) {
+  mesh.userData.toolId = toolId;
+  mesh.userData.toolLabel = label;
+  // Mark every descendant too so raycast hits any sub-mesh
+  mesh.traverse(o => { if (o.isMesh) { o.userData.toolId = toolId; o.userData.toolLabel = label; } });
+  tools.push({ mesh, toolId, label });
+}
+
+// ── GRINDER — tall dark cylinder with brass top & hopper, left of espresso machine ──
+{
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.42, 14), matMahoganyDk);
+  body.position.y = 0.21;
+  g.add(body);
+  const hopper = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.20, 14), new THREE.MeshStandardMaterial({ color: 0x202028, roughness: 0.3, metalness: 0.4, transparent: true, opacity: 0.7, flatShading: true }));
+  hopper.position.y = 0.55;
+  g.add(hopper);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 14), matGold);
+  cap.position.y = 0.66;
+  g.add(cap);
+  // Spout
+  const spout = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.04, 0.18), matGoldDk);
+  spout.position.set(0, 0.28, 0.16);
+  g.add(spout);
+  // Crank handle (rotates on grind)
+  const crank = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.025, 0.025), matGold);
+  crank.position.set(0.16, 0.55, 0);
+  g.add(crank);
+  g.position.set(-CAR_LEN/2 + 0.55, 1.10, -0.5);
+  scene.add(g);
+  addTool(g, 'grinder', 'GRIND');
+  g.userData.parts = { hopper, cap, crank, body };
+}
+
+// ── TAMPER — wood handle, brass disc, sitting on a small mat ──
+{
+  const t = new THREE.Group();
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.012, 0.20), matBurgundy);
+  mat.position.y = 0;
+  t.add(mat);
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.16, 12), matMahogany);
+  handle.position.y = 0.10;
+  t.add(handle);
+  const top = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), matMahoganyDk);
+  top.position.y = 0.20;
+  t.add(top);
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 14), matGold);
+  disc.position.y = 0.02;
+  t.add(disc);
+  t.position.set(-CAR_LEN/2 + 1.05, 1.10, -0.15);
+  t.rotation.y = 0.4;
+  scene.add(t);
+  addTool(t, 'tamper', 'TAMP');
+  t.userData.parts = { handle, top, disc };
+}
+
+// ── PULL TARGET — register the right control panel + a large, easy
+// invisible hitbox in front of it. The hitbox makes the click target
+// generous enough to land easily even from the close-up camera angle.
+if (window._pullPanel) {
+  tools.push({ mesh: window._pullPanel, toolId: 'pull', label: 'PULL' });
+  // Big invisible click hitbox sitting right in front of the right panel
+  const pullHit = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.5, 0.18),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0, depthWrite: false }),
+  );
+  // Right panel world position is approximately:
+  //   machine origin (-CAR_LEN/2 + 0.55, 1.09, 0.5) + local (0.30, 0.50, 0.31)
+  // Place the hitbox slightly in front (+z) of that.
+  // After 90° CCW rotation: button panels (originally at local +z 0.31)
+  // now sit at world +x of the machine center.
+  pullHit.position.set(-CAR_LEN/2 + 0.55 + 0.40, 1.09 + 0.50, 0.5 - 0.30);
+  pullHit.userData.toolId = 'pull';
+  pullHit.userData.toolLabel = 'PULL';
+  scene.add(pullHit);
+  tools.push({ mesh: pullHit, toolId: 'pull', label: 'PULL' });
+}
+
+// ── KETTLE — brass kettle on a small warmer (right side of counter) ──
+{
+  const k = new THREE.Group();
+  const warmer = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.04, 14), matGoldDk);
+  warmer.position.y = 0.02;
+  k.add(warmer);
+  // Tiny blue flame on the warmer
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.10, 6), new THREE.MeshBasicMaterial({ color: 0x80c0ff }));
+  flame.position.y = 0.10;
+  flame.userData.flameTab = true;
+  k.add(flame);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.30, 16), matGold);
+  body.position.y = 0.20;
+  k.add(body);
+  // Spout
+  const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.18, 8), matGold);
+  spout.position.set(0.20, 0.28, 0);
+  spout.rotation.z = -0.5;
+  k.add(spout);
+  // Handle
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.022, 6, 14, Math.PI), matGoldDk);
+  handle.position.set(0, 0.42, 0);
+  handle.rotation.x = Math.PI / 2;
+  k.add(handle);
+  // Lid knob
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), matMahoganyDk);
+  knob.position.y = 0.40;
+  k.add(knob);
+  k.position.set(-CAR_LEN/2 + 0.55, 1.10, 1.4);
+  scene.add(k);
+  addTool(k, 'kettle', 'KETTLE');
+  k.userData.parts = { body, spout, handle, knob, flame };
+}
+
+// ── COCOA TIN ── small black tin with gold label
+{
+  const t = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 16), new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.3, flatShading: true }));
+  body.position.y = 0.09;
+  t.add(body);
+  const labelBand = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.072, 0.08, 16), matGold);
+  labelBand.position.y = 0.09;
+  t.add(labelBand);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.072, 0.025, 16), matGoldDk);
+  lid.position.y = 0.20;
+  t.add(lid);
+  t.position.set(-CAR_LEN/2 + 1.05, 1.10, 0.95);
+  scene.add(t);
+  addTool(t, 'cocoaTin', 'ADD COCOA');
+  t.userData.parts = { body, lid };
+}
+
+// ── SPOON / STIRRER ──
+{
+  const s = new THREE.Group();
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.018, 0.32), matGold);
+  handle.position.y = 0.018;
+  s.add(handle);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.04, 10, 8), matGold);
+  head.position.set(0, 0.018, -0.18);
+  head.scale.set(1.2, 0.45, 1);
+  s.add(head);
+  s.position.set(-CAR_LEN/2 + 1.10, 1.10, 1.30);
+  s.rotation.y = -0.6;
+  scene.add(s);
+  addTool(s, 'spoon', 'STIR');
+  s.userData.parts = { handle, head };
+}
+
+// ── WHISKY BOTTLE — featured bottle on the counter (not in the shelf) ──
+{
+  const b = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.32, 14), new THREE.MeshStandardMaterial({ color: 0x6a3a18, roughness: 0.18, metalness: 0.1, transparent: true, opacity: 0.85, flatShading: true }));
+  body.position.y = 0.16;
+  b.add(body);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 0.10, 10), new THREE.MeshStandardMaterial({ color: 0x6a3a18, roughness: 0.18, metalness: 0.1, transparent: true, opacity: 0.85 }));
+  neck.position.y = 0.36;
+  b.add(neck);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.06, 8), matMahoganyDk);
+  cork.position.y = 0.44;
+  b.add(cork);
+  // Gold label
+  const label = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.005), matGold);
+  label.position.set(0, 0.16, 0.071);
+  b.add(label);
+  // Sit at the back-left end of the counter, clear of the espresso
+  // machine, so the close-up frames it cleanly.
+  b.position.set(-CAR_LEN/2 + 0.85, 1.10, -1.30);
+  scene.add(b);
+  addTool(b, 'whiskyBottle', 'POUR WHISKY');
+  b.userData.parts = { body, neck, cork, label };
+}
+
+// ── GUIDE BOOK — leather-bound on the counter ──
+{
+  const book = new THREE.Group();
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.06, 0.40), new THREE.MeshStandardMaterial({ color: 0x4a1010, roughness: 0.85, flatShading: true }));
+  cover.position.y = 0.03;
+  book.add(cover);
+  // Gold-trimmed spine
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.40), matGoldDk);
+  spine.position.set(-0.13, 0.035, 0);
+  book.add(spine);
+  // Gold corners
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const c = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.064, 0.04), matGold);
+    c.position.set(sx * 0.13, 0.032, sz * 0.18);
+    book.add(c);
+  }
+  // Title plate (gold rectangle on cover)
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.064, 0.10), matGold);
+  plate.position.set(0, 0.034, 0);
+  book.add(plate);
+  book.position.set(-CAR_LEN/2 + 1.30, 1.10, -0.85);
+  book.rotation.y = -0.25;
+  scene.add(book);
+  addTool(book, 'guideBook', 'GUIDE BOOK');
+}
+
+// Highlight ring that follows the active tool
+const highlightRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.20, 0.26, 24),
+  new THREE.MeshBasicMaterial({ color: 0xffd070, transparent: true, opacity: 0.0, side: THREE.DoubleSide }),
+);
+highlightRing.rotation.x = -Math.PI / 2;
+highlightRing.position.set(0, 0, 0);
+highlightRing.visible = false;
+scene.add(highlightRing);
+window._highlightRing = highlightRing;
+
+// ── Pointer arrow — a bright cone that hovers above the active tool
+// pointing DOWN at it, with a glow-halo torus underneath.
+const pointerArrow = new THREE.Group();
+const arrowCone = new THREE.Mesh(
+  new THREE.ConeGeometry(0.075, 0.20, 8),
+  new THREE.MeshBasicMaterial({ color: 0xfff0a0 }),
+);
+arrowCone.rotation.x = Math.PI;     // point down
+arrowCone.position.y = 0.10;
+pointerArrow.add(arrowCone);
+const arrowStem = new THREE.Mesh(
+  new THREE.BoxGeometry(0.035, 0.16, 0.035),
+  new THREE.MeshBasicMaterial({ color: 0xffe080 }),
+);
+arrowStem.position.y = 0.28;
+pointerArrow.add(arrowStem);
+const arrowHalo = new THREE.Mesh(
+  new THREE.TorusGeometry(0.10, 0.012, 6, 18),
+  new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0.7 }),
+);
+arrowHalo.rotation.x = Math.PI / 2;
+arrowHalo.position.y = -0.02;
+pointerArrow.add(arrowHalo);
+pointerArrow.visible = false;
+scene.add(pointerArrow);
+window._pointerArrow = pointerArrow;
+
+// ── POUR STREAM — a thin cylinder reused for any active pour ──
+const pourStream = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.012, 0.012, 1, 8),
+  new THREE.MeshBasicMaterial({ color: 0x2a160a, transparent: true, opacity: 0.0 }),
+);
+pourStream.visible = false;
+scene.add(pourStream);
+
+// ── STEAM PUFFS — recycled white puffs that rise + fade ──
+const STEAM_POOL = 14;
+const steamPuffs = [];
+for (let i = 0; i < STEAM_POOL; i++) {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(0.045, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xe8e2d2, transparent: true, opacity: 0.0, roughness: 1.0 }),
+  );
+  m.visible = false;
+  scene.add(m);
+  steamPuffs.push({ mesh: m, age: Infinity, sx: 0, sy: 0, sz: 0 });
+}
+function emitSteam(x, y, z) {
+  // Recycle the oldest puff
+  let oldest = steamPuffs[0];
+  for (const p of steamPuffs) if (p.age > oldest.age) oldest = p;
+  oldest.age = 0;
+  oldest.sx = x; oldest.sy = y; oldest.sz = z;
+  oldest.mesh.position.set(x, y, z);
+  oldest.mesh.scale.setScalar(0.4);
+  oldest.mesh.visible = true;
+}
+let _lastSteamT = 0;
+function tickSteam(dt, t) {
+  for (const p of steamPuffs) {
+    if (p.age >= 1.6) { p.mesh.visible = false; continue; }
+    p.age += dt;
+    const u = p.age / 1.6;
+    p.mesh.position.y = p.sy + u * 0.5 + Math.sin(t * 4 + p.sx) * 0.02;
+    p.mesh.position.x = p.sx + Math.sin(t * 2 + p.sy) * 0.04 * u;
+    p.mesh.position.z = p.sz + Math.cos(t * 2 + p.sy) * 0.04 * u;
+    p.mesh.material.opacity = (1 - u) * 0.55;
+    p.mesh.scale.setScalar(0.4 + u * 1.2);
+  }
+}
+
+// ── COCOA POWDER PARTICLES — small brown specks falling into the cup ──
+const COCOA_POOL = 24;
+const cocoaParticles = [];
+for (let i = 0; i < COCOA_POOL; i++) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(0.014, 0.014, 0.014),
+    new THREE.MeshStandardMaterial({ color: 0x4a2010, roughness: 0.95 }),
+  );
+  m.visible = false;
+  scene.add(m);
+  cocoaParticles.push({ mesh: m, age: Infinity, vx: 0, vy: 0, vz: 0 });
+}
+function emitCocoa(srcX, srcY, srcZ) {
+  for (let i = 0; i < 10; i++) {
+    let oldest = cocoaParticles[0];
+    for (const p of cocoaParticles) if (p.age > oldest.age) oldest = p;
+    oldest.age = 0;
+    oldest.mesh.position.set(srcX + (Math.random() - 0.5) * 0.04, srcY, srcZ + (Math.random() - 0.5) * 0.04);
+    oldest.vx = (Math.random() - 0.5) * 0.4;
+    oldest.vy = -0.2 - Math.random() * 0.4;
+    oldest.vz = (Math.random() - 0.5) * 0.4;
+    oldest.mesh.visible = true;
+  }
+}
+function tickCocoa(dt) {
+  for (const p of cocoaParticles) {
+    if (p.age >= 0.8) { p.mesh.visible = false; continue; }
+    p.age += dt;
+    p.vy -= 1.6 * dt;
+    p.mesh.position.x += p.vx * dt;
+    p.mesh.position.y += p.vy * dt;
+    p.mesh.position.z += p.vz * dt;
+  }
+}
+
+// Draw a thin pour-stream from (x1,y1,z1) to (x2,y2,z2)
+let _streamDrawnThisFrame = false;
+let _lastCupSteamT = 0;
+function drawStream(x1, y1, z1, x2, y2, z2, colourHex) {
+  const dx = x2 - x1, dy = y2 - y1, dz = z2 - z1;
+  const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+  if (len < 0.01) return;
+  pourStream.position.set((x1+x2)/2, (y1+y2)/2, (z1+z2)/2);
+  pourStream.scale.set(1, len, 1);
+  // Orient the cylinder to span (a, b)
+  const dir = new THREE.Vector3(dx, dy, dz).normalize();
+  const up = new THREE.Vector3(0, 1, 0);
+  pourStream.quaternion.setFromUnitVectors(up, dir);
+  pourStream.material.color.setHex(colourHex);
+  pourStream.material.opacity = 0.85;
+  pourStream.visible = true;
+  _streamDrawnThisFrame = true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// BOOTHS — tufted leather, tablecloths, candle holders, flowers
+// ══════════════════════════════════════════════════════════════════
+const BOOTH_X = [-3.6, -0.6, 2.4, 5.4];
+function buildBooth(boothX, boothZ) {
+  // Build everything into a per-booth group so the whole booth can be
+  // toggled with a single visible flag in close-up mode.
+  const group = new THREE.Group();
+  for (const sign of [-1, 1]) {
+    const z = boothZ + sign * 0.85;
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.5, 0.5), matBurgundy);
+    base.position.set(boothX, 0.25, z);
+    base.castShadow = true; base.receiveShadow = true;
+    group.add(base);
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.12, 0.42), matBurgundyDk);
+    cushion.position.set(boothX, 0.51, z);
+    group.add(cushion);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.85, 0.16), matBurgundy);
+    back.position.set(boothX, 0.85, z + sign * 0.20);
+    back.castShadow = true;
+    group.add(back);
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 2; j++) {
+        const btn = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), matGold);
+        btn.position.set(boothX - 0.4 + i * 0.4, 0.65 + j * 0.3, z + sign * 0.28);
+        group.add(btn);
+      }
+    }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.18), matGold);
+    rail.position.set(boothX, 1.27, z + sign * 0.20);
+    group.add(rail);
+  }
+  const tableMain = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.06, 0.7), matMahoganyDk);
+  tableMain.position.set(boothX, 0.62, boothZ);
+  group.add(tableMain);
+  const cloth = new THREE.Mesh(new THREE.BoxGeometry(1.20, 0.025, 0.86), matLinen);
+  cloth.position.set(boothX, 0.658, boothZ);
+  cloth.castShadow = true; cloth.receiveShadow = true;
+  group.add(cloth);
+  for (const sx of [-1, 1]) {
+    const drape = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.18, 0.86), matLinen);
+    drape.position.set(boothX + sx * 0.60, 0.56, boothZ);
+    group.add(drape);
+  }
+  for (const sz of [-1, 1]) {
+    const drape = new THREE.Mesh(new THREE.BoxGeometry(1.20, 0.18, 0.025), matLinen);
+    drape.position.set(boothX, 0.56, boothZ + sz * 0.43);
+    group.add(drape);
+  }
+  for (const tx of [-0.45, 0.45]) {
+    for (const tz of [-0.30, 0.30]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.6, 6), matGold);
+      leg.position.set(boothX + tx, 0.31, boothZ + tz);
+      group.add(leg);
+    }
+  }
+  const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.16, 10), matGold);
+  holder.position.set(boothX + 0.32, 0.75, boothZ);
+  group.add(holder);
+  const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.10, 8), matLinen);
+  candle.position.set(boothX + 0.32, 0.85, boothZ);
+  group.add(candle);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.10, 6), matCandle);
+  flame.position.set(boothX + 0.32, 0.94, boothZ);
+  flame.userData.flameTab = true;
+  group.add(flame);
+  const flameLight = new THREE.PointLight(0xffaa60, 0.55, 2.6, 1.6);
+  flameLight.position.copy(flame.position).add(new THREE.Vector3(0, 0.05, 0));
+  group.add(flameLight);
+  const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.10, 10), matMarble);
+  vase.position.set(boothX - 0.32, 0.74, boothZ);
+  group.add(vase);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.12, 4), matFlowerLeaf);
+    stem.position.set(boothX - 0.32 + Math.cos(a) * 0.025, 0.85, boothZ + Math.sin(a) * 0.025);
+    stem.rotation.x = Math.cos(a) * 0.2;
+    stem.rotation.z = Math.sin(a) * 0.2;
+    group.add(stem);
+    const bud = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), matFlowerRed);
+    bud.position.set(boothX - 0.32 + Math.cos(a) * 0.06, 0.92, boothZ + Math.sin(a) * 0.06);
+    group.add(bud);
+  }
+  for (const sx of [-0.18, 0.18]) {
+    const wgStem = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.10, 6), matMarbleVein);
+    wgStem.position.set(boothX + sx, 0.74, boothZ - 0.20);
+    group.add(wgStem);
+    const wgCup = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.025, 0.07, 10), new THREE.MeshStandardMaterial({ color: 0x6a1a18, roughness: 0.2, metalness: 0.05, transparent: true, opacity: 0.7, flatShading: true }));
+    wgCup.position.set(boothX + sx, 0.83, boothZ - 0.20);
+    group.add(wgCup);
+  }
+  addWideOnly(group);
+}
+for (const x of BOOTH_X) {
+  buildBooth(x, -1.4);
+  buildBooth(x,  1.4);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// OUTSIDE — landscape silhouettes + passing town lights + tunnel
+// Each ride has a different landscape (city, forest, industrial,
+// farmland, coastal). The landscape group is rebuilt on ride change.
+// ══════════════════════════════════════════════════════════════════
+const outsideGroup = new THREE.Group();
+addWideOnly(outsideGroup);
+{
+  const outsideMat = new THREE.MeshBasicMaterial({ color: 0x020408 });   // pitch-dark void
+  for (const sign of [-1, 1]) {
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(60, CAR_H * 4), outsideMat);
+    plane.position.set(0, CAR_H, sign * (SIDE_Z + 0.4));
+    plane.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+    outsideGroup.add(plane);
+  }
+}
+
+// ── Landscape system ──────────────────────────────────────────────
+// Each landscape style is a function (sign, group) that adds parallax
+// silhouettes to the group. Landscape elements scroll at half the speed
+// of close passing lights for a parallax depth feel.
+const landscapeRoots = { '-1': null, '1': null };
+// Silhouettes need to read as shapes against the dark sky, so they're
+// a bit brighter than the void background — closer to a midnight grey.
+const matCitySilhouette  = new THREE.MeshBasicMaterial({ color: 0x363c4c });
+const matCityWindow      = new THREE.MeshBasicMaterial({ color: 0xffd070 });
+const matCityWindowCool  = new THREE.MeshBasicMaterial({ color: 0x90b8e8 });
+const matForestSilhouette= new THREE.MeshBasicMaterial({ color: 0x141a18 });
+const matIndustrial      = new THREE.MeshBasicMaterial({ color: 0x1a1612 });
+const matIndustrialGlow  = new THREE.MeshBasicMaterial({ color: 0xff6020 });
+const matFarmland        = new THREE.MeshBasicMaterial({ color: 0x161a14 });
+const matFarmlandWindow  = new THREE.MeshBasicMaterial({ color: 0xffb050 });
+const matCoastal         = new THREE.MeshBasicMaterial({ color: 0x101820 });
+const matLighthouse      = new THREE.MeshBasicMaterial({ color: 0xffe8a0 });
+
+function addPL(group, mesh, baseSpeed) {
+  // Tag every silhouette mesh as a parallax-scrolling element.
+  mesh.userData.scroll = baseSpeed;
+  group.add(mesh);
+}
+
+const LANDSCAPE_BUILDERS = {
+  city(group, sign) {
+    const z = sign * (SIDE_Z + 1.4);
+    for (let i = 0; i < 18; i++) {
+      const w = 0.7 + Math.random() * 1.2;
+      const h = 1.8 + Math.random() * 3.4;
+      const x = -30 + i * 3.6 + (Math.random() - 0.5) * 1.5;
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.10), matCitySilhouette);
+      b.position.set(x, h / 2, z);
+      addPL(group, b, 3.0);
+      // Plenty of lit windows so the city actually reads as a city
+      const cols = Math.max(2, Math.floor(w / 0.16));
+      const rows = Math.max(3, Math.floor(h / 0.26));
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (Math.random() < 0.55) {
+            const lit = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.13),
+              Math.random() < 0.7 ? matCityWindow : matCityWindowCool);
+            lit.position.set(
+              x - w / 2 + 0.12 + c * 0.16,
+              0.34 + r * 0.26,
+              z + sign * 0.06
+            );
+            lit.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+            addPL(group, lit, 3.0);
+          }
+        }
+      }
+    }
+  },
+  forest(group, sign) {
+    const z = sign * (SIDE_Z + 1.0);
+    for (let i = 0; i < 26; i++) {
+      const h = 1.4 + Math.random() * 2.2;
+      const x = -30 + i * 2.4 + (Math.random() - 0.5) * 1.4;
+      const tree = new THREE.Mesh(new THREE.ConeGeometry(0.45 + Math.random() * 0.3, h, 6), matForestSilhouette);
+      tree.position.set(x, h / 2, z + (Math.random() - 0.5) * 0.6);
+      addPL(group, tree, 4.0);
+    }
+    // A few high cool fireflies / distant lights
+    for (let i = 0; i < 5; i++) {
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), matCityWindowCool);
+      f.position.set(-30 + Math.random() * 60, 1.0 + Math.random() * 2.0, z + 0.3);
+      addPL(group, f, 3.5);
+    }
+  },
+  industrial(group, sign) {
+    const z = sign * (SIDE_Z + 1.4);
+    for (let i = 0; i < 8; i++) {
+      const x = -30 + i * 7.5 + (Math.random() - 0.5) * 2.0;
+      // Factory block
+      const fw = 1.8 + Math.random() * 1.2;
+      const fh = 1.2 + Math.random() * 0.6;
+      const block = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.12), matIndustrial);
+      block.position.set(x, fh / 2, z);
+      addPL(group, block, 2.6);
+      // Smokestack(s)
+      for (let s = 0; s < 1 + Math.floor(Math.random() * 2); s++) {
+        const sh = 2.5 + Math.random() * 1.6;
+        const stack = new THREE.Mesh(new THREE.BoxGeometry(0.30, sh, 0.10), matIndustrial);
+        stack.position.set(x + (s - 0.5) * fw * 0.6, sh / 2, z);
+        addPL(group, stack, 2.6);
+        // Glowing vent at the top
+        const vent = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.12), matIndustrialGlow);
+        vent.position.set(stack.position.x, sh - 0.05, z + sign * 0.06);
+        vent.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+        addPL(group, vent, 2.6);
+      }
+    }
+  },
+  farmland(group, sign) {
+    const z = sign * (SIDE_Z + 1.4);
+    // Sparse barns
+    for (let i = 0; i < 6; i++) {
+      const x = -30 + i * 10 + (Math.random() - 0.5) * 4;
+      const h = 0.9 + Math.random() * 0.5;
+      const w = 1.4 + Math.random() * 0.6;
+      const barn = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.10), matFarmland);
+      barn.position.set(x, h / 2, z);
+      addPL(group, barn, 2.2);
+      // Pitched roof (triangle prism approximated with a flat plane)
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.6, 0.5, 4), matFarmland);
+      roof.position.set(x, h + 0.20, z);
+      roof.rotation.y = Math.PI / 4;
+      addPL(group, roof, 2.2);
+      // Lit window
+      if (Math.random() < 0.7) {
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.14), matFarmlandWindow);
+        win.position.set(x + (Math.random() - 0.5) * w * 0.5, h * 0.55, z + sign * 0.06);
+        win.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+        addPL(group, win, 2.2);
+      }
+    }
+    // Distant fence posts
+    for (let i = 0; i < 30; i++) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.30, 0.04), matFarmland);
+      post.position.set(-30 + i * 2.0, 0.15, z - sign * 0.5);
+      addPL(group, post, 2.2);
+    }
+  },
+  coastal(group, sign) {
+    const z = sign * (SIDE_Z + 1.6);
+    // Flat horizon line — a thin dark strip
+    const horizon = new THREE.Mesh(new THREE.PlaneGeometry(80, 0.6), matCoastal);
+    horizon.position.set(0, 0.30, z);
+    horizon.rotation.y = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+    outsideGroup.add(horizon);  // not parallax — static at horizon
+    // A lighthouse and a couple of distant ship lights
+    for (let i = 0; i < 3; i++) {
+      const x = -25 + i * 18 + (Math.random() - 0.5) * 4;
+      const h = 1.6 + Math.random() * 0.6;
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(0.20, h, 0.10), matCoastal);
+      tower.position.set(x, h / 2, z);
+      addPL(group, tower, 1.6);
+      const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.10, 8, 6), matLighthouse);
+      beacon.position.set(x, h, z + sign * 0.06);
+      addPL(group, beacon, 1.6);
+    }
+    // Sparse ship/buoy lights low on the water
+    for (let i = 0; i < 6; i++) {
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), matFarmlandWindow);
+      f.position.set(-30 + Math.random() * 60, 0.35 + Math.random() * 0.15, z + 0.3);
+      addPL(group, f, 1.6);
+    }
+  },
+};
+const LANDSCAPE_PER_RIDE = ['city', 'forest', 'industrial', 'farmland', 'coastal'];
+
+function setLandscape(rideNumber) {
+  const style = LANDSCAPE_PER_RIDE[(rideNumber - 1) % LANDSCAPE_PER_RIDE.length];
+  for (const sign of [-1, 1]) {
+    const key = String(sign);
+    if (landscapeRoots[key]) {
+      // Dispose old meshes
+      landscapeRoots[key].traverse(o => { if (o.geometry) o.geometry.dispose(); });
+      outsideGroup.remove(landscapeRoots[key]);
+    }
+    const g = new THREE.Group();
+    LANDSCAPE_BUILDERS[style](g, sign);
+    outsideGroup.add(g);
+    landscapeRoots[key] = g;
+  }
+}
+setLandscape(1);
+
+// Close passing lights — small bright dots that drift faster (foreground)
+const passingLights = [];
+const passLightMatWarm = new THREE.MeshBasicMaterial({ color: 0xffd070 });
+const passLightMatCool = new THREE.MeshBasicMaterial({ color: 0xa8c8e8 });
+for (let i = 0; i < 18; i++) {
+  const isWarm = Math.random() > 0.3;
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.20, 0.20), isWarm ? passLightMatWarm : passLightMatCool);
+  const sign = (i % 2 === 0) ? -1 : 1;
+  m.position.set(-30 + Math.random() * 60, 0.5 + Math.random() * 1.4, sign * (SIDE_Z + 0.6 + Math.random() * 0.5));
+  m.userData.speed = 7 + Math.random() * 4;
+  outsideGroup.add(m);
+  passingLights.push(m);
+}
+
+let tunnelT = 0;
+let tunnelActive = false;
+let nextTunnelT = 24 + Math.random() * 18;
+const tunnelOverlay = document.getElementById('tunnel');
+
+// ══════════════════════════════════════════════════════════════════
+// CAMERA
+// ══════════════════════════════════════════════════════════════════
+// Wide-shot bartender POV (default) and tight close-up over the machine.
+// The camera lerps between these whenever the player begins / finishes a
+// recipe — hides the wide carriage and zooms in on the working surface.
+const CAMERA_WIDE = {
+  // Bartender eye level — camera sits behind the counter, looking out
+  // across the bar at the customer side and down the carriage. Counter
+  // top fills the lower foreground at a natural angle.
+  pos:  new THREE.Vector3(-CAR_LEN/2 + 0.30, 1.95, 0),
+  look: new THREE.Vector3(4, 0.85, 0),
+  fov:  72,
+};
+// Default close-up (used as a fallback)
+const CAMERA_CLOSE = {
+  pos:  new THREE.Vector3(-CAR_LEN/2 + 3.20, 1.85, 0.30),
+  look: new THREE.Vector3(-CAR_LEN/2 + 0.55, 1.20, 0.30),
+  fov:  74,
+};
+
+// Per-drink close-up cameras + cup landing positions. Each drink frames
+// its own tools so the player isn't staring at the espresso machine
+// when they're pouring whisky.
+const CAMERA_CLOSE_BY_DRINK = {
+  coffee: {
+    pos:  new THREE.Vector3(-CAR_LEN/2 + 3.10, 1.85, 0.20),
+    look: new THREE.Vector3(-CAR_LEN/2 + 0.55, 1.25, 0.20),
+    fov:  74,
+    cup:  new THREE.Vector3(-CAR_LEN/2 + 0.82, 1.20, 0.20),
+  },
+  whisky: {
+    pos:  new THREE.Vector3(-CAR_LEN/2 + 2.10, 1.55, -1.00),
+    look: new THREE.Vector3(-CAR_LEN/2 + 0.90, 1.05, -1.30),
+    fov:  62,
+    cup:  new THREE.Vector3(-CAR_LEN/2 + 1.30, 1.18, -1.30),
+  },
+  tea: {
+    pos:  new THREE.Vector3(-CAR_LEN/2 + 2.30, 1.65, 1.40),
+    look: new THREE.Vector3(-CAR_LEN/2 + 0.55, 1.10, 1.40),
+    fov:  62,
+    cup:  new THREE.Vector3(-CAR_LEN/2 + 1.10, 1.18, 1.40),
+  },
+  chocolate: {
+    pos:  new THREE.Vector3(-CAR_LEN/2 + 2.80, 1.75, 1.05),
+    look: new THREE.Vector3(-CAR_LEN/2 + 0.65, 1.10, 1.05),
+    fov:  70,
+    cup:  new THREE.Vector3(-CAR_LEN/2 + 1.10, 1.18, 1.05),
+  },
+};
+let _activeCloseCam = CAMERA_CLOSE;
+let cameraMode = 'wide';
+const _camCurPos  = CAMERA_WIDE.pos.clone();
+const _camCurLook = CAMERA_WIDE.look.clone();
+let   _camCurFov  = CAMERA_WIDE.fov;
+function setCameraMode(m, drinkKind) {
+  cameraMode = m;
+  // Pick the right close-up for the active drink (defaults to coffee)
+  if (m === 'close' && drinkKind && CAMERA_CLOSE_BY_DRINK[drinkKind]) {
+    _activeCloseCam = CAMERA_CLOSE_BY_DRINK[drinkKind];
+    // Reposition the cup at the relevant tool's spot
+    const cup = window._activeCup;
+    if (cup) {
+      const cp = _activeCloseCam.cup;
+      cup.outer.position.copy(cp);
+      cup.saucer.position.copy(cp).add(new THREE.Vector3(0, -0.10, 0));
+      cup.handle.position.copy(cp).add(new THREE.Vector3(0.10, 0, 0));
+      cup.liquid.position.copy(cp);
+      cup.steam.position.copy(cp).add(new THREE.Vector3(0, 0.20, 0));
+    }
+  }
+  // Toggle the wide-carriage decorations so close-up doesn't pay
+  // for chandelier lights, booth candles, passing lights etc.
+  setCarriageVisible(m === 'wide');
+  if (state && state.mesh) state.mesh.visible = (m === 'wide');
+  if (typeof closeUpLights !== 'undefined') {
+    for (const l of closeUpLights) l.visible = (m === 'close');
+  }
+  // Hide the working tools + espresso machine in wide mode — they only
+  // belong on screen when the player is actively making a drink.
+  if (typeof tools !== 'undefined') {
+    for (const t of tools) t.mesh.visible = (m === 'close');
+  }
+  if (typeof espressoMachineRoot !== 'undefined' && espressoMachineRoot) {
+    espressoMachineRoot.visible = (m === 'close');
+  }
+  // Hide the back wall + everything behind the bar in wide mode so the
+  // camera can sit behind the carriage and look forward over the bar.
+  if (window._nearWall) window._nearWall.visible = (m === 'close');
+  if (window._barBack)  window._barBack.visible  = (m === 'close');
+  // Pointer arrow + highlight ring only belong in close-up mode
+  if (m === 'wide') {
+    if (window._pointerArrow)  window._pointerArrow.visible  = false;
+    if (window._highlightRing) window._highlightRing.visible = false;
+    const tp = document.getElementById('toolPrompt');
+    if (tp) tp.classList.remove('show');
+  }
+}
+
+camera.position.copy(CAMERA_WIDE.pos);
+camera.lookAt(CAMERA_WIDE.look);
+let targetYaw = 0, targetPitch = -0.18;
+let camYaw = 0, camPitch = -0.18;
+canvas.addEventListener('mousemove', (e) => {
+  const nx = (e.clientX / window.innerWidth)  * 2 - 1;
+  const ny = (e.clientY / window.innerHeight) * 2 - 1;
+  targetYaw   = -nx * 0.32;
+  targetPitch = -ny * 0.18 - 0.05;
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PASSENGERS — same hand-written cast, with tip tiers
+//   seatIdx: index into COUNTER_SEATS[] (where they stand at the bar)
+//            -1 = conductor (special case at end)
+// ══════════════════════════════════════════════════════════════════
+// Bar stools: positions in front of the counter, evenly along the bar
+const COUNTER_FRONT_X = -CAR_LEN/2 + 1.55 + 0.50;     // ~0.5 in front of the bar's customer edge
+const COUNTER_SEATS = [
+  { x: COUNTER_FRONT_X, z: -1.45 },
+  { x: COUNTER_FRONT_X, z: -0.55 },
+  { x: COUNTER_FRONT_X, z:  0.35 },
+  { x: COUNTER_FRONT_X, z:  1.30 },
+  { x: COUNTER_FRONT_X, z:  0.85 },
+];
+
+const PASSENGERS = [
+  {
+    name: 'OLD MAN IN A GREY COAT',
+    coat: 0x4a4a52, scarf: 0x6a3030, skin: 0xc8a890,
+    seatIdx: 0, drink: { kind: 'coffee', label: 'BLACK COFFEE', target: [0.78, 0.92] },
+    tipBase: 8, tipMax: 18,
+    lines: [
+      { speaker: 'OLD MAN', text: 'Don\'t put anything in it. Just black.' },
+      { speaker: 'OLD MAN', text: 'I left her on the platform. I told her I would come back.' },
+      { speaker: 'OLD MAN', text: '…that was forty years ago. I never went back.' },
+      { speaker: 'OLD MAN', text: 'You think the dead listen?' },
+    ],
+    afterServe: [
+      { speaker: 'OLD MAN', text: 'Hot. Bitter. Thank you.' },
+      { speaker: 'OLD MAN', text: 'I\'m glad someone\'s still working tonight.' },
+    ],
+  },
+  {
+    name: 'YOUNG WOMAN WITH A NOTEBOOK',
+    coat: 0x3a4a6a, scarf: 0xc89060, skin: 0xe8c8a0,
+    seatIdx: 1, drink: { kind: 'tea', label: 'BLACK TEA', target: [0.62, 0.78] },
+    tipBase: 6, tipMax: 14,
+    lines: [
+      { speaker: 'WOMAN', text: 'Tea, please. No milk. Anything sweet, if you have it.' },
+      { speaker: 'WOMAN', text: 'I bought this notebook in the city on a whim, two years ago.' },
+      { speaker: 'WOMAN', text: 'I told myself I\'d fill it with poems. I have written one line.' },
+      { speaker: 'WOMAN', text: '"The trains all leave in the same direction now."' },
+    ],
+    afterServe: [{ speaker: 'WOMAN', text: 'Oh. That\'s lovely. Thank you.' }],
+  },
+  {
+    name: 'A QUIET MAN',
+    coat: 0x2a2a30, scarf: 0x000000, skin: 0xb89070,
+    seatIdx: 2, drink: { kind: 'whisky', label: 'WHISKY · NEAT', target: [0.30, 0.46] },
+    tipBase: 12, tipMax: 24,
+    lines: [
+      { speaker: 'MAN', text: 'Whisky. A small one. No ice.' },
+      { speaker: 'MAN', text: 'I won\'t bother you. I came to sit with the warm light.' },
+      { speaker: 'MAN', text: '...' },
+      { speaker: 'MAN', text: 'My wife liked the sound a train makes. I\'m bringing it back to her.' },
+    ],
+    afterServe: [{ speaker: 'MAN', text: 'Quiet hands. You\'d have made a good musician.' }],
+  },
+  {
+    name: 'A CHILD AND HER GRANDMOTHER',
+    coat: 0x6a3050, scarf: 0xc8a040, skin: 0xd8b890,
+    seatIdx: 3, drink: { kind: 'chocolate', label: 'HOT CHOCOLATE', target: [0.85, 1.0] },
+    tipBase: 7, tipMax: 16,
+    lines: [
+      { speaker: 'GRANDMOTHER', text: 'A hot chocolate, please. Fill it.' },
+      { speaker: 'GRANDMOTHER', text: 'She\'s never been on a train before.' },
+      { speaker: 'GRANDMOTHER', text: 'I told her this was a holiday. She doesn\'t need to know yet.' },
+      { speaker: 'GRANDMOTHER', text: 'When you bring it, please smile at her.' },
+    ],
+    afterServe: [
+      { speaker: 'GRANDMOTHER', text: 'Look! Isn\'t the man kind, sweetheart?' },
+      { speaker: 'GRANDMOTHER', text: 'Yes, dear. Drink it slowly, it\'s very hot.' },
+    ],
+  },
+  {
+    name: 'A TRAVELLER IN A WORN HAT',
+    coat: 0x5a4828, scarf: 0x4a2418, skin: 0xb88a68,
+    seatIdx: 4, drink: { kind: 'coffee', label: 'STRONG COFFEE', target: [0.88, 1.0] },
+    tipBase: 10, tipMax: 22,
+    lines: [
+      { speaker: 'TRAVELLER', text: 'Strongest coffee you have. I want to be awake when we arrive.' },
+      { speaker: 'TRAVELLER', text: 'I\'ve been crossing places like this all my life.' },
+      { speaker: 'TRAVELLER', text: 'Always somewhere to leave. Always somewhere to find.' },
+      { speaker: 'TRAVELLER', text: 'Tonight is different. Tonight there\'s no map.' },
+    ],
+    afterServe: [{ speaker: 'TRAVELLER', text: 'Now that — that will keep me awake. My thanks.' }],
+  },
+  {
+    name: 'THE CONDUCTOR',
+    coat: 0x102018, scarf: 0xc8a860, skin: 0xc8a884,
+    seatIdx: -1, drink: null,
+    tipBase: 0, tipMax: 0,
+    // {STOP} is replaced per ride at runtime in buildConductor()
+    lines: [
+      { speaker: 'CONDUCTOR', text: 'Last call.' },
+      { speaker: 'CONDUCTOR', text: 'Approaching {STOP}. We rest the engines for a quarter-hour.' },
+      { speaker: 'CONDUCTOR', text: 'Step off, stretch your legs. Spend what you\'ve earned.' },
+      { speaker: 'CONDUCTOR', text: 'When the bell rings — board again.' },
+    ],
+    afterServe: [],
+    isFinal: true,
+  },
+];
+
+// Plain stop names (without the framing dashes, title-cased) for dialogue.
+function currentStopName() {
+  const idx = Math.min(state ? state.rideNumber - 1 : 0, STOPS.length - 1);
+  const raw = STOPS[idx].replace(/—/g, '').trim();
+  return raw.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+// Build a per-ride conductor with the current station's name baked in.
+function buildConductor() {
+  const tpl = PASSENGERS[PATRONS_PER_RIDE];
+  const stop = currentStopName();
+  return {
+    ...tpl,
+    lines: tpl.lines.map(l => ({ ...l, text: l.text.replace('{STOP}', stop) })),
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PROCEDURAL PASSENGERS — used on every ride after the first. The
+// hand-crafted five only ride the train once; after that it's strangers
+// the whole way down.
+// ══════════════════════════════════════════════════════════════════
+// 4th element is options: { kid: true } skips alcohol drinks for that
+// character.
+const PROC_PEOPLE = [
+  ['A WOMAN IN A LACE COLLAR',                'WOMAN',        0xc8a6b2, {}],
+  ['A SAILOR ON LEAVE',                       'SAILOR',       0x2a4a68, {}],
+  ['AN ENGINEER IN OVERALLS',                 'ENGINEER',     0x4a4a3a, {}],
+  ['A WIDOWER WITH A FOLDED LETTER',          'WIDOWER',      0x3a3038, {}],
+  ['A YOUNG SOLDIER',                         'SOLDIER',      0x4a5a3a, {}],
+  ['A SCHOOLTEACHER WITH CHALK ON HER SLEEVE','TEACHER',      0x6a4a30, {}],
+  ['A FOREIGN CARTOGRAPHER',                  'CARTOGRAPHER', 0x5a3a2a, {}],
+  ['A RUNAWAY GIRL',                          'GIRL',         0x8a4060, { kid: true }],
+  ['AN OLD MUSICIAN',                         'MUSICIAN',     0x303030, {}],
+  ['A PRIEST WITHOUT HIS COLLAR',             'PRIEST',       0x1a1a1a, {}],
+  ['A NURSE STILL IN UNIFORM',                'NURSE',        0xc8c8c8, {}],
+  ['A POET FROM THE NORTH',                   'POET',         0x4a3a5a, {}],
+  ['A FATHER WITH NO LUGGAGE',                'FATHER',       0x4a3028, {}],
+  ['A WOMAN IN A FUR HAT',                    'WOMAN',        0x6a4030, {}],
+  ['A LIBRARIAN',                             'LIBRARIAN',    0x3a4a30, {}],
+  ['A FORMER ACTRESS',                        'ACTRESS',      0x804a6a, {}],
+  ['A BOY WITH A WOODEN BIRD',                'BOY',          0x4a6a8a, { kid: true }],
+  ['A FACTORY FOREMAN',                       'FOREMAN',      0x5a4030, {}],
+  ['A FORTUNE TELLER',                        'FORTUNE TELLER', 0x6a2030, {}],
+  ['A TIRED CLERK',                           'CLERK',        0x404840, {}],
+];
+const PROC_SCARVES = [0x6a3030, 0xc89060, 0x4a6a30, 0x3a3068, 0x6a4020, 0xc0a060, 0x80a8c8, 0x4a2418, 0xc8a040];
+const PROC_SKINS   = [0xc8a890, 0xe8c8a0, 0xb89070, 0xd8b890, 0xb88a68, 0xa07050, 0xe0c8a0, 0x8a6850];
+const PROC_DRINKS  = [
+  { kind: 'coffee',    label: 'COFFEE',         target: [0.78, 0.92] },
+  { kind: 'coffee',    label: 'STRONG COFFEE',  target: [0.88, 1.00] },
+  { kind: 'tea',       label: 'TEA',            target: [0.62, 0.78] },
+  { kind: 'tea',       label: 'BLACK TEA',      target: [0.62, 0.78] },
+  { kind: 'whisky',    label: 'WHISKY · NEAT',  target: [0.30, 0.46] },
+  { kind: 'whisky',    label: 'WHISKY · DOUBLE',target: [0.50, 0.66] },
+  { kind: 'chocolate', label: 'HOT CHOCOLATE',  target: [0.85, 1.00] },
+];
+const PROC_OPENINGS = {
+  coffee: [
+    'Coffee. Black.', 'A coffee, please. Strong if you have it.',
+    'Just a coffee. Hot.', 'Coffee. I won\'t sleep tonight anyway.',
+    'A coffee. The kind that hurts a little.',
+  ],
+  tea: [
+    'Tea, please. Plain.', 'Tea. Whatever you have.',
+    'A tea, please. I\'m cold.', 'Tea. My grandmother\'s drink.',
+    'A tea. Something to hold.',
+  ],
+  whisky: [
+    'A whisky. Single.', 'Whisky. Don\'t look at me.',
+    'Whisky, please. A small one.', 'A whisky. The cheap one.',
+    'Whisky. I\'ve earned it.',
+  ],
+  chocolate: [
+    'Hot chocolate. The thick kind.',
+    'Chocolate, please. I haven\'t had one in years.',
+    'A hot chocolate. For my hands.',
+    'Chocolate. With cream if you have it.',
+  ],
+};
+// Universal regrets — written so they fit any character (no age, gender,
+// or profession-specific details). Avoid lines like "32 years on the
+// factory floor" that only fit one archetype.
+const PROC_MEMORIES = [
+  'I left a window open at home. I keep thinking of it.',
+  'I haven\'t spoken to someone I should have called by now.',
+  'I packed a bag this morning and forgot to bring it.',
+  'There\'s a name I can\'t bring myself to say out loud anymore.',
+  'I told a lie a long time ago. I never told anyone since.',
+  'I lost something on the way to the platform. I haven\'t looked for it.',
+  'I was supposed to be on the morning train. I missed it on purpose.',
+  'I wrote a letter once. It\'s still folded in my coat.',
+  'My mother used to make tea like this. I haven\'t made it the same.',
+  'There was a song I knew by heart. I can\'t remember how it starts.',
+  'I left a door unlocked. I think someone went in.',
+  'I keep dreaming about a room I\'ve never been in.',
+  'I owe someone an apology. I won\'t make it now.',
+  'I was somewhere I shouldn\'t have been. Twice.',
+  'I haven\'t been outside this town in a long while.',
+];
+const PROC_REVEALS = [
+  '...I think I will not see her again.',
+  '...I won\'t tell anyone where I\'m going.',
+  '...the worst part is, I asked for it.',
+  '...and that is the truth of it.',
+  '...I should have stayed.',
+  '...I\'m glad I came, in the end.',
+  '...I don\'t know what waits at the next station.',
+  '...there\'s no one left to write to.',
+  '...I never said goodbye properly.',
+  '...some things you just carry.',
+  '...the silence afterwards was the strangest part.',
+];
+const PROC_QUESTIONS = [
+  'Have you ever been somewhere quiet for a long time?',
+  'Do you believe in second chances?',
+  'Will you tell anyone I was here?',
+  'Are you all right, working so late?',
+  'Does the train always run this empty?',
+  'Will you remember any of us, after tonight?',
+  null, null, null,    // sometimes no question
+];
+const PROC_AFTERSERVE = [
+  'Thank you. That\'s exactly right.',
+  'Warm. That\'s good.',
+  'You have steady hands.',
+  'I needed this.',
+  'Yes. Thank you.',
+  'It tastes like home.',
+  'Better than I deserve.',
+  'You\'re kinder than you know.',
+];
+function _pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function generateProcPassenger(seatIdx) {
+  const [name, speaker, coat, opts] = _pick(PROC_PEOPLE);
+  const scarf = _pick(PROC_SCARVES);
+  const skin  = _pick(PROC_SKINS);
+  // Kids never order whisky
+  const drinkPool = (opts && opts.kid)
+    ? PROC_DRINKS.filter(d => d.kind !== 'whisky')
+    : PROC_DRINKS;
+  const drink = _pick(drinkPool);
+  const lines = [
+    { speaker, text: _pick(PROC_OPENINGS[drink.kind]) },
+    { speaker, text: _pick(PROC_MEMORIES) },
+    { speaker, text: _pick(PROC_REVEALS) },
+  ];
+  const q = _pick(PROC_QUESTIONS);
+  if (q) lines.push({ speaker, text: q });
+  return {
+    name, coat, scarf, skin,
+    seatIdx,
+    drink,
+    tipBase: 6 + Math.floor(Math.random() * 6),
+    tipMax:  14 + Math.floor(Math.random() * 12),
+    lines,
+    afterServe: [{ speaker, text: _pick(PROC_AFTERSERVE) }],
+  };
+}
+
+// Build a passenger mesh
+function makePassenger(spec) {
+  const root = new THREE.Group();
+  const coatMat  = new THREE.MeshStandardMaterial({ color: spec.coat,  roughness: 0.95, flatShading: true });
+  const scarfMat = new THREE.MeshStandardMaterial({ color: spec.scarf, roughness: 0.95, flatShading: true });
+  const skinMat  = new THREE.MeshStandardMaterial({ color: spec.skin,  roughness: 0.85, flatShading: true });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.34, 0.90, 10), coatMat);
+  torso.position.y = 0.45; torso.castShadow = true;
+  root.add(torso);
+  const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 6, 18, Math.PI * 1.2), scarfMat);
+  scarf.position.y = 0.85; scarf.rotation.x = Math.PI / 2;
+  root.add(scarf);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 12), skinMat);
+  head.position.y = 1.10; head.castShadow = true;
+  root.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.20, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0x14110a, roughness: 0.95, flatShading: true }));
+  hair.position.y = 1.10;
+  root.add(hair);
+  for (const sx of [-1, 1]) {
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.55, 8), coatMat);
+    arm.position.set(sx * 0.34, 0.55, 0.0);
+    arm.rotation.z = sx * 0.2;
+    arm.castShadow = true;
+    root.add(arm);
+  }
+  // Conductor gets a peaked cap with a brass band, plus a row of brass
+  // buttons down the front of the coat. Other passengers don't.
+  if (spec.isFinal) {
+    const capMat   = new THREE.MeshStandardMaterial({ color: 0x0a0a08, roughness: 0.9, flatShading: true });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xc89030, roughness: 0.35, metalness: 0.85, flatShading: true });
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.21, 0.10, 14), capMat);
+    crown.position.y = 1.35; crown.castShadow = true;
+    root.add(crown);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.211, 0.211, 0.025, 14), brassMat);
+    band.position.y = 1.295;
+    root.add(band);
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.012, 0.16), capMat);
+    visor.position.set(0, 1.275, 0.16);
+    visor.rotation.x = -0.20;
+    root.add(visor);
+    // Brass front buttons (3 down the centre)
+    for (let i = 0; i < 3; i++) {
+      const btn = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), brassMat);
+      btn.position.set(0, 0.78 - i * 0.15, 0.30);
+      root.add(btn);
+    }
+  }
+  return root;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// GAME STATE
+// ══════════════════════════════════════════════════════════════════
+const SAVE_KEY = 'lasttraincafe.save.v1';
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) { return null; }
+}
+function writeSave() {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      totalCoins: state.totalCoins,
+      rideNumber: state.rideNumber,
+      upgrades:   { ...upgrades },
+    }));
+  } catch (_) {}
+}
+const _saved = loadSave();
+
+const state = {
+  index: -1, passenger: null, mesh: null, step: 'idle', stepT: 0, lineIdx: 0,
+  fillLevel: 0, pourTimer: 0, pouring: false, servedQuality: 0, finished: false,
+  lineShownAt: 0,             // for listening bonus
+  rideTips: 0, ridePerfects: 0, rideServed: 0,
+  totalCoins: _saved ? _saved.totalCoins  : 0,
+  rideNumber: _saved ? _saved.rideNumber  : 1,
+};
+
+// Upgrade ownership
+const upgrades = {
+  betterMachine:    false,    // +30% target band width
+  silverTray:       false,    // +25% all tips
+  patientSeats:     false,    // (cosmetic, future use)
+  marketingLeaflet: false,    // doubles the conductor's seat tip pool
+  nextTrainTicket:  false,    // unlocks futuristic train (placeholder this build)
+};
+if (_saved && _saved.upgrades) {
+  for (const k of Object.keys(upgrades)) {
+    if (_saved.upgrades[k]) upgrades[k] = true;
+  }
+}
+const UPGRADE_DEFS = [
+  { id: 'betterMachine',    name: 'BRASS MASTERPIECE',  cost: 28,  desc: 'A wider tolerance band — perfect pours feel possible. (+30% target band)' },
+  { id: 'silverTray',       name: 'SILVER TRAY',        cost: 38,  desc: 'Every coin you earn shines a little brighter. (+25% all tips)' },
+  { id: 'patientSeats',     name: 'CUSHIONED BOOTHS',   cost: 22,  desc: 'Passengers stay longer. The carriage feels warmer.' },
+  { id: 'marketingLeaflet', name: 'EVENING GAZETTE',    cost: 30,  desc: 'A small advertisement nets you generous patrons next ride.' },
+  { id: 'nextTrainTicket',  name: 'TICKET · LINE 7',    cost: 90,  desc: 'A tessellated chrome ticket. The next train is silver. (Unlocks Tier II.)' },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// RECIPES — multi-step drink workflows. Each step expects a tool.
+//   type: 'click'  — single tap of the matching tool
+//         'hold'   — press and HOLD on the tool for `dur` seconds
+//         'count'  — tap the tool `count` times in a row
+//         'wait'   — passive timer; auto-advances after `dur`
+// ══════════════════════════════════════════════════════════════════
+const RECIPES = {
+  coffee: {
+    name: 'BLACK COFFEE',
+    steps: [
+      { tool: 'grinder', type: 'hold',  dur: 1.6, label: 'GRIND THE BEANS',     hint: 'click + hold the grinder' },
+      { tool: 'tamper',  type: 'click',           label: 'TAMP THE GROUNDS',    hint: 'tap the tamper' },
+      { tool: 'pull',    type: 'hold',  dur: 2.6, label: 'PULL THE SHOT',       hint: 'hold the right buttons on the machine' },
+    ],
+  },
+  tea: {
+    name: 'BLACK TEA',
+    steps: [
+      { tool: 'kettle',  type: 'hold',  dur: 1.6, label: 'BOIL THE WATER',      hint: 'hold the kettle on the warmer' },
+      { tool: 'kettle',  type: 'hold',  dur: 1.2, label: 'POUR INTO THE CUP',   hint: 'tip the kettle to pour' },
+      { tool: '__none__',type: 'wait',  dur: 2.8, label: 'STEEP — DO NOT TOUCH',hint: 'let the leaves do their work' },
+    ],
+  },
+  whisky: {
+    name: 'WHISKY · NEAT',
+    steps: [
+      { tool: 'whiskyBottle', type: 'hold', dur: 1.0, label: 'POUR A SMALL MEASURE', hint: 'a brief pour — neat is generous, not full' },
+    ],
+  },
+  chocolate: {
+    name: 'HOT CHOCOLATE',
+    steps: [
+      { tool: 'kettle',   type: 'hold',  dur: 1.4, label: 'STEAM THE MILK',       hint: 'hold the kettle' },
+      { tool: 'cocoaTin', type: 'click',           label: 'ADD A SCOOP OF COCOA', hint: 'tap the cocoa tin' },
+      { tool: 'spoon',    type: 'count', count: 3, label: 'STIR THOROUGHLY',      hint: 'tap the spoon 3 times' },
+    ],
+  },
+};
+const GUIDE_CONTENT = {
+  coffee: {
+    title: 'BLACK COFFEE',
+    subtitle: '— recipe N°I · for the long-watching ones —',
+    steps: [
+      'Grind 18g of beans to a fine espresso grind. Hold the grinder until the chamber fills.',
+      'Tamp the grounds firmly and evenly into the basket.',
+      'Pull a 30ml shot for 25 to 30 seconds. Stop a hair early rather than late.',
+    ],
+  },
+  tea: {
+    title: 'BLACK TEA',
+    subtitle: '— recipe N°II · the simplest cup in the carriage —',
+    steps: [
+      'Heat fresh water on the warmer until the kettle sings.',
+      'Pour from a height — a thin pour for a clean infusion.',
+      'Steep for four full minutes. Do not lift the cup early.',
+    ],
+  },
+  whisky: {
+    title: 'WHISKY · NEAT',
+    subtitle: '— recipe N°III · pour with intention, not weight —',
+    steps: [
+      'Take down the dark bottle from the right.',
+      'A single measure — about a finger and a half. Stop the moment it sits right.',
+      'Place it down without ceremony.',
+    ],
+  },
+  chocolate: {
+    title: 'HOT CHOCOLATE',
+    subtitle: '— recipe N°IV · for cold hands and small visitors —',
+    steps: [
+      'Steam the milk on the warmer until it just begins to lift.',
+      'Add a heaped spoon of cocoa from the black tin.',
+      'Stir three times — slow circles, all the way to the bottom.',
+    ],
+  },
+};
+
+const dialogEl = document.getElementById('dialog');
+const dialogSpeaker = document.getElementById('dialogSpeaker');
+const dialogLine    = document.getElementById('dialogLine');
+const drinkHud      = document.getElementById('drinkHud');
+const orderText     = document.getElementById('orderText');
+const meterFill     = document.getElementById('meterFill');
+const meterTarget   = document.getElementById('meterTarget');
+const drinkHint     = document.getElementById('drinkHint');
+const drinkQuality  = document.getElementById('drinkQuality');
+const coinAmount    = document.getElementById('coinAmount');
+coinAmount.textContent = state.totalCoins;          // restore from save
+const stepLabel     = document.getElementById('stepLabel');
+const stepListEl    = document.getElementById('stepList');
+const guideOverlay  = document.getElementById('guideOverlay');
+const guideTitle    = document.getElementById('guideTitle');
+const guideSubtitle = document.getElementById('guideSubtitle');
+const guideSteps    = document.getElementById('guideSteps');
+const guidePageNo   = document.getElementById('guidePageNo');
+const toolPrompt    = document.getElementById('toolPrompt');
+
+let _pendingLineCb = null;
+function showLine(line, onAdvance) {
+  dialogSpeaker.textContent = line.speaker;
+  dialogLine.textContent = line.text;
+  dialogEl.classList.add('show');
+  state.lineShownAt = performance.now();
+  _pendingLineCb = onAdvance;
+}
+function hideDialog() {
+  dialogEl.classList.remove('show');
+  _pendingLineCb = null;
+}
+document.addEventListener('click', (e) => {
+  if (!_pendingLineCb) return;
+  // Don't steal clicks intended for buttons / interactive UI
+  if (e.target && (e.target.tagName === 'BUTTON' || e.target.closest && e.target.closest('button'))) return;
+  if (e.target && e.target.closest && e.target.closest('.station')) return;
+  if (e.target && e.target.closest && e.target.closest('.gate')) return;
+  const cb = _pendingLineCb;
+  _pendingLineCb = null;
+  cb();
+});
+
+function showDrinkHud(spec) {
+  orderText.textContent = spec.label;
+  drinkQuality.textContent = '';
+  drinkHud.classList.add('show');
+  refreshStepHud();
+}
+function hideDrinkHud() {
+  drinkHud.classList.remove('show');
+  toolPrompt.classList.remove('show');
+  if (window._highlightRing) window._highlightRing.visible = false;
+}
+function refreshStepHud() {
+  const r = state.recipe;
+  if (!r) return;
+  // Step list (line per step, current bolded)
+  stepListEl.innerHTML = '';
+  for (let i = 0; i < r.steps.length; i++) {
+    const s = r.steps[i];
+    const cls = i < state.stepIndex ? 'done'
+              : i === state.stepIndex ? 'active' : '';
+    const div = document.createElement('div');
+    div.className = cls;
+    const tag = i < state.stepIndex ? '✓ ' : (i === state.stepIndex ? '▸ ' : '· ');
+    div.textContent = `${tag}${s.label}`;
+    stepListEl.appendChild(div);
+  }
+  const cur = r.steps[state.stepIndex];
+  if (cur) {
+    stepLabel.textContent = cur.label;
+    drinkHint.textContent = cur.hint;
+    // Reset meter
+    meterFill.style.width = '0%';
+    if (cur.type === 'hold') {
+      // The "target" band sits at 80–100% of the bar, so player aims for the upper end
+      meterTarget.style.left  = '70%';
+      meterTarget.style.width = '30%';
+    } else if (cur.type === 'wait') {
+      meterTarget.style.left  = '95%';
+      meterTarget.style.width = '5%';
+    } else if (cur.type === 'count') {
+      meterTarget.style.left  = '95%';
+      meterTarget.style.width = '5%';
+    } else {
+      meterTarget.style.left = '95%';
+      meterTarget.style.width = '5%';
+    }
+  } else {
+    stepLabel.textContent = 'READY TO SERVE';
+    drinkHint.textContent = 'tap the cup to deliver';
+  }
+  positionToolPrompt();
+}
+
+// Compute the actual visible AIM POINT for a tool (where the player
+// should look). The right control panel of the espresso machine is
+// inside the machine body; the grinder + tamper + bottles + spoon
+// have their click point at the top of the mesh. Bounding-box top
+// works for most, with manual tweaks for "pull".
+const _bbox = new THREE.Box3();
+function getToolAimPoint(toolEntry) {
+  if (toolEntry.toolId === 'pull') {
+    // The right control panel — slightly raised so the marker hovers
+    // right over the buttons rather than inside the machine.
+    const wp = new THREE.Vector3();
+    toolEntry.mesh.getWorldPosition(wp);
+    return wp.clone().add(new THREE.Vector3(0, 0.10, 0));
+  }
+  // Otherwise: top of the tool's bounding box
+  toolEntry.mesh.updateMatrixWorld(true);
+  _bbox.setFromObject(toolEntry.mesh);
+  return new THREE.Vector3(
+    (_bbox.min.x + _bbox.max.x) / 2,
+    _bbox.max.y,
+    (_bbox.min.z + _bbox.max.z) / 2,
+  );
+}
+
+// Position the floating tool prompt + 3D pointer arrow over the active tool
+function positionToolPrompt() {
+  if (state.step !== 'making' || !state.recipe) {
+    toolPrompt.classList.remove('show');
+    if (window._highlightRing) window._highlightRing.visible = false;
+    if (window._pointerArrow)  window._pointerArrow.visible = false;
+    return;
+  }
+  const cur = state.recipe.steps[state.stepIndex];
+  if (!cur || cur.tool === '__none__') {
+    toolPrompt.classList.remove('show');
+    if (window._highlightRing) window._highlightRing.visible = false;
+    if (window._pointerArrow)  window._pointerArrow.visible = false;
+    return;
+  }
+  const t = tools.find(t => t.toolId === cur.tool);
+  if (!t) return;
+
+  const aim = getToolAimPoint(t);
+  const wp = new THREE.Vector3();
+  t.mesh.getWorldPosition(wp);
+
+  if (window._highlightRing) {
+    window._highlightRing.position.set(wp.x, 1.10, wp.z);
+    window._highlightRing.visible = true;
+  }
+  if (window._pointerArrow) {
+    const bob = Math.sin(performance.now() * 0.005) * 0.04;
+    window._pointerArrow.position.set(aim.x, aim.y + 0.18 + bob, aim.z);
+    window._pointerArrow.rotation.y += 0.04;
+    window._pointerArrow.visible = true;
+  }
+  const sp = aim.clone();
+  sp.project(camera);
+  const sx = (sp.x * 0.5 + 0.5) * window.innerWidth;
+  const sy = (-sp.y * 0.5 + 0.5) * window.innerHeight;
+  toolPrompt.style.left = sx + 'px';
+  toolPrompt.style.top  = (sy - 50) + 'px';
+  toolPrompt.textContent = cur.label;
+  toolPrompt.classList.add('show');
+}
+
+// ── Guide book ──
+function openGuideBook(drinkKind) {
+  const g = GUIDE_CONTENT[drinkKind] || GUIDE_CONTENT.coffee;
+  guideTitle.textContent = g.title;
+  guideSubtitle.textContent = g.subtitle;
+  guidePageNo.textContent = `— RECIPE №${('I'.repeat(Math.max(1, ['coffee','tea','whisky','chocolate'].indexOf(drinkKind) + 1)).slice(0, 4) || 'I')} —`;
+  guideSteps.innerHTML = '';
+  g.steps.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.textContent = s;
+    if (state.recipe) {
+      if (i < state.stepIndex) li.className = 'done';
+      else if (i === state.stepIndex) li.className = 'active';
+    }
+    guideSteps.appendChild(li);
+  });
+  guideOverlay.classList.add('show');
+}
+function closeGuideBook() { guideOverlay.classList.remove('show'); }
+guideOverlay.addEventListener('click', (e) => {
+  if (e.target === guideOverlay) closeGuideBook();
+});
+document.getElementById('openGuideBtn').addEventListener('click', () => {
+  if (state.passenger && state.passenger.drink) openGuideBook(state.passenger.drink.kind);
+});
+// Restart-order ("unstuck") — wipes step progress so you can re-do the drink
+document.getElementById('restartOrderBtn').addEventListener('click', () => {
+  if (state.step !== 'making' || !state.recipe) return;
+  state.stepIndex = 0;
+  state.stepScores = [];
+  state.fillLevel = 0;
+  state.pouring = false;
+  state._countSoFar = 0;
+  state._holdStartT = 0;
+  state._waitStartT = 0;
+  // Reset cup liquid + drip animations
+  const cup = window._activeCup;
+  if (cup) {
+    cup.liquid.scale.y = 0.001;
+    cup.liquid.visible = false;
+  }
+  refreshStepHud();
+  // Re-open guide to first page so the player gets a clean reset
+  if (state.passenger && state.passenger.drink) openGuideBook(state.passenger.drink.kind);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape' && guideOverlay.classList.contains('show')) closeGuideBook();
+});
+
+function setCoins(n) {
+  state.totalCoins = Math.max(0, Math.floor(n));
+  coinAmount.textContent = state.totalCoins;
+  writeSave();
+}
+
+function awardTip(passenger, qualityScore, listeningScore) {
+  const base = passenger.tipBase;
+  const range = passenger.tipMax - passenger.tipBase;
+  let tip = base + range * (0.5 * qualityScore + 0.5 * listeningScore);
+  if (upgrades.silverTray) tip *= 1.25;
+  if (upgrades.marketingLeaflet) tip *= 1.10;
+  tip = Math.round(tip);
+  state.rideTips += tip;
+  state.rideServed++;
+  if (qualityScore > 0.95) state.ridePerfects++;
+  setCoins(state.totalCoins + tip);
+  // Floating "+N coins" popup at the screen position of the passenger
+  if (state.mesh) {
+    const wp = state.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
+    wp.project(camera);
+    const sx = (wp.x * 0.5 + 0.5) * window.innerWidth;
+    const sy = (-wp.y * 0.5 + 0.5) * window.innerHeight;
+    const popup = document.createElement('div');
+    popup.className = 'tip-popup';
+    popup.textContent = `+${tip}`;
+    popup.style.left = sx + 'px';
+    popup.style.top  = sy + 'px';
+    document.body.appendChild(popup);
+    requestAnimationFrame(() => {
+      popup.classList.add('show');
+      popup.style.transform = `translate(-50%, -150%)`;
+    });
+    setTimeout(() => popup.remove(), 1700);
+  }
+  return tip;
+}
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+
+function pickToolUnderCursor(e) {
+  ndc.set((e.clientX / window.innerWidth) * 2 - 1, -((e.clientY / window.innerHeight) * 2 - 1));
+  raycaster.setFromCamera(ndc, camera);
+  const meshes = tools.map(t => t.mesh);
+  const hits = raycaster.intersectObjects(meshes, true);
+  if (hits.length === 0) return null;
+  // Walk up to find the toolId
+  let o = hits[0].object;
+  while (o && !o.userData.toolId) o = o.parent;
+  return o ? o.userData.toolId : null;
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  const toolId = pickToolUnderCursor(e);
+  if (!toolId) return;
+  // Guide book — open even when not in 'making' state
+  if (toolId === 'guideBook') {
+    if (state.passenger && state.passenger.drink) openGuideBook(state.passenger.drink.kind);
+    return;
+  }
+  if (state.step !== 'making' || !state.recipe) return;
+  const cur = state.recipe.steps[state.stepIndex];
+  if (!cur) return;
+  if (toolId !== cur.tool) {
+    // Tapping the wrong tool — small visual "wrong" feedback (just flash the meter red)
+    meterFill.style.background = '#a04030';
+    setTimeout(() => meterFill.style.background = '', 250);
+    return;
+  }
+  // Trigger a press / lift animation on the tool
+  const tool = tools.find(t => t.toolId === toolId);
+  if (tool && tool.mesh) tool.mesh.userData._pressT = 1.0;
+
+  if (cur.type === 'click') {
+    // Single tap completes immediately
+    state.stepScores.push(1.0);
+    advanceStep();
+  } else if (cur.type === 'count') {
+    state._countSoFar = (state._countSoFar || 0) + 1;
+    meterFill.style.width = (state._countSoFar / cur.count * 100) + '%';
+    if (state._countSoFar >= cur.count) {
+      state.stepScores.push(1.0);
+      state._countSoFar = 0;
+      advanceStep();
+    }
+  } else if (cur.type === 'hold') {
+    state.pouring = true;
+    state._holdStartT = performance.now();
+    state.fillLevel = 0;
+  }
+});
+
+window.addEventListener('pointerup', () => {
+  if (!state.pouring) return;
+  state.pouring = false;
+  if (state.step !== 'making' || !state.recipe) return;
+  const cur = state.recipe.steps[state.stepIndex];
+  if (!cur || cur.type !== 'hold') return;
+  // Score: how close held duration was to target — generous bands
+  const held = (performance.now() - state._holdStartT) / 1000;
+  const target = cur.dur;
+  const delta = Math.abs(held - target);
+  let q;
+  if (delta < target * 0.30)      q = 1.0;     // very forgiving "perfect"
+  else if (delta < target * 0.55) q = 0.85;
+  else if (delta < target * 0.80) q = 0.65;
+  else                            q = Math.max(0.40, 0.60 - (delta / target - 0.8) * 0.3);
+  state.stepScores.push(q);
+  advanceStep();
+});
+
+function advanceStep() {
+  state.stepIndex++;
+  state.fillLevel = 0;
+  state._countSoFar = 0;
+  if (state.stepIndex >= state.recipe.steps.length) {
+    // All steps done — compute average quality, move to serving
+    const avg = state.stepScores.reduce((a, b) => a + b, 0) / Math.max(1, state.stepScores.length);
+    state.servedQuality = avg;
+    drinkQuality.textContent =
+      avg > 0.95 ? 'PERFECT' :
+      avg > 0.75 ? 'good' :
+      avg > 0.50 ? 'passable' : 'wasted';
+    state.step = 'serving';
+    state.stepT = 0;
+    hideDrinkHud();
+    // Pull camera back to wide so the cup-slide animation reads
+    setCameraMode('wide');
+    closeGuideBook();
+    return;
+  }
+  // Refresh the HUD for the next step
+  refreshStepHud();
+  // Auto-handle wait steps (passive timer that auto-advances)
+  const nextStep = state.recipe.steps[state.stepIndex];
+  if (nextStep.type === 'wait') {
+    state._waitStartT = performance.now();
+  }
+}
+
+// Begin a new passenger encounter
+const PATRONS_PER_RIDE = 5;     // 5 patrons + 1 conductor each ride
+function nextPassenger() {
+  state.index++;
+  if (state.index > PATRONS_PER_RIDE) {       // past the conductor
+    setTimeout(() => showStation(), 800);
+    return;
+  }
+  if (state.index === PATRONS_PER_RIDE) {
+    // Conductor — built fresh each ride with the current stop name
+    state.passenger = buildConductor();
+  } else if (state.rideNumber === 1) {
+    // First ride: the original five hand-crafted patrons
+    state.passenger = PASSENGERS[state.index];
+  } else {
+    // All subsequent rides: random strangers
+    state.passenger = generateProcPassenger(state.index);
+  }
+  state.lineIdx = 0;
+  state.fillLevel = 0;
+  state.pouring = false;
+  state.servedQuality = 0;
+  state.step = 'walking-in';
+  state.stepT = 0;
+  state.recipe = null;
+  state.stepIndex = 0;
+  state.stepScores = [];
+  state._countSoFar = 0;
+  state._reachedAisleEnd = false;
+  state._exitOnAisle = false;
+  state.mesh = makePassenger(state.passenger);
+  state.mesh.position.set(CAR_LEN/2 - 0.4, 0, 0);
+  scene.add(state.mesh);
+  document.getElementById('passengerCount').textContent =
+    `${state.index + 1} / ${PASSENGERS.length} passengers`;
+  document.getElementById('modeReadout').textContent = 'approaching';
+  state._listeningHits = 0;
+  state._listeningTotal = 0;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// STATION SCREEN
+// ══════════════════════════════════════════════════════════════════
+const STOPS = [
+  '— ROSEMARY HALT —',
+  '— GLASSGREEN JUNCTION —',
+  '— PETROL CITY —',
+  '— THE TURNED FIELD —',
+  '— LAST PLATFORM —',
+];
+function showStation() {
+  state.finished = true;
+  hideDialog(); hideDrinkHud();
+  document.getElementById('modeReadout').textContent = 'station stop';
+  document.getElementById('stopName').textContent = STOPS[Math.min(state.rideNumber - 1, STOPS.length - 1)];
+  document.getElementById('sumPassengers').textContent = state.rideServed;
+  document.getElementById('sumPerfects').textContent   = state.ridePerfects;
+  document.getElementById('sumTips').textContent       = state.rideTips;
+  // Build upgrade grid
+  const grid = document.getElementById('upgradeGrid');
+  grid.innerHTML = '';
+  for (const u of UPGRADE_DEFS) {
+    const owned = upgrades[u.id];
+    const canBuy = !owned && state.totalCoins >= u.cost;
+    const card = document.createElement('div');
+    card.className = 'upgrade' + (owned ? ' owned' : '') + (state.totalCoins < u.cost && !owned ? ' locked' : '');
+    card.innerHTML = `
+      <div class="name">${u.name}</div>
+      <div class="desc">${u.desc}</div>
+      <div class="cost-row">
+        <div class="cost"><span class="pip"></span>${u.cost}</div>
+        <button data-id="${u.id}" ${owned ? 'disabled' : (canBuy ? '' : 'disabled')}>${owned ? 'OWNED' : (canBuy ? 'BUY' : 'NEED MORE')}</button>
+      </div>`;
+    grid.appendChild(card);
+  }
+  grid.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const u  = UPGRADE_DEFS.find(d => d.id === id);
+      if (state.totalCoins >= u.cost && !upgrades[id]) {
+        setCoins(state.totalCoins - u.cost);
+        upgrades[id] = true;
+        writeSave();
+        showStation();   // refresh
+      }
+    });
+  });
+  // Depart button — mark as next-train if ticket bought
+  const depart = document.getElementById('departBtn');
+  if (upgrades.nextTrainTicket) {
+    depart.textContent = 'BOARD THE SILVER TRAIN';
+    depart.classList.add('next-train');
+  } else {
+    depart.textContent = 'BOARD CARRIAGE 3 AGAIN';
+    depart.classList.remove('next-train');
+  }
+  document.getElementById('station').classList.add('show');
+}
+document.getElementById('departBtn').addEventListener('click', () => {
+  document.getElementById('station').classList.remove('show');
+  if (upgrades.nextTrainTicket) {
+    // Tier II teaser
+    const teaser = document.createElement('div');
+    teaser.style.cssText = 'position:fixed; inset:0; z-index:130; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; background: radial-gradient(ellipse at center, #0a1828 0%, #000 80%); transition: opacity 1.0s;';
+    teaser.innerHTML = `
+      <div style="font-size:30px; letter-spacing:14px; color:#a8e0ff; margin-bottom:20px; font-weight:300;
+        text-shadow: 0 0 30px rgba(120,200,255,0.5);">L I N E&nbsp;&nbsp;7</div>
+      <div style="font-size:13px; letter-spacing:5px; color:rgba(168,220,255,0.65); font-family:'SF Mono',monospace; font-style:italic; margin-bottom:36px; max-width:520px; line-height:1.8;">
+        a chrome carriage, lit from beneath. The drinks are clearer here. The passengers come from further away.
+      </div>
+      <div style="font-size:11px; letter-spacing:5px; color:rgba(168,220,255,0.45); font-family:'SF Mono',monospace;">— building the next car · this build ends here —</div>`;
+    document.body.appendChild(teaser);
+    return;
+  }
+  // Reset for another ride on the same train
+  state.index = -1;
+  state.rideTips = 0;
+  state.ridePerfects = 0;
+  state.rideServed = 0;
+  state.rideNumber++;
+  state.finished = false;
+  setLandscape(state.rideNumber);    // swap landscape style for this ride
+  writeSave();
+  setTimeout(() => nextPassenger(), 600);
+});
+
+// ══════════════════════════════════════════════════════════════════
+// FRAME UPDATE
+// ══════════════════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+let started = false;
+let _startedAt = 0;
+
+function frame() {
+  const dt = Math.min(0.05, clock.getDelta());
+  const t = clock.elapsedTime;
+
+  // Camera mode: lerp position + look between WIDE bartender POV and
+  // the active CLOSE-UP working surface (per drink). Parallax + train
+  // sway only apply in wide.
+  const targetCam = cameraMode === 'close' ? _activeCloseCam : CAMERA_WIDE;
+  const lerpRate  = Math.min(1, dt * 3.5);
+  _camCurPos.lerp(targetCam.pos, lerpRate);
+  _camCurLook.lerp(targetCam.look, lerpRate);
+  _camCurFov += (targetCam.fov - _camCurFov) * lerpRate;
+  if (Math.abs(camera.fov - _camCurFov) > 0.05) {
+    camera.fov = _camCurFov;
+    camera.updateProjectionMatrix();
+  }
+  camera.position.copy(_camCurPos);
+
+  if (cameraMode === 'wide') {
+    // Wide mode — apply mouse parallax + slight train sway
+    camYaw   += (targetYaw   - camYaw)   * Math.min(1, dt * 4);
+    camPitch += (targetPitch - camPitch) * Math.min(1, dt * 4);
+    const lookX = Math.sin(camYaw) * 1.0;
+    const lookY = 1.30 + (camPitch + 0.18) * 1.6;
+    const lookZ = Math.cos(camYaw) * 2.0 - 2.0;
+    camera.lookAt(lookX * 4 + 5, lookY, lookZ * 0.2);
+    camera.position.x += Math.sin(t * 2.1) * 0.012;
+    camera.position.y += Math.sin(t * 1.7) * 0.008;
+    camera.position.z += Math.sin(t * 1.4) * 0.018;
+  } else {
+    // Close-up — steady, with a subtle vertical sway only
+    camera.lookAt(_camCurLook);
+    camera.position.y += Math.sin(t * 1.5) * 0.005;
+  }
+
+  // Light flicker
+  scene.traverse(o => {
+    if (o.isLight && o.userData.flicker) {
+      o.intensity = (o.userData.baseI || (o.userData.baseI = o.intensity)) * (0.94 + (Math.random() - 0.5) * 0.06);
+    }
+    if (o.userData && o.userData.flameTab) {
+      o.scale.y = 1.0 + Math.sin(t * 14 + o.position.x * 3) * 0.18;
+    }
+  });
+
+  // Outside lights drift
+  for (const m of passingLights) {
+    m.position.x -= m.userData.speed * dt;
+    if (m.position.x < -32) {
+      m.position.x = 32;
+      m.position.y = 0.5 + Math.random() * 1.4;
+    }
+  }
+
+  // Landscape silhouettes — parallax scroll (slower than passing lights)
+  for (const sign of [-1, 1]) {
+    const g = landscapeRoots[String(sign)];
+    if (!g) continue;
+    g.traverse(o => {
+      if (o.userData && o.userData.scroll) {
+        o.position.x -= o.userData.scroll * dt;
+        if (o.position.x < -34) o.position.x += 64;
+      }
+    });
+  }
+
+  // Rain shader time
+  if (matWindowGlass.uniforms) matWindowGlass.uniforms.uTime.value = t;
+
+  // Tunnel
+  if (!tunnelActive) {
+    nextTunnelT -= dt;
+    if (nextTunnelT <= 0) { tunnelActive = true; tunnelT = 0; }
+  } else {
+    tunnelT += dt;
+    const u = tunnelT / 0.85;
+    let opacity = 0;
+    if (u < 0.18) opacity = u / 0.18;
+    else if (u < 0.82) opacity = 1.0;
+    else opacity = (1 - u) / 0.18;
+    tunnelOverlay.style.background = `rgba(0,0,0,${opacity * 0.85})`;
+    if (u >= 1) {
+      tunnelActive = false;
+      tunnelOverlay.style.background = 'rgba(0,0,0,0)';
+      nextTunnelT = 22 + Math.random() * 16;
+    }
+  }
+
+  // Clock
+  if (started && !state.finished) {
+    const minutes = 35 + Math.floor((t - _startedAt) * 0.4);
+    const hours = (3 + Math.floor(minutes / 60)) % 24;
+    const mm = (minutes % 60).toString().padStart(2, '0');
+    const hh = hours.toString().padStart(2, '0');
+    document.getElementById('clock').textContent = `${hh} : ${mm}`;
+  }
+
+  // Passenger state machine
+  if (started && state.passenger && !state.finished) {
+    state.stepT += dt;
+    const p = state.passenger;
+    const m = state.mesh;
+    if (state.step === 'walking-in') {
+      // Two-stage walk: down the centre aisle (z=0) until near the bar,
+      // then sidestep to the assigned counter seat. Keeps passengers from
+      // squeezing through the booth tables.
+      const seat = COUNTER_SEATS[p.seatIdx >= 0 ? p.seatIdx : 2];
+      const aisleEndX = seat.x + 0.35;
+      const targetX = state._reachedAisleEnd ? seat.x : aisleEndX;
+      const targetZ = state._reachedAisleEnd ? seat.z : 0;
+      m.position.x += (targetX - m.position.x) * Math.min(1, dt * 1.6);
+      m.position.z += (targetZ - m.position.z) * Math.min(1, dt * 1.6);
+      const dx = targetX - m.position.x, dz = targetZ - m.position.z;
+      if (Math.hypot(dx, dz) > 0.05) m.rotation.y = Math.atan2(dx, dz) - Math.PI / 2;
+      m.position.y = Math.abs(Math.sin(state.stepT * 6)) * 0.04;
+      if (!state._reachedAisleEnd && Math.abs(aisleEndX - m.position.x) < 0.20) {
+        state._reachedAisleEnd = true;
+      }
+      if (state._reachedAisleEnd && Math.abs(seat.x - m.position.x) < 0.18 && Math.abs(seat.z - m.position.z) < 0.18) {
+        m.position.set(seat.x, 0.55, seat.z);
+        m.rotation.y = -Math.PI / 2;       // face the bar (-X) where the player works
+        state.step = 'sitting';
+        state.stepT = 0;
+        document.getElementById('modeReadout').textContent = 'speaking';
+        showLine(p.lines[0], onLineAdvance);
+      }
+    } else if (state.step === 'serving') {
+      // Slide the cup along the counter top in front of the passenger
+      const cup = window._activeCup;
+      const targetWorld = new THREE.Vector3(
+        -CAR_LEN/2 + 1.55,                 // sit on the customer-edge of the counter
+        1.16,                              // top of the counter + cup offset
+        m.position.z,                      // matched to the passenger's z
+      );
+      cup.outer.position.x += (targetWorld.x - cup.outer.position.x) * Math.min(1, dt * 3);
+      cup.outer.position.y += (targetWorld.y - cup.outer.position.y) * Math.min(1, dt * 3);
+      cup.outer.position.z += (targetWorld.z - cup.outer.position.z) * Math.min(1, dt * 3);
+      cup.liquid.position.copy(cup.outer.position);
+      cup.saucer.position.copy(cup.outer.position).add(new THREE.Vector3(0, -0.10, 0));
+      cup.handle.position.copy(cup.outer.position).add(new THREE.Vector3(0.10, 0, 0));
+      cup.steam.position.copy(cup.outer.position).add(new THREE.Vector3(0, 0.20, 0));
+      cup.steam.material.opacity = 0.18 + 0.05 * Math.sin(t * 2);
+      if (cup.outer.position.distanceTo(targetWorld) < 0.10) {
+        const listening = state._listeningTotal > 0 ? state._listeningHits / state._listeningTotal : 0.5;
+        awardTip(p, state.servedQuality, listening);
+        state.step = 'sipping';
+        state.stepT = 0;
+        if (p.afterServe && p.afterServe.length > 0) {
+          state.lineIdx = 0;
+          state.subLines = p.afterServe;
+          showLine(p.afterServe[0], onAfterLineAdvance);
+        } else {
+          state.step = 'walking-out';
+        }
+      }
+    } else if (state.step === 'walking-out') {
+      // Two-stage exit: sidestep onto the centre aisle, then walk out
+      // toward the back of the carriage along z=0.
+      const seat = COUNTER_SEATS[p.seatIdx >= 0 ? p.seatIdx : 2];
+      const aisleEndX = seat.x + 0.35;
+      const targetX = state._exitOnAisle ? CAR_LEN/2 - 0.3 : aisleEndX;
+      const targetZ = state._exitOnAisle ? 0               : 0;
+      m.position.x += (targetX - m.position.x) * Math.min(1, dt * 1.2);
+      m.position.z += (targetZ - m.position.z) * Math.min(1, dt * 1.5);
+      m.position.y = 0;
+      const ddx = targetX - m.position.x, ddz = targetZ - m.position.z;
+      if (Math.hypot(ddx, ddz) > 0.05) m.rotation.y = Math.atan2(ddx, ddz) - Math.PI / 2;
+      if (!state._exitOnAisle && Math.abs(aisleEndX - m.position.x) < 0.20 && Math.abs(m.position.z) < 0.15) {
+        state._exitOnAisle = true;
+      }
+      // Cup travels with them — held in front of the chest at sip height
+      const cup = window._activeCup;
+      if (cup && cup.outer.visible) {
+        const facing = m.rotation.y + Math.PI / 2;
+        const cupX = m.position.x + Math.cos(facing) * 0.20;
+        const cupZ = m.position.z + Math.sin(facing) * 0.20;
+        const cupY = 1.05;
+        cup.outer.position.set(cupX, cupY, cupZ);
+        cup.liquid.position.set(cupX, cupY, cupZ);
+        cup.handle.position.set(cupX + 0.10, cupY, cupZ);
+        cup.saucer.visible = false;
+        cup.steam.position.set(cupX, cupY + 0.20, cupZ);
+        cup.steam.material.opacity = 0.10 + 0.05 * Math.sin(t * 2);
+      }
+      if (Math.abs(CAR_LEN/2 - m.position.x) < 0.6) {
+        scene.remove(m);
+        state.mesh = null;
+        if (cup) {
+          cup.outer.visible = false; cup.liquid.visible = false;
+          cup.saucer.visible = false; cup.handle.visible = false;
+          cup.steam.material.opacity = 0;
+        }
+        setTimeout(() => nextPassenger(), 1100);
+        state.step = 'idle';
+      }
+    }
+  }
+
+  // Step ticking — advance hold meter, advance wait timer, animate liquid
+  if (state.step === 'making' && state.recipe) {
+    const cur = state.recipe.steps[state.stepIndex];
+    if (cur) {
+      if (cur.type === 'hold' && state.pouring) {
+        const held = (performance.now() - state._holdStartT) / 1000;
+        const fill = Math.min(1, held / cur.dur * 1.05);
+        state.fillLevel = fill;
+        meterFill.style.width = (fill * 100) + '%';
+        // Cup only fills on liquid-pouring steps. The kettle is also used
+        // to BOIL or STEAM (no fill), so check the step label too.
+        const isKettlePour = cur.tool === 'kettle' && /POUR/i.test(cur.label || '');
+        const fillsCup = (cur.tool === 'pull' || isKettlePour || cur.tool === 'whiskyBottle');
+        if (fillsCup) {
+          const cup = window._activeCup;
+          cup.liquid.visible = true;
+          cup.liquid.scale.y = Math.max(0.001, Math.min(1, fill));
+          cup.liquid.position.y = 1.20 - 0.08 + (Math.min(1, fill) * 0.08);
+        }
+      } else if (cur.type === 'wait') {
+        const elapsed = (performance.now() - (state._waitStartT || performance.now())) / 1000;
+        const u = Math.min(1, elapsed / cur.dur);
+        state.fillLevel = u;
+        meterFill.style.width = (u * 100) + '%';
+        if (u >= 1) {
+          state.stepScores.push(1.0);
+          advanceStep();
+        }
+      }
+    }
+
+    // ── TOOL ANIMATIONS ──
+    // Walk every tool; if it matches the active step, animate based on
+    // its type (grinder spins, kettle tilts, etc.). Inactive tools
+    // smoothly settle back to their rest pose.
+    const cup = window._activeCup;
+    const cupX = cup.outer.position.x;
+    const cupY = cup.outer.position.y;
+    const cupZ = cup.outer.position.z;
+    for (const tEntry of tools) {
+      const m = tEntry.mesh;
+      if (!m.userData.parts) continue;
+      const isActive = cur && cur.tool === tEntry.toolId;
+      const id = tEntry.toolId;
+      const parts = m.userData.parts;
+      if (id === 'grinder') {
+        // Crank rotates slowly when idle, faster when held
+        const speed = isActive && state.pouring ? 12 : (isActive ? 2 : 0);
+        if (parts.crank) parts.crank.rotation.y += dt * speed;
+        if (parts.hopper) parts.hopper.rotation.y -= dt * speed * 0.6;
+        // Slight body shake when grinding hard
+        if (isActive && state.pouring) {
+          m.position.x = -CAR_LEN/2 + 0.55 + (Math.random() - 0.5) * 0.012;
+          m.position.z = -0.5 + (Math.random() - 0.5) * 0.012;
+        } else {
+          m.position.x += (-CAR_LEN/2 + 0.55 - m.position.x) * Math.min(1, dt * 12);
+          m.position.z += (-0.5 - m.position.z) * Math.min(1, dt * 12);
+        }
+      } else if (id === 'tamper') {
+        // Press down briefly when "tamp" was clicked
+        const press = m.userData._pressT || 0;
+        if (press > 0) {
+          m.userData._pressT = Math.max(0, press - dt * 4);
+          if (parts.handle) parts.handle.position.y = 0.10 - 0.05 * (1 - press);
+          if (parts.top)    parts.top.position.y    = 0.20 - 0.05 * (1 - press);
+        } else {
+          if (parts.handle) parts.handle.position.y += (0.10 - parts.handle.position.y) * Math.min(1, dt * 8);
+          if (parts.top)    parts.top.position.y    += (0.20 - parts.top.position.y)    * Math.min(1, dt * 8);
+        }
+      } else if (id === 'kettle') {
+        // Different action depending on which recipe step is active.
+        // BOIL = sit on warmer + light steam, no tilt
+        // POUR = tilt + heavy stream from spout
+        // STEAM = no tilt, lots of steam (used for chocolate)
+        const curStep = state.recipe ? state.recipe.steps[state.stepIndex] : null;
+        const stepLabel = curStep ? (curStep.label || '') : '';
+        const isPour  = /POUR/i.test(stepLabel);
+        const isSteam = /STEAM/i.test(stepLabel);
+        // Tilt only on a true pour
+        const target = (isActive && state.pouring && isPour) ? -0.8 : 0;
+        m.rotation.z += (target - m.rotation.z) * Math.min(1, dt * 4);
+        // Steam cadence: heavy for STEAM, normal for POUR, soft for BOIL
+        const steamGap = isSteam ? 0.06 : (isPour ? 0.16 : 0.30);
+        if (isActive && t - _lastSteamT > steamGap) {
+          _lastSteamT = t;
+          const wp = new THREE.Vector3();
+          if (parts.spout) {
+            parts.spout.getWorldPosition(wp);
+            // Steam puff size: STEAM = wider plume
+            emitSteam(wp.x + (Math.random() - 0.5) * (isSteam ? 0.10 : 0.02),
+                      wp.y + 0.05,
+                      wp.z + (Math.random() - 0.5) * (isSteam ? 0.10 : 0.02));
+          }
+        }
+        // Only POUR draws a liquid stream into the cup
+        if (isActive && state.pouring && isPour && parts.spout) {
+          const sp = new THREE.Vector3();
+          parts.spout.getWorldPosition(sp);
+          drawStream(sp.x, sp.y, sp.z, cupX, cupY + 0.08, cupZ, 0x7a4a20);
+        }
+      } else if (id === 'cocoaTin') {
+        const press = m.userData._pressT || 0;
+        if (press > 0) {
+          m.userData._pressT = Math.max(0, press - dt * 3);
+          m.rotation.z = press * 0.6;        // tip the tin
+          m.position.y = 1.10 + press * 0.10; // lift up
+          // emit cocoa particles into the cup
+          if (Math.random() < 0.4 * dt * 30) {
+            const wp = new THREE.Vector3();
+            m.getWorldPosition(wp);
+            emitCocoa(cupX + (Math.random() - 0.5) * 0.05, cupY + 0.15, cupZ + (Math.random() - 0.5) * 0.05);
+          }
+        } else {
+          m.rotation.z += (0 - m.rotation.z) * Math.min(1, dt * 6);
+          m.position.y += (1.10 - m.position.y) * Math.min(1, dt * 6);
+        }
+      } else if (id === 'spoon') {
+        // Stay at rest position so the player can click the same spot
+        // repeatedly during a count step. Visualise the stir with a quick
+        // bob + Y-spin pop instead of moving across the counter.
+        const press = m.userData._pressT || 0;
+        const restX = -CAR_LEN/2 + 1.10;
+        const restZ = 1.30;
+        if (press > 0) {
+          m.userData._pressT = Math.max(0, press - dt * 6);   // ~0.16s pop, fast enough to re-click
+          const u = 1 - press;                                // 0 → 1 over the pop
+          m.position.x = restX;
+          m.position.z = restZ;
+          m.position.y = 1.10 + Math.sin(u * Math.PI) * 0.06;  // small lift
+          m.rotation.y = -0.6 + Math.sin(u * Math.PI * 2) * 0.4; // wiggle around rest yaw
+        } else {
+          m.position.x += (restX - m.position.x) * Math.min(1, dt * 10);
+          m.position.y += (1.10  - m.position.y) * Math.min(1, dt * 10);
+          m.position.z += (restZ - m.position.z) * Math.min(1, dt * 10);
+          m.rotation.y += (-0.6 - m.rotation.y) * Math.min(1, dt * 10);
+        }
+      } else if (id === 'whiskyBottle') {
+        // Tilt forward when held
+        const target = (isActive && state.pouring) ? -0.9 : 0;
+        m.rotation.z += (target - m.rotation.z) * Math.min(1, dt * 5);
+        // Stream
+        if (isActive && state.pouring) {
+          const wp = new THREE.Vector3();
+          if (parts.cork) parts.cork.getWorldPosition(wp);
+          drawStream(wp.x, wp.y - 0.05, wp.z, cupX, cupY + 0.08, cupZ, 0xc88040);
+        }
+      } else if (id === 'pull') {
+        // Pull buttons depress while held
+        // (can't easily access individual buttons from tools array — animate scale instead)
+        const target = (isActive && state.pouring) ? 0.92 : 1.0;
+        m.scale.y += (target - m.scale.y) * Math.min(1, dt * 8);
+        // Coffee streams from group head into cup
+        if (isActive && state.pouring) {
+          // Right group head world position (machine rotated 90° CCW: local +x → world -z)
+          const ghX = -CAR_LEN/2 + 0.55 + 0.27;
+          const ghY = 1.09 + 0.286;
+          const ghZ = 0.5 - 0.30;
+          drawStream(ghX, ghY - 0.04, ghZ, cupX, cupY + 0.08, cupZ, 0x2a160a);
+          // Steam from cup as the shot pulls
+          if (t - _lastSteamT > 0.12) {
+            _lastSteamT = t;
+            emitSteam(cupX + (Math.random() - 0.5) * 0.05, cupY + 0.18, cupZ + (Math.random() - 0.5) * 0.05);
+          }
+        }
+      }
+    }
+    // Hide the pour stream if no one drew it this frame
+    if (!_streamDrawnThisFrame) pourStream.visible = false;
+    _streamDrawnThisFrame = false;
+
+    // Re-position the tool prompt + highlight every frame (camera moves)
+    positionToolPrompt();
+    if (window._highlightRing && window._highlightRing.visible) {
+      window._highlightRing.material.opacity = 0.45 + 0.35 * Math.sin(t * 6);
+      window._highlightRing.scale.setScalar(1 + 0.10 * Math.sin(t * 6));
+    }
+  } else {
+    // Hide the stream when not making
+    pourStream.visible = false;
+  }
+  // Always tick steam + cocoa systems
+  tickSteam(dt, t);
+  tickCocoa(dt);
+
+  // Cup steam — once it's filled, gentle steam rises until served
+  if (state.step === 'making' || state.step === 'serving') {
+    const cup = window._activeCup;
+    if (cup.liquid.visible && state.fillLevel > 0.3 && t - _lastCupSteamT > 0.45) {
+      _lastCupSteamT = t;
+      emitSteam(cup.outer.position.x + (Math.random() - 0.5) * 0.05, cup.outer.position.y + 0.18, cup.outer.position.z + (Math.random() - 0.5) * 0.05);
+    }
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+frame();
+
+function onLineAdvance() {
+  // Listening bonus — count whether the player held on the line for at least 1.6s
+  const held = (performance.now() - state.lineShownAt) / 1000;
+  state._listeningTotal++;
+  if (held > 1.6) state._listeningHits++;
+  state.lineIdx++;
+  const p = state.passenger;
+  if (state.lineIdx < p.lines.length) {
+    showLine(p.lines[state.lineIdx], onLineAdvance);
+  } else {
+    hideDialog();
+    if (p.drink) {
+      state.step = 'making';
+      state.stepT = 0;
+      const cup = window._activeCup;
+      cup.outer.visible = true;
+      cup.saucer.visible = true;
+      cup.handle.visible = true;
+      const k = p.drink.kind;
+      cup.liquid.material =
+        k === 'coffee'    ? matLiquidCoffee :
+        k === 'tea'       ? matLiquidTea :
+        k === 'whisky'    ? matLiquidWhisky :
+                            matLiquidChoc;
+      // Set up the recipe state machine
+      state.recipe = RECIPES[k] || RECIPES.coffee;
+      state.stepIndex = 0;
+      state.stepScores = [];
+      state.fillLevel = 0;
+      state._countSoFar = 0;
+      showDrinkHud(p.drink);
+      // Auto-open the guide to the matching page
+      openGuideBook(k);
+      document.getElementById('modeReadout').textContent = 'making';
+      // 🎬 Zoom the camera in close — picking the right per-drink scene
+      setCameraMode('close', k);
+    } else {
+      state.step = 'walking-out';
+      state.stepT = 0;
+    }
+  }
+}
+function onAfterLineAdvance() {
+  state.lineIdx++;
+  const lines = state.subLines || [];
+  if (state.lineIdx < lines.length) {
+    showLine(lines[state.lineIdx], onAfterLineAdvance);
+  } else {
+    hideDialog();
+    state.step = 'walking-out';
+    state.stepT = 0;
+  }
+}
+
+document.getElementById('gateBtn').addEventListener('click', () => {
+  document.getElementById('gate').classList.add('hidden');
+  started = true;
+  _startedAt = clock.elapsedTime;
+  // Don't reset coins — they persist across sessions via localStorage.
+  // Apply wide-mode visibility on first frame (hides the espresso
+  // machine + tools while we're not actively making a drink)
+  setCameraMode('wide');
+  setTimeout(() => nextPassenger(), 800);
+});
+
+// Resume info + reset save on the gate screen
+{
+  const resumeEl = document.getElementById('gateResume');
+  const resetBtn = document.getElementById('resetSaveBtn');
+  if (_saved && (state.totalCoins > 0 || state.rideNumber > 1)) {
+    resumeEl.textContent = `resuming · ride ${state.rideNumber} · ${state.totalCoins} coins`;
+    resetBtn.style.display = '';
+  }
+  resetBtn.addEventListener('click', () => {
+    if (!confirm('Start a new shift? This will erase your tips and upgrades.')) return;
+    try { localStorage.removeItem(SAVE_KEY); } catch (_) {}
+    location.reload();
+  });
+}
+</script>
+</body>
+</html>
