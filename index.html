@@ -193,6 +193,43 @@
   .sh .nm{font-weight:850;font-size:15.5px;overflow-wrap:anywhere}
   .sh .ds{color:var(--dim);font-size:13px;line-height:1.45;overflow-wrap:anywhere}
 
+  /* ══ Minecraft server-list row (real server icon + real MOTD) ══ */
+  .mcrow{display:flex;gap:12px;align-items:flex-start;background:rgba(0,0,0,.42);
+         border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:11px;margin-bottom:20px}
+  .mcrow .ico{width:48px;height:48px;flex:none;border-radius:4px;image-rendering:pixelated;
+              background:#222;object-fit:cover}
+  .mcrow .mid{flex:1;min-width:0}
+  .mcrow .r1{display:flex;align-items:center;gap:9px}
+  .mcrow .nm{font-weight:700;font-size:15px;text-shadow:2px 2px 0 rgba(0,0,0,.6);flex:1;min-width:0}
+  .mcrow .pl{font-family:var(--mono);font-size:12.5px;color:#a8a8a8;text-shadow:2px 2px 0 rgba(0,0,0,.6)}
+  .mcrow .bars{display:inline-flex;align-items:flex-end;gap:1.5px;height:11px;flex:none}
+  .mcrow .bars i{width:2.5px;background:#4ee04e;border-radius:1px}
+  .mcrow .bars i:nth-child(1){height:3px}   .mcrow .bars i:nth-child(2){height:5px}
+  .mcrow .bars i:nth-child(3){height:7px}   .mcrow .bars i:nth-child(4){height:9px}
+  .mcrow .bars i:nth-child(5){height:11px}
+  .mcrow .motd{font-size:13.5px;color:var(--gold);margin-top:3px;
+               text-shadow:2px 2px 0 rgba(0,0,0,.6);overflow-wrap:anywhere}
+
+  /* ══ in-game chat window instead of a grid of grey boxes ══ */
+  .chat{background:rgba(0,0,0,.62);border:1px solid rgba(255,255,255,.13);border-radius:14px;
+        padding:16px 18px 14px;max-width:860px;margin:0 auto;
+        box-shadow:0 30px 70px -40px rgba(0,0,0,1)}
+  .chatlines{display:grid;gap:2px}
+  .cl{display:flex;gap:10px;align-items:baseline;padding:4px 6px;border-radius:5px;
+      font-family:var(--mono);font-size:13.5px;line-height:1.5;
+      text-shadow:2px 2px 0 rgba(0,0,0,.85);transition:background .15s}
+  .cl:hover{background:rgba(255,255,255,.07)}
+  .cl .cc{color:var(--gold);font-weight:700;white-space:nowrap;flex:none}
+  .cl .cd{color:#cfcfe0;overflow-wrap:anywhere}
+  .chatin{margin-top:11px;border-top:1px solid rgba(255,255,255,.14);padding-top:11px;
+          font-family:var(--mono);font-size:13.5px;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.85);
+          display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}
+  .chatin .cur{color:var(--faint)}
+  .chatin .typed{color:var(--gold);font-weight:700}
+  .blink{animation:bl 1.1s step-end infinite;color:#fff}
+  @keyframes bl{0%,100%{opacity:1}50%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){.blink{animation:none}}
+
   /* commands */
   .cmds{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr))}
   .cm{background:var(--tile);border:1px solid var(--edge);border-radius:14px;padding:15px 17px;
@@ -288,6 +325,15 @@
   <div class="bento">
 
     <div class="t addr rv">
+      <div class="mcrow">
+        <img class="ico" src="img/server-icon.png" alt="" width="48" height="48">
+        <div class="mid">
+          <div class="r1"><span class="nm">Wayfarer Forge</span>
+            <span class="pl" id="mc-players">—/100</span>
+            <span class="bars"><i></i><i></i><i></i><i></i><i></i></span></div>
+          <div class="motd">✦ Wayfarer Forge ✦</div>
+        </div>
+      </div>
       <div class="lbl">Java Edition · 26.2 · no mods</div>
       <div class="ipline">
         <span class="ip">play.wayfarerforge.games</span>
@@ -424,23 +470,26 @@
     <h2>Commands worth knowing</h2>
     <p class="lede">Everything else is in <code style="font-family:var(--mono);color:var(--gold)">/help</code> once you're on.</p>
   </div>
-  <div class="cmds">
-    <div class="cm rv"><code>/spawn</code><span>Back to spawn from anywhere</span></div>
-    <div class="cm rv"><code>/rtp</code><span>Drop somewhere random in the wild</span></div>
-    <div class="cm rv"><code>/duel</code><span>Queue for a 1v1 crystal duel</span></div>
-    <div class="cm rv"><code>/crates</code><span>See every crate and its odds</span></div>
-    <div class="cm rv"><code>/hunt</code><span>Your scavenger hunt progress</span></div>
-    <div class="cm rv"><code>/hof</code><span>Hall of Records — your stats</span></div>
-    <div class="cm rv"><code>/hof &lt;player&gt;</code><span>Look up someone else&#39;s stats</span></div>
-    <div class="cm rv"><code>/top</code><span>Leaderboards</span></div>
-    <div class="cm rv"><code>/kit</code><span>Claim the kits you have access to</span></div>
-    <div class="cm rv"><code>/balance</code><span>How much money you&#39;re holding</span></div>
-    <div class="cm rv"><code>/pay &lt;player&gt;</code><span>Send someone money</span></div>
-    <div class="cm rv"><code>/sethome</code><span>Set a home you can warp back to</span></div>
-    <div class="cm rv"><code>/home</code><span>Go to a home you&#39;ve set</span></div>
-    <div class="cm rv"><code>/tpa &lt;player&gt;</code><span>Ask to teleport to someone</span></div>
-    <div class="cm rv"><code>/trust &lt;player&gt;</code><span>Let a friend build in your claim</span></div>
-    <div class="cm rv"><code>/msg &lt;player&gt;</code><span>Private message</span></div>
+  <div class="chat rv">
+    <div class="chatlines">
+      <div class="cl"><span class="cc">/spawn</span><span class="cd">Back to spawn from anywhere</span></div>
+      <div class="cl"><span class="cc">/rtp</span><span class="cd">Drop somewhere random in the wild</span></div>
+      <div class="cl"><span class="cc">/duel</span><span class="cd">Queue for a 1v1 crystal duel</span></div>
+      <div class="cl"><span class="cc">/crates</span><span class="cd">See every crate and its odds</span></div>
+      <div class="cl"><span class="cc">/hunt</span><span class="cd">Your scavenger hunt progress</span></div>
+      <div class="cl"><span class="cc">/hof</span><span class="cd">Hall of Records — your stats</span></div>
+      <div class="cl"><span class="cc">/hof &lt;player&gt;</span><span class="cd">Look up someone else&#39;s stats</span></div>
+      <div class="cl"><span class="cc">/top</span><span class="cd">Leaderboards</span></div>
+      <div class="cl"><span class="cc">/kit</span><span class="cd">Claim the kits you have access to</span></div>
+      <div class="cl"><span class="cc">/balance</span><span class="cd">How much money you&#39;re holding</span></div>
+      <div class="cl"><span class="cc">/pay &lt;player&gt;</span><span class="cd">Send someone money</span></div>
+      <div class="cl"><span class="cc">/sethome</span><span class="cd">Set a home you can warp back to</span></div>
+      <div class="cl"><span class="cc">/home</span><span class="cd">Go to a home you&#39;ve set</span></div>
+      <div class="cl"><span class="cc">/tpa &lt;player&gt;</span><span class="cd">Ask to teleport to someone</span></div>
+      <div class="cl"><span class="cc">/trust &lt;player&gt;</span><span class="cd">Let a friend build in your claim</span></div>
+      <div class="cl"><span class="cc">/msg &lt;player&gt;</span><span class="cd">Private message</span></div>
+    </div>
+    <div class="chatin"><span class="cur">&gt;</span> <span class="typed" id="typed"></span><span class="blink">_</span></div>
   </div>
 </div></section>
 
@@ -540,12 +589,16 @@
       return `rgb(${f(n >> 16 & 255)},${f(n >> 8 & 255)},${f(n & 255)})`;
     };
 
+    // Positioning lives on an OUTER group and the animation class on an INNER one.
+    // A CSS transform overrides an element's SVG transform attribute outright, so
+    // animating the same node the attribute is on throws its placement away and
+    // drops the block at the origin.
     const cube = (x, y, s, c, k, cls) =>
-      `<g${cls ? ` class="${cls}"` : ''} transform="translate(${x} ${y}) scale(${s})">
+      `<g transform="translate(${x} ${y}) scale(${s})"><g${cls ? ` class="${cls}"` : ''}>
          <polygon points="0,${-H} ${W},0 0,${H} ${-W},0" fill="${jog(c[0], k)}"/>
          <polygon points="${-W},0 0,${H} 0,${H + D} ${-W},${D}" fill="${jog(c[1], k)}"/>
          <polygon points="${W},0 0,${H} 0,${H + D} ${W},${D}" fill="${jog(c[2], k)}"/>
-       </g>`;
+       </g></g>`;
 
     // Tapering stack: widest on top, narrowing downward.
     // Drawn deepest-first so each layer above paints over the one below it,
@@ -574,10 +627,34 @@
     });
 
     // floating ore blocks, kept inside the viewBox
-    out += cube(62,  84,  0.54, DIA,  1, 'fl');
-    out += cube(404, 150, 0.46, GOLD, 1, 'fl2');
-    out += cube(356, 52,  0.38, AMY,  1, 'fl3');
+    out += cube(72,  112, 0.50, DIA,  1, 'fl');
+    out += cube(396, 96,  0.45, GOLD, 1, 'fl2');
+    out += cube(390, 252, 0.38, AMY,  1, 'fl3');
+
+    // the owner's actual skin, standing on the island. Drawn last so it sits in
+    // front of the blocks; the ellipse is its contact shadow.
+    out += `<ellipse cx="230" cy="141" rx="29" ry="13" fill="rgba(0,0,0,.38)"/>
+            <image href="img/skin-body.png" x="202" y="9" width="56" height="134"
+                   style="image-rendering:pixelated"/>`;
     svg.innerHTML = out;
+  })();
+
+  /* ── chat input types a rotating command ── */
+  (function () {
+    const el = document.getElementById('typed');
+    if (!el) return;
+    const list = ['/duel', '/crates', '/hunt', '/hof', '/rtp', '/spawn', '/top'];
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = list[0]; return; }
+    let w = 0, i = 0, del = false;
+    (function tick() {
+      const word = list[w];
+      i += del ? -1 : 1;
+      el.textContent = word.slice(0, i);
+      let wait = del ? 55 : 105;
+      if (!del && i === word.length) { del = true; wait = 1400; }
+      else if (del && i === 0) { del = false; w = (w + 1) % list.length; wait = 320; }
+      setTimeout(tick, wait);
+    })();
   })();
 
   /* ── copy buttons (hero + address tile share one handler) ── */
@@ -641,8 +718,11 @@
         pill.className = 'pill';
         ptxt.textContent = on === 1 ? '1 player online' : on + ' players online';
         countUp(cOn, on);
+        const mcp = document.getElementById('mc-players');
+        if (mcp) mcp.textContent = on + '/100';
       } else {
         pill.className = 'pill off'; ptxt.textContent = 'Server offline — back shortly'; cOn.textContent = '0';
+        const mcp0 = document.getElementById('mc-players'); if (mcp0) mcp0.textContent = '0/100';
       }
     } catch (_) {
       clearTimeout(timer);
