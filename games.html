@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Games — Wayfarer Forge</title>
+<meta name="description" content="Short walking-mystery games about one astronaut pulled through many worlds. Playable free in your browser.">
+<meta property="og:title" content="Games — Wayfarer Forge">
+<meta property="og:description" content="Short walking-mysteries about one astronaut, playable free in your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚒️</text></svg>">
+<style>
+  :root{
+    --bg:#07090e; --bg2:#0d121b; --card:#111927; --edge:#1e2a3c; --edge2:#2b3b52;
+    --ink:#e9eff8; --dim:#93a6c0; --faint:#5f728c;
+    --gold:#e8b866; --ember:#ff9a5c; --green:#57d98a; --violet:#a98cff; --teal:#5fd6d0;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:
+      radial-gradient(1000px 600px at 50% -8%, #191331 0%, transparent 60%),
+      radial-gradient(800px 480px at 12% 22%, rgba(169,140,255,.08) 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6; min-height:100vh; overflow-x:hidden;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
+      background:rgba(7,9,14,.78);border-bottom:1px solid var(--edge)}
+  nav .wrap{display:flex;align-items:center;gap:18px;height:62px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-.2px;
+         text-decoration:none;color:var(--ink)}
+  .brand .mark{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:14px;
+    background:linear-gradient(145deg,var(--gold),var(--ember));color:#1a1206}
+  .brand .b2{color:var(--gold)}
+  nav .sp{margin-left:auto}
+  nav a.lnk{color:var(--dim);text-decoration:none;font-size:14.5px;transition:color .15s}
+  nav a.lnk:hover{color:var(--ink)}
+
+  header{padding:70px 0 40px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:3.5px;text-transform:uppercase;color:var(--faint)}
+  h1{font-size:clamp(34px,7vw,60px);font-weight:900;letter-spacing:-1.6px;line-height:1.04;margin:14px 0 16px}
+  h1 .g{background:linear-gradient(135deg,var(--violet),var(--teal));-webkit-background-clip:text;
+        background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--dim);font-size:clamp(15.5px,2.3vw,18px);max-width:640px}
+
+  .games{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));padding-bottom:20px}
+  .game{background:var(--card);border:1px solid var(--edge);border-radius:18px;padding:26px;
+        display:flex;flex-direction:column;transition:transform .18s,border-color .18s;position:relative;overflow:hidden}
+  .game:hover{transform:translateY(-4px);border-color:var(--edge2)}
+  .game::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+  .game.g1::before{background:linear-gradient(180deg,var(--ember),#8c2814)}
+  .game.g2::before{background:linear-gradient(180deg,var(--teal),#1e5f6b)}
+  .game.g3::before{background:linear-gradient(180deg,#4a5568,#2d3748)}
+
+  .ghead{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+  .game h2{font-size:21px;font-weight:800;letter-spacing:-.4px}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;
+        padding:3px 9px;border-radius:999px;border:1px solid var(--edge2);color:var(--faint)}
+  .chip.done{color:var(--green);border-color:#1e4a33}
+  .chip.wip{color:var(--faint)}
+  .no{font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:1px;margin-bottom:12px}
+  .game p{color:var(--dim);font-size:14.8px;flex:1;margin-bottom:18px}
+  .meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+  .meta span{background:var(--bg2);border:1px solid var(--edge);border-radius:999px;
+             padding:4px 11px;font-size:12.5px;color:var(--faint)}
+
+  .play{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--violet),#7b5cf0);
+        color:#0c0818;font-weight:750;text-decoration:none;border-radius:10px;padding:11px 20px;font-size:14.5px;
+        transition:transform .15s,box-shadow .15s;align-self:flex-start}
+  .play:hover{transform:translateY(-2px);box-shadow:0 12px 28px -12px rgba(169,140,255,.65)}
+  .play.warm{background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a1206}
+  .play.warm:hover{box-shadow:0 12px 28px -12px rgba(232,184,102,.65)}
+  .play.mute{background:transparent;border:1px solid var(--edge2);color:var(--dim)}
+  .play.mute:hover{border-color:var(--faint);box-shadow:none;color:var(--ink)}
+
+  .chapters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .chapters a{font-family:var(--mono);font-size:12.5px;text-decoration:none;color:var(--dim);
+              background:var(--bg2);border:1px solid var(--edge);border-radius:8px;padding:6px 12px;transition:.15s}
+  .chapters a:hover{color:var(--gold);border-color:var(--gold)}
+
+  .strip{margin:26px 0 60px;background:linear-gradient(150deg,#101a26,#0a1017);border:1px solid var(--edge2);
+         border-radius:20px;padding:28px;display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .strip .txt{flex:1;min-width:250px}
+  .strip h3{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px}
+  .strip p{color:var(--dim);font-size:14.8px}
+  .btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,var(--gold),var(--ember));
+       color:#1a1206;font-weight:750;text-decoration:none;border-radius:11px;padding:13px 24px;font-size:15px;
+       transition:transform .15s,box-shadow .15s;white-space:nowrap}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px -12px rgba(232,184,102,.6)}
+
+  footer{border-top:1px solid var(--edge);padding:34px 0 46px;color:var(--faint);font-size:13.5px}
+  footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}
+  footer a{color:var(--dim);text-decoration:none} footer a:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <a class="brand" href="index.html"><span class="mark">⚒</span>Wayfarer <span class="b2">Forge</span></a>
+  <span class="sp"></span>
+  <a class="lnk" href="index.html">Server</a>
+  <a class="lnk" href="games.html" style="color:var(--ink)">Games</a>
+</div></nav>
+
+<header><div class="wrap">
+  <div class="eyebrow">Free · plays in your browser</div>
+  <h1>Small games<br><span class="g">about wandering.</span></h1>
+  <p class="sub">Arrive · listen · choose · leave. One astronaut, pulled through a lot of different worlds,
+     landing somewhere new each time with no idea what happened there yet.</p>
+</div></header>
+
+<section><div class="wrap">
+  <div class="games">
+
+    <div class="game g1">
+      <div class="ghead"><h2>Wounded, Never Wolves</h2><span class="chip done">Complete</span></div>
+      <div class="no">Game One · three kingdoms</div>
+      <p><em style="color:var(--ink)">"Both sides claim to be the wounded, never the wolves."</em><br><br>
+         Three kingdoms, one war, and a choice you live with at the end of it.</p>
+      <div class="meta"><span>Walking mystery</span><span>3 kingdoms</span><span>Choices carry</span></div>
+      <div class="chapters">
+        <a href="chapter1.html">I · Crash Site</a>
+        <a href="chapter2.html">II · The Artefact</a>
+        <a href="chapter3.html">III · The War</a>
+      </div>
+      <a class="play warm" href="chapter1.html">Start from the beginning →</a>
+    </div>
+
+    <div class="game g2">
+      <div class="ghead"><h2>The Last Train Café</h2><span class="chip done">Complete</span></div>
+      <div class="no">Wayfarer V · one sitting</div>
+      <p><em style="color:var(--ink)">"The light on the brass is warm. The window won't stop raining."</em><br><br>
+         A station stop, the last train, and somewhere warm to wait for it.</p>
+      <div class="meta"><span>Walking mystery</span><span>One sitting</span></div>
+      <a class="play" href="last-train-cafe.html">Play →</a>
+    </div>
+
+    <div class="game g3">
+      <div class="ghead"><h2>Below the Sand</h2><span class="chip wip">Scrapped</span></div>
+      <div class="no">Never finished · left up anyway</div>
+      <p>A prototype that never came together and got cut from the series. Left up anyway,
+         if you feel like poking at something unfinished.</p>
+      <div class="meta"><span>Prototype</span><span>Unfinished</span></div>
+      <a class="play mute" href="scrapped/below-the-sand.html">Have a look →</a>
+    </div>
+
+  </div>
+
+  <div class="strip">
+    <div class="txt">
+      <h3>⚒ There's a Minecraft server too</h3>
+      <p>Crystal duels against a bot that learns your skill, seventeen crates, nine shops, and a scavenger
+         hunt hidden across spawn. Java Edition, no mods needed.</p>
+    </div>
+    <a class="btn" href="index.html">See the server →</a>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>Wayfarer Forge · built, broken, and fixed again</div>
+  <div><a href="index.html">Server</a> &nbsp;·&nbsp; <a href="games.html">Games</a></div>
+</div></footer>
+
+</body>
+</html>
