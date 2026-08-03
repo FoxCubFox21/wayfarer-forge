@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wayfarer Forge — Minecraft Server</title>
-<meta name="description" content="Wayfarer Forge — a hand-built Minecraft survival server. Crystal duels against a bot that learns you, 17 crates, nine shops and a scavenger hunt. Java 26.2, no mods.">
+<meta name="description" content="Wayfarer Forge — a hand-built Minecraft survival server with Java and Bedrock crossplay. Crystal duels against a bot that learns you, 17 crates, 9 shops and a scavenger hunt.">
 <meta property="og:title" content="Wayfarer Forge — Minecraft Server">
-<meta property="og:description" content="Crystal duels, 17 crates, nine shops, a scavenger hunt. play.wayfarerforge.games">
+<meta property="og:description" content="Java + Bedrock crossplay. Crystal duels, 17 crates, 9 shops, a scavenger hunt. play.wayfarerforge.games">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0a0a10">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚒️</text></svg>">
@@ -29,18 +29,18 @@
   a{text-decoration:none;color:inherit}
 
   /* ══ nav ══ */
-  nav{position:sticky;top:0;z-index:60;background:rgba(10,10,16,.82);backdrop-filter:blur(14px);
+  nav{position:sticky;top:0;z-index:60;background:rgba(10,10,16,.85);backdrop-filter:blur(14px);
       border-bottom:1px solid var(--edge)}
-  nav .wrap{display:flex;align-items:center;gap:20px;height:66px}
+  nav .wrap{display:flex;align-items:center;gap:18px;height:66px}
   .brand{display:flex;align-items:center;gap:11px;font-weight:900;font-size:18px;letter-spacing:-.4px}
   .brand .mark{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:17px;
     background:linear-gradient(145deg,var(--gold),var(--ember));color:#160c02}
   .brand .b2{color:var(--gold)}
   nav .sp{margin-left:auto}
-  nav a.lnk{color:var(--dim);font-size:14.5px;font-weight:600;transition:color .15s}
+  nav a.lnk{color:var(--dim);font-size:14px;font-weight:600;transition:color .15s;white-space:nowrap}
   nav a.lnk:hover{color:var(--ink)}
   .navcta{background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a0d02;font-weight:800;
-          border-radius:11px;padding:10px 18px;font-size:14px;transition:transform .15s}
+          border-radius:11px;padding:10px 18px;font-size:14px;transition:transform .15s;white-space:nowrap}
   .navcta:hover{transform:translateY(-2px)}
 
   /* ══ hero ══ */
@@ -66,10 +66,10 @@
   h1 .l1{display:block}
   h1 .l2{display:block;background:linear-gradient(100deg,var(--gold),var(--ember) 55%,var(--pink));
          -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .tag{color:var(--dim);font-size:clamp(15.5px,2.2vw,18.5px);max-width:560px;margin:0 auto}
+  .tag{color:var(--dim);font-size:clamp(15.5px,2.2vw,18.5px);max-width:580px;margin:0 auto}
 
-  /* ══ bento grid ══ */
-  .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:14px 0 40px}
+  /* ══ tiles ══ */
+  .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:14px 0 0}
   .t{background:var(--tile);border:1px solid var(--edge);border-radius:var(--r);padding:26px;
      position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s}
   .t:hover{transform:translateY(-5px);border-color:var(--edge2)}
@@ -80,29 +80,31 @@
           padding:3px 9px;position:relative;z-index:2}
   .art{position:absolute;pointer-events:none;z-index:1}
 
-  /* address tile */
   .t.addr{grid-column:span 7;background:linear-gradient(135deg,#241605,#140d05);
-          border-color:rgba(255,194,61,.3);display:flex;flex-direction:column;justify-content:center}
-  .t.addr .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:2.6px;text-transform:uppercase;
-               color:var(--gold);margin-bottom:12px}
-  .ipline{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-  .ipline .ip{font-family:var(--mono);font-size:clamp(18px,3.4vw,32px);font-weight:800;letter-spacing:-1px}
-  .ipline button{border:0;cursor:pointer;font-family:inherit;font-weight:850;font-size:14.5px;
-                 background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a0d02;
-                 border-radius:12px;padding:13px 22px;transition:filter .15s,transform .15s;white-space:nowrap}
-  .ipline button:hover{filter:brightness(1.08);transform:translateY(-2px)}
-  .ipline button.done{background:linear-gradient(135deg,var(--lime),#31b558);color:#04240f}
+          border-color:rgba(255,194,61,.3)}
+  .lbl{font-family:var(--mono);font-size:11px;letter-spacing:2.4px;text-transform:uppercase;
+       color:var(--gold);margin-bottom:9px}
+  .lbl.c{color:var(--cyan)}
+  .ipline{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .ipline .ip{font-family:var(--mono);font-size:clamp(17px,3.1vw,29px);font-weight:800;letter-spacing:-1px;
+               overflow-wrap:anywhere;min-width:0}
+  .cbtn{border:0;cursor:pointer;font-family:inherit;font-weight:850;font-size:13.5px;
+        background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a0d02;
+        border-radius:11px;padding:11px 19px;transition:filter .15s,transform .15s;white-space:nowrap}
+  .cbtn:hover{filter:brightness(1.08);transform:translateY(-2px)}
+  .cbtn.done{background:linear-gradient(135deg,var(--lime),#31b558);color:#04240f}
+  .cbtn.cy{background:linear-gradient(135deg,var(--cyan),#1b8fc4);color:#02202e}
+  .split{border-top:1px solid rgba(255,255,255,.09);margin-top:18px;padding-top:16px}
+  .split .ip{font-size:clamp(15px,2.4vw,21px)}
 
-  /* counters */
   .t.count{grid-column:span 5;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:22px}
   .cbox{background:var(--tile2);border:1px solid var(--edge);border-radius:15px;padding:16px;text-align:center}
-  .cbox .n{font-size:clamp(24px,3.6vw,34px);font-weight:900;letter-spacing:-1.4px;line-height:1.1;
+  .cbox .n{font-size:clamp(23px,3.4vw,33px);font-weight:900;letter-spacing:-1.4px;line-height:1.1;
            background:linear-gradient(135deg,var(--gold),var(--ember));-webkit-background-clip:text;
            background-clip:text;-webkit-text-fill-color:transparent}
   .cbox .k{font-family:var(--mono);font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase;
            color:var(--faint);margin-top:5px}
 
-  /* feature tiles */
   .t.duel{grid-column:span 7;min-height:246px;background:linear-gradient(135deg,#2a0f1c,#12070d);
           border-color:rgba(255,79,139,.28)}
   .t.duel .in{position:relative;z-index:2;max-width:66%}
@@ -119,7 +121,6 @@
        transition:transform .16s;white-space:nowrap;position:relative;z-index:2}
   .btn:hover{transform:translateY(-3px)}
 
-  /* minecraft add-server panel */
   .mc{background:#101018;border:2px solid #2f2f42;border-radius:10px;padding:16px;margin-top:6px;
       position:relative;z-index:2}
   .mc .fl{font-family:var(--mono);font-size:11px;letter-spacing:1.4px;color:var(--faint);
@@ -131,21 +132,69 @@
   .mc .go{background:linear-gradient(180deg,#4f8f3f,#356b28);border:2px solid #1e3d17;border-radius:6px;
           text-align:center;padding:9px;font-weight:800;font-size:14px;letter-spacing:.4px}
 
-  /* ══ steps ══ */
-  section{padding:0 0 74px}
-  .shead{text-align:center;margin:34px 0 26px}
+  /* ══ section furniture ══ */
+  section{padding:64px 0 0}
+  .shead{text-align:center;margin-bottom:30px}
   .kick{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;
         color:var(--gold);background:rgba(255,194,61,.1);border:1px solid rgba(255,194,61,.24);
         border-radius:999px;padding:5px 14px;margin-bottom:12px}
+  .kick.v{color:var(--violet);background:rgba(157,107,255,.11);border-color:rgba(157,107,255,.28)}
+  .kick.c{color:var(--cyan);background:rgba(56,208,255,.1);border-color:rgba(56,208,255,.26)}
   h2{font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-1.6px;line-height:1.05}
+  .lede{color:var(--dim);max-width:610px;margin:12px auto 0;font-size:16px}
+
+  /* crates */
+  .crates{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(152px,1fr))}
+  .cr{background:var(--tile);border:1px solid var(--edge);border-radius:16px;padding:16px 14px;
+      text-align:center;transition:transform .18s,border-color .18s}
+  .cr:hover{transform:translateY(-4px);border-color:var(--c,var(--edge2))}
+  .cr .ic{font-size:26px;line-height:1;margin-bottom:9px}
+  .cr .nm{font-weight:800;font-size:14.5px;letter-spacing:-.2px}
+
+  /* shops */
+  .shops{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(216px,1fr))}
+  .sh{background:var(--tile);border:1px solid var(--edge);border-radius:16px;padding:18px;
+      display:flex;gap:13px;align-items:center;transition:transform .18s,border-color .18s}
+  .sh:hover{transform:translateY(-4px);border-color:var(--edge2)}
+  .sh .ic{width:42px;height:42px;flex:none;border-radius:12px;display:grid;place-items:center;font-size:20px}
+  .sh>div:last-child{min-width:0}          /* flex children default to min-width:auto and refuse to shrink */
+  .sh .nm{font-weight:800;font-size:15px;overflow-wrap:anywhere}
+  .sh .ds{color:var(--faint);font-size:12.6px;line-height:1.4;overflow-wrap:anywhere}
+
+  /* command table */
+  .cmds{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr))}
+  .cm{background:var(--tile);border:1px solid var(--edge);border-radius:14px;padding:15px 17px;
+      display:flex;gap:13px;align-items:baseline}
+  .cm code{font-family:var(--mono);font-size:13.5px;color:var(--gold);font-weight:700;white-space:nowrap}
+  .cm span{overflow-wrap:anywhere}
+  .cm span{color:var(--dim);font-size:13.4px}
+
+  /* faq */
+  .faq{display:grid;gap:11px;max-width:840px;margin:0 auto}
+  details{background:var(--tile);border:1px solid var(--edge);border-radius:16px;overflow:hidden}
+  details[open]{border-color:var(--edge2)}
+  summary{padding:17px 20px;cursor:pointer;font-weight:750;font-size:15.5px;list-style:none;
+          display:flex;justify-content:space-between;gap:14px;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font-family:var(--mono);font-size:19px;color:var(--gold);flex:none}
+  details[open] summary::after{content:"−"}
+  details p{padding:0 20px 18px;color:var(--dim);font-size:14.6px;overflow-wrap:anywhere}
+
+  /* rules */
+  .rules{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(258px,1fr))}
+  .ru{background:var(--tile);border:1px solid var(--edge);border-radius:16px;padding:19px}
+  .ru .rn{font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--pink);margin-bottom:7px}
+  .ru h4{font-size:15.5px;font-weight:800;margin-bottom:5px}
+  .ru p{color:var(--dim);font-size:13.6px}
+
   .steps{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
   .st{background:var(--tile);border:1px solid var(--edge);border-radius:18px;padding:22px}
   .st .sn{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--gold);margin-bottom:7px}
   .st h4{font-size:16px;font-weight:800;margin-bottom:5px}
-  .st p{color:var(--dim);font-size:14px}
-  .st code{font-family:var(--mono);font-size:13px;color:var(--gold)}
+  .st p{color:var(--dim);font-size:14px;overflow-wrap:anywhere}
+  .st code{font-family:var(--mono);font-size:13px;color:var(--gold);overflow-wrap:anywhere}
 
-  footer{border-top:1px solid var(--edge);padding:32px 0 46px;color:var(--faint);font-size:13.5px}
+  footer{border-top:1px solid var(--edge);margin-top:70px;padding:32px 0 46px;color:var(--faint);font-size:13.5px}
   footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}
   footer a{color:var(--dim)} footer a:hover{color:var(--gold)}
 
@@ -161,13 +210,13 @@
     .t.duel .in{max-width:100%}
     .t.duel .art{opacity:.35!important}
   }
+  @media(max-width:760px){ nav a.lnk{display:none} }
   @media(max-width:640px){
     .t.count,.t.join,.t.sm{grid-column:span 12}
-    nav a.lnk{display:none}
-    .floaters{display:none}
     header{padding:44px 0 22px}
     .t{padding:22px}
     .t.duel{min-height:0}
+    section{padding:48px 0 0}
   }
 </style>
 </head>
@@ -177,7 +226,10 @@
   <a class="brand" href="index.html"><span class="mark">⚒</span>Wayfarer <span class="b2">Forge</span></a>
   <span class="sp"></span>
   <a class="lnk" href="#feat">Features</a>
-  <a class="lnk" href="#join">How to join</a>
+  <a class="lnk" href="#crates">Crates</a>
+  <a class="lnk" href="#shops">Shops</a>
+  <a class="lnk" href="#cmds">Commands</a>
+  <a class="lnk" href="#faq">FAQ</a>
   <a class="lnk" href="games.html">Games</a>
   <a class="navcta" href="#join">Play now</a>
 </div></nav>
@@ -188,7 +240,8 @@
     <div class="pill unk" id="pill"><span class="dot"></span><span id="ptxt">Checking server…</span></div>
     <h1><span class="l1">WAYFARER</span><span class="l2">FORGE</span></h1>
     <p class="tag">A survival server built one system at a time — crystal duels against a bot that
-       learns your skill, seventeen crates, nine shops, and a hunt hidden across spawn.</p>
+       learns your skill, seventeen crates, nine shops, and a hunt hidden across spawn.
+       Java <b>and</b> Bedrock.</p>
   </div>
 </header>
 
@@ -196,18 +249,25 @@
   <div class="bento">
 
     <div class="t addr rv">
-      <div class="lbl">Java Edition · 26.2 · No mods</div>
+      <div class="lbl">Java Edition · 26.2 · no mods</div>
       <div class="ipline">
-        <span class="ip" id="ip">play.wayfarerforge.games</span>
-        <button id="cp">COPY</button>
+        <span class="ip">play.wayfarerforge.games</span>
+        <button class="cbtn" data-copy="play.wayfarerforge.games">COPY</button>
+      </div>
+      <div class="split">
+        <div class="lbl c">Bedrock / console / mobile · port 19132</div>
+        <div class="ipline">
+          <span class="ip">play.bedrock.wayfarerforge.games</span>
+          <button class="cbtn cy" data-copy="play.bedrock.wayfarerforge.games">COPY</button>
+        </div>
       </div>
     </div>
 
     <div class="t count rv">
       <div class="cbox"><div class="n" id="c-on">—</div><div class="k">Online</div></div>
+      <div class="cbox"><div class="n">100</div><div class="k">Slots</div></div>
       <div class="cbox"><div class="n">17</div><div class="k">Crates</div></div>
       <div class="cbox"><div class="n">9</div><div class="k">Shops</div></div>
-      <div class="cbox"><div class="n">16</div><div class="k">Plugins</div></div>
     </div>
 
     <div class="t duel rv" id="feat">
@@ -226,7 +286,7 @@
     </div>
 
     <div class="t join rv">
-      <h3>How to join</h3>
+      <h3>How to join (Java)</h3>
       <div class="mc">
         <div class="fl">Server Name</div>
         <div class="fi">Wayfarer Forge</div>
@@ -237,32 +297,9 @@
     </div>
 
     <div class="t sm rv">
-      <h3>Seventeen crates</h3>
-      <p>One per shulker colour, Starter up to Immortal — each with its own loot table and the win odds
-         printed on every prize.</p>
-      <span class="cmd">/crates</span>
-      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
-        <polygon points="50,8 92,32 50,56 8,32" fill="#ffd76b"/>
-        <polygon points="8,32 50,56 50,96 8,72" fill="#e0a02c"/>
-        <polygon points="92,32 50,56 50,96 92,72" fill="#a86f14"/>
-      </svg>
-    </div>
-
-    <div class="t sm rv">
-      <h3>Nine NPC shops</h3>
-      <p>Mining, redstone, building, farming, storage, combat, brewing, food and curiosities — real
-         currency, real prices.</p>
-      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
-        <polygon points="50,8 92,32 50,56 8,32" fill="#7ff0a8"/>
-        <polygon points="8,32 50,56 50,96 8,72" fill="#33bf6b"/>
-        <polygon points="92,32 50,56 50,96 92,72" fill="#1d8449"/>
-      </svg>
-    </div>
-
-    <div class="t sm rv">
       <h3>Scavenger hunt</h3>
-      <p>Eight critters hidden around spawn — a frog, a dolphin, a bee and five more. Find them all for a
-         one-of-a-kind trophy.</p>
+      <p>Eight critters hidden around spawn. Find every one and you get an Immortal key, $25,000, an
+         elytra and four god apples.</p>
       <span class="cmd">/hunt</span>
       <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
         <polygon points="50,8 92,32 50,56 8,32" fill="#8ce4ff"/>
@@ -283,6 +320,221 @@
       </svg>
     </div>
 
+    <div class="t sm rv">
+      <h3>Into the wild</h3>
+      <p>Walk through the portal at spawn and land somewhere random far out. Claim it, build on it,
+         keep it.</p>
+      <span class="cmd">/rtp</span>
+      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#8fd96a"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#5aa63c"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#3c7526"/>
+      </svg>
+    </div>
+
+    <div class="t sm rv">
+      <h3>Genuinely protected</h3>
+      <p>Land claims, rollback logging on every block, anti-xray, seed protection and a real anticheat.
+         Grief gets undone, not argued about.</p>
+      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#b8b8c4"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#8a8a99"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#5f5f6e"/>
+      </svg>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ crossplay ══ -->
+<section id="crossplay"><div class="wrap">
+  <div class="shead rv">
+    <span class="kick c">Crossplay</span>
+    <h2>Java and Bedrock, same world</h2>
+    <p class="lede">Geyser and Floodgate are running, so phones, tablets, consoles and Windows Bedrock
+       join the exact same world as Java players — no separate server, no extra account needed.
+       ViaVersion is installed too, so older Java clients can still get in.</p>
+  </div>
+  <div class="shops">
+    <div class="sh rv"><div class="ic" style="background:rgba(255,194,61,.14)">☕</div>
+      <div><div class="nm">Java Edition</div><div class="ds">play.wayfarerforge.games</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(56,208,255,.14)">📱</div>
+      <div><div class="nm">Bedrock — mobile &amp; tablet</div><div class="ds">play.bedrock.wayfarerforge.games : 19132</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(94,224,122,.14)">🎮</div>
+      <div><div class="nm">Bedrock — console</div><div class="ds">Same address, port 19132</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(157,107,255,.14)">🪟</div>
+      <div><div class="nm">Windows Bedrock</div><div class="ds">Same address, port 19132</div></div></div>
+  </div>
+</div></section>
+
+<!-- ══ crates ══ -->
+<section id="crates"><div class="wrap">
+  <div class="shead rv">
+    <span class="kick">Loot</span>
+    <h2>Seventeen crates</h2>
+    <p class="lede">One per shulker colour, Starter all the way up to Immortal. Every crate shows its own
+       loot table with the win odds printed on each prize, so you always know what you're rolling for.
+       Laid out below in the same order you'll see them in <code style="font-family:var(--mono);color:var(--gold)">/crates</code>.</p>
+  </div>
+  <div class="crates">
+    <div class="cr rv" style="--c:#5ee07a"><div class="ic">🌱</div><div class="nm">Starter</div></div>
+    <div class="cr rv" style="--c:#38d0ff"><div class="ic">📅</div><div class="nm">Daily</div></div>
+    <div class="cr rv" style="--c:#ffc23d"><div class="ic">🗳️</div><div class="nm">Vote</div></div>
+    <div class="cr rv" style="--c:#ffc23d"><div class="ic">🧭</div><div class="nm">Wayfarer</div></div>
+    <div class="cr rv" style="--c:#ff6b2c"><div class="ic">⭐</div><div class="nm">Legendary</div></div>
+    <div class="cr rv" style="--c:#ff4f8b"><div class="ic">👑</div><div class="nm">Immortal</div></div>
+    <div class="cr rv" style="--c:#ffe9a8"><div class="ic">🪽</div><div class="nm">Angel</div></div>
+    <div class="cr rv" style="--c:#ff6b2c"><div class="ic">🔥</div><div class="nm">Blaze</div></div>
+    <div class="cr rv" style="--c:#9d6bff"><div class="ic">🔮</div><div class="nm">Mystic</div></div>
+    <div class="cr rv" style="--c:#b8b8c4"><div class="ic">⛏️</div><div class="nm">Miner</div></div>
+    <div class="cr rv" style="--c:#e8e8e8"><div class="ic">💀</div><div class="nm">Skeleton</div></div>
+    <div class="cr rv" style="--c:#ff4f8b"><div class="ic">🍬</div><div class="nm">Sweet</div></div>
+    <div class="cr rv" style="--c:#38d0ff"><div class="ic">🌊</div><div class="nm">Ocean</div></div>
+    <div class="cr rv" style="--c:#8fd96a"><div class="ic">🌾</div><div class="nm">Farmer</div></div>
+    <div class="cr rv" style="--c:#5ee07a"><div class="ic">💚</div><div class="nm">Emerald</div></div>
+    <div class="cr rv" style="--c:#6f6c88"><div class="ic">🕳️</div><div class="nm">Void</div></div>
+    <div class="cr rv" style="--c:#9d6bff"><div class="ic">📦</div><div class="nm">Shulker</div></div>
+  </div>
+</div></section>
+
+<!-- ══ shops ══ -->
+<section id="shops"><div class="wrap">
+  <div class="shead rv">
+    <span class="kick">Economy</span>
+    <h2>Nine NPC shops</h2>
+    <p class="lede">Real currency, real prices, and no hunting around for someone's chest shop. Every
+       trader stands in the shop building at spawn and buys as well as sells.</p>
+  </div>
+  <div class="shops">
+    <div class="sh rv"><div class="ic" style="background:rgba(255,194,61,.14)">⛏</div>
+      <div><div class="nm">Mining Supplies</div><div class="ds">Ores, rails, blast furnaces, tools</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,79,139,.14)">⚡</div>
+      <div><div class="nm">Redstone Lab</div><div class="ds">Dust, lamps, TNT, repeaters, pistons</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,194,61,.14)">🧱</div>
+      <div><div class="nm">Building Blocks</div><div class="ds">Concrete, powder, scaffolding, terracotta</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(94,224,122,.14)">🌾</div>
+      <div><div class="nm">Farming Supplies</div><div class="ds">Seeds, saplings, nether crops, bone meal</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(157,107,255,.14)">✨</div>
+      <div><div class="nm">Curiosities</div><div class="ds">Bookshelves, jukeboxes, mob heads, oddities</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,194,61,.14)">📦</div>
+      <div><div class="nm">Storage Solutions</div><div class="ds">Chests, barrels, ender chests, shulker shells</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,79,139,.14)">⚔</div>
+      <div><div class="nm">Combat Supplies</div><div class="ds">Weapons, armour, arrows, totems</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(157,107,255,.14)">🧪</div>
+      <div><div class="nm">Alchemy</div><div class="ds">Potions, brewing stands, ingredients</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,107,44,.14)">🍖</div>
+      <div><div class="nm">Provisions</div><div class="ds">Food, golden apples, cooked everything</div></div></div>
+  </div>
+</div></section>
+
+<!-- ══ commands ══ -->
+<section id="cmds"><div class="wrap">
+  <div class="shead rv">
+    <span class="kick">Reference</span>
+    <h2>Commands worth knowing</h2>
+    <p class="lede">Everything else is in <code style="font-family:var(--mono);color:var(--gold)">/help</code> once you're on.</p>
+  </div>
+  <div class="cmds">
+    <div class="cm rv"><code>/spawn</code><span>Back to spawn from anywhere</span></div>
+    <div class="cm rv"><code>/rtp</code><span>Drop somewhere random in the wild</span></div>
+    <div class="cm rv"><code>/duel</code><span>Queue for a 1v1 crystal duel</span></div>
+    <div class="cm rv"><code>/crates</code><span>See every crate and its odds</span></div>
+    <div class="cm rv"><code>/hunt</code><span>Your scavenger hunt progress</span></div>
+    <div class="cm rv"><code>/hof</code><span>Hall of Records — your stats</span></div>
+    <div class="cm rv"><code>/hof &lt;player&gt;</code><span>Look up someone else's stats</span></div>
+    <div class="cm rv"><code>/top</code><span>Leaderboards</span></div>
+    <div class="cm rv"><code>/kit</code><span>Claim the kits you have access to</span></div>
+    <div class="cm rv"><code>/balance</code><span>How much money you're holding</span></div>
+    <div class="cm rv"><code>/pay &lt;player&gt;</code><span>Send someone money</span></div>
+    <div class="cm rv"><code>/sethome</code><span>Set a home you can warp back to</span></div>
+    <div class="cm rv"><code>/home</code><span>Go to a home you've set</span></div>
+    <div class="cm rv"><code>/tpa &lt;player&gt;</code><span>Ask to teleport to someone</span></div>
+    <div class="cm rv"><code>/trust &lt;player&gt;</code><span>Let a friend build in your claim</span></div>
+    <div class="cm rv"><code>/msg &lt;player&gt;</code><span>Private message</span></div>
+  </div>
+</div></section>
+
+<!-- ══ protection ══ -->
+<section><div class="wrap">
+  <div class="shead rv">
+    <span class="kick v">Fair play</span>
+    <h2>Built so griefing doesn't stick</h2>
+  </div>
+  <div class="shops">
+    <div class="sh rv"><div class="ic" style="background:rgba(94,224,122,.14)">🧱</div>
+      <div><div class="nm">Land claims</div><div class="ds">Claim your base, trust your friends, nobody else can touch it</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(56,208,255,.14)">⏪</div>
+      <div><div class="nm">Full rollback logging</div><div class="ds">Every block placed or broken is recorded and can be reversed</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,79,139,.14)">🛡️</div>
+      <div><div class="nm">Anticheat</div><div class="ds">Movement, reach and combat all policed server-side</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(255,194,61,.14)">⛏️</div>
+      <div><div class="nm">Anti-xray</div><div class="ds">Ores are hidden from clients until you actually dig to them</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(157,107,255,.14)">🌱</div>
+      <div><div class="nm">Seed protection</div><div class="ds">The world seed is locked, so seed-based ore finders don't work</div></div></div>
+    <div class="sh rv"><div class="ic" style="background:rgba(94,224,122,.14)">💾</div>
+      <div><div class="nm">Daily backups</div><div class="ds">The whole world is backed up every night on a rotation</div></div></div>
+  </div>
+</div></section>
+
+<!-- ══ rules ══ -->
+<section id="rules"><div class="wrap">
+  <div class="shead rv"><span class="kick v">House rules</span><h2>Short list</h2></div>
+  <div class="rules">
+    <div class="ru rv"><div class="rn">01</div><h4>Don't grief or steal</h4>
+      <p>Claims exist for a reason. Taking apart someone's build gets rolled back and you get removed.</p></div>
+    <div class="ru rv"><div class="rn">02</div><h4>No cheating</h4>
+      <p>X-ray, reach, kill aura, auto-clickers. The anticheat catches most of it; the logs catch the rest.</p></div>
+    <div class="ru rv"><div class="rn">03</div><h4>Be decent in chat</h4>
+      <p>Disagree all you like. Slurs, harassment and spam are where it ends.</p></div>
+    <div class="ru rv"><div class="rn">04</div><h4>PvP is consensual outside arenas</h4>
+      <p>Duels and the arena are fair game. Don't spawn-camp people who want to build.</p></div>
+    <div class="ru rv"><div class="rn">05</div><h4>Don't lag the server</h4>
+      <p>Giant mob farms and redstone that tanks the tick rate will get trimmed. Ask first if unsure.</p></div>
+    <div class="ru rv"><div class="rn">06</div><h4>One account, no alt abuse</h4>
+      <p>Alts to farm daily keys or dodge a ban aren't on.</p></div>
+  </div>
+</div></section>
+
+<!-- ══ faq ══ -->
+<section id="faq"><div class="wrap">
+  <div class="shead rv"><span class="kick c">Questions</span><h2>Before you ask</h2></div>
+  <div class="faq">
+    <details class="rv"><summary>Do I need mods or a launcher?</summary>
+      <p>No. Vanilla Minecraft, no mods, no client install. Add the address and play.</p></details>
+    <details class="rv"><summary>Can I play on Bedrock, phone or console?</summary>
+      <p>Yes. Geyser and Floodgate are running, so Bedrock players join the same world as Java players.
+         Use <b>play.bedrock.wayfarerforge.games</b> on port <b>19132</b>. You don't need a Java account.</p></details>
+    <details class="rv"><summary>What version do I need?</summary>
+      <p>The server runs Java Edition 26.2. ViaVersion is installed, so a good range of older Java
+         clients can connect too — if yours doesn't work, update to 26.2.</p></details>
+    <details class="rv"><summary>Does it cost anything?</summary>
+      <p>No. There's no store, no ranks for sale and nothing to buy. Everything on this page is
+         free to everyone.</p></details>
+    <details class="rv"><summary>Is my base safe if I log off?</summary>
+      <p>Claim it and yes. Claimed land can't be broken, opened or built on by anyone you haven't
+         trusted, and every block change is logged and reversible regardless.</p></details>
+    <details class="rv"><summary>What happens to my gear in a duel?</summary>
+      <p>It's stashed before the match and handed straight back afterwards — win, lose, disconnect or
+         server restart. You fight with a supplied netherite kit, not your own stuff.</p></details>
+    <details class="rv"><summary>The bot is too easy or too hard.</summary>
+      <p>It re-tunes itself after every fight to land near an even match. Give it a few duels and it
+         will meet you where you are.</p></details>
+    <details class="rv"><summary>How many people can be on at once?</summary>
+      <p>A hundred slots. It's a small server and it's usually quiet — that's rather the point.</p></details>
+  </div>
+</div></section>
+
+<!-- ══ join ══ -->
+<section id="join"><div class="wrap">
+  <div class="shead rv"><span class="kick">Getting in</span><h2>Four steps and you're on</h2></div>
+  <div class="steps">
+    <div class="st rv"><div class="sn">01</div><h4>Open Minecraft</h4><p>Java <code>26.2</code>, or any Bedrock device.</p></div>
+    <div class="st rv"><div class="sn">02</div><h4>Multiplayer</h4><p>Hit <b>Add Server</b> on the multiplayer screen.</p></div>
+    <div class="st rv"><div class="sn">03</div><h4>Paste the address</h4><p>Java: <code>play.wayfarerforge.games</code><br>Bedrock: <code>play.bedrock.wayfarerforge.games</code>, port <code>19132</code></p></div>
+    <div class="st rv"><div class="sn">04</div><h4>You're in</h4><p>Type <code>/help</code> once you spawn.</p></div>
+  </div>
+
+  <div class="bento" style="padding-top:20px">
     <div class="t games rv">
       <div class="in">
         <h3>There are browser games too</h3>
@@ -291,43 +543,29 @@
       </div>
       <a class="btn" href="games.html">Play them →</a>
     </div>
-
-  </div>
-</div>
-
-<section id="join"><div class="wrap">
-  <div class="shead rv"><span class="kick">Getting in</span><h2>Four steps and you're on</h2></div>
-  <div class="steps">
-    <div class="st rv"><div class="sn">01</div><h4>Open Minecraft</h4><p>Java Edition, version <code>26.2</code>.</p></div>
-    <div class="st rv"><div class="sn">02</div><h4>Multiplayer</h4><p>Hit <b>Add Server</b> on the multiplayer screen.</p></div>
-    <div class="st rv"><div class="sn">03</div><h4>Paste the address</h4><p><code>play.wayfarerforge.games</code></p></div>
-    <div class="st rv"><div class="sn">04</div><h4>You're in</h4><p>Type <code>/help</code> once you spawn.</p></div>
   </div>
 </div></section>
 
 <footer><div class="wrap">
   <div>Wayfarer Forge · built, broken, and fixed again</div>
-  <div><a href="games.html">Games</a> &nbsp;·&nbsp; <a href="#join">Join the server</a></div>
+  <div><a href="games.html">Games</a> &nbsp;·&nbsp; <a href="#crates">Crates</a> &nbsp;·&nbsp;
+       <a href="#rules">Rules</a> &nbsp;·&nbsp; <a href="#join">Join</a></div>
 </div></footer>
 
 <script>
-  const ADDR = 'play.wayfarerforge.games';
+  const JAVA = 'play.wayfarerforge.games';
 
   /* ── floating blocks ──
-     Flat SVG polygons, not CSS 3D cubes. Six transformed faces each carrying
+     Flat SVG polygons, not CSS 3D cubes: six transformed faces each carrying
      their own filter/blend get promoted to separate GPU layers that rasterise
-     out of sync, leaving a rounded ghost over the front face. Three polygons
-     have no such failure mode, and they stay crisp at any size. */
+     out of sync, leaving a rounded ghost over the front face. */
   (function () {
     const host = document.getElementById('floaters');
     if (!host || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const skins = [
-      ['#8fd96a', '#5aa63c', '#3c7526'],  // grass
-      ['#b8b8c4', '#8a8a99', '#5f5f6e'],  // stone
-      ['#8ce4ff', '#31b4e0', '#1c7ba0'],  // diamond
-      ['#ffd76b', '#e0a02c', '#a86f14'],  // gold
-      ['#c9a6ff', '#8f5cf0', '#5f36ad'],  // amethyst
-      ['#ffab7a', '#f0703a', '#ad441c']   // ember
+      ['#8fd96a', '#5aa63c', '#3c7526'], ['#b8b8c4', '#8a8a99', '#5f5f6e'],
+      ['#8ce4ff', '#31b4e0', '#1c7ba0'], ['#ffd76b', '#e0a02c', '#a86f14'],
+      ['#c9a6ff', '#8f5cf0', '#5f36ad'], ['#ffab7a', '#f0703a', '#ad441c']
     ];
     // [left%, top%, px, tilt°] — confined to the far left/right gutters
     const spots = [[2, 12, 74, -8], [91, 7, 58, 7], [5, 55, 50, 10],
@@ -345,35 +583,38 @@
     });
   })();
 
-  /* ── copy address ── */
-  const cp = document.getElementById('cp');
-  cp.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(ADDR); }
-    catch (_) {
-      const t = document.createElement('textarea');
-      t.value = ADDR; t.style.cssText = 'position:fixed;opacity:0';
-      document.body.appendChild(t); t.select();
-      try { document.execCommand('copy'); } catch (e) {}
-      t.remove();
-    }
-    cp.textContent = 'COPIED ✓'; cp.classList.add('done');
-    setTimeout(() => { cp.textContent = 'COPY'; cp.classList.remove('done'); }, 1900);
+  /* ── copy buttons (one handler for both addresses) ── */
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copy;
+      try { await navigator.clipboard.writeText(text); }
+      catch (_) {
+        const t = document.createElement('textarea');
+        t.value = text; t.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(t); t.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        t.remove();
+      }
+      const was = btn.textContent;
+      btn.textContent = 'COPIED ✓'; btn.classList.add('done');
+      setTimeout(() => { btn.textContent = was; btn.classList.remove('done'); }, 1900);
+    });
   });
 
   /* ── scroll reveal ── */
   const reveal = el => el.classList.add('in');
   // Nothing may stay invisible: if IntersectionObserver is missing, throws, or
   // simply never fires, this shows everything anyway.
-  const failsafe = setTimeout(() => document.querySelectorAll('.rv').forEach(reveal), 2000);
+  setTimeout(() => document.querySelectorAll('.rv').forEach(reveal), 2000);
   if (!('IntersectionObserver' in window)) {
     document.querySelectorAll('.rv').forEach(reveal);
   } else {
-  const io = new IntersectionObserver((es) => {
-    es.forEach((en, i) => {
-      if (en.isIntersecting) { setTimeout(() => en.target.classList.add('in'), i * 50); io.unobserve(en.target); }
-    });
-  }, { threshold: .08, rootMargin: '0px 0px -30px' });
-  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+    const io = new IntersectionObserver((es) => {
+      es.forEach((en, i) => {
+        if (en.isIntersecting) { setTimeout(() => reveal(en.target), i * 40); io.unobserve(en.target); }
+      });
+    }, { threshold: .05, rootMargin: '0px 0px -20px' });
+    document.querySelectorAll('.rv').forEach(el => io.observe(el));
   }
 
   /* ── live status ──
@@ -394,7 +635,7 @@
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 7000);
     try {
-      const r = await fetch('https://api.mcsrvstat.us/3/' + ADDR, { signal: ctrl.signal });
+      const r = await fetch('https://api.mcsrvstat.us/3/' + JAVA, { signal: ctrl.signal });
       clearTimeout(timer);
       if (!r.ok) throw 0;
       const d = await r.json();
