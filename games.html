@@ -4,156 +4,300 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Games — Wayfarer Forge</title>
-<meta name="description" content="Short walking-mystery games about one astronaut pulled through many worlds. Playable free in your browser.">
+<meta name="description" content="Small walking-mystery games about one astronaut pulled through many worlds. Free, and they run in your browser.">
 <meta property="og:title" content="Games — Wayfarer Forge">
-<meta property="og:description" content="Short walking-mysteries about one astronaut, playable free in your browser.">
+<meta property="og:description" content="Small games about wandering. Arrive, listen, choose, leave.">
+<meta name="theme-color" content="#07050c">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚒️</text></svg>">
 <style>
   :root{
-    --bg:#07090e; --bg2:#0d121b; --card:#111927; --edge:#1e2a3c; --edge2:#2b3b52;
-    --ink:#e9eff8; --dim:#93a6c0; --faint:#5f728c;
-    --gold:#e8b866; --ember:#ff9a5c; --green:#57d98a; --violet:#a98cff; --teal:#5fd6d0;
+    --void:#07050c; --deep:#0c0916; --panel:#130f22;
+    --edge:rgba(255,255,255,.07); --edge2:rgba(255,255,255,.14);
+    --ink:#f2eefc; --dim:#a99fc4; --faint:#6e6690;
+    --gold:#ffc95c; --ember:#ff7a3d; --lime:#7df07d; --cyan:#4fd8ff; --violet:#a77bff; --pink:#ff5f9e;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{
-    background:
-      radial-gradient(1000px 600px at 50% -8%, #191331 0%, transparent 60%),
-      radial-gradient(800px 480px at 12% 22%, rgba(169,140,255,.08) 0%, transparent 60%),
-      var(--bg);
-    color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    line-height:1.6; min-height:100vh; overflow-x:hidden;
-  }
-  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+  body{background:var(--void);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 24px;position:relative;z-index:2}
 
-  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);
-      background:rgba(7,9,14,.78);border-bottom:1px solid var(--edge)}
-  nav .wrap{display:flex;align-items:center;gap:18px;height:62px}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-.2px;
+  /* ══ ambient background (matches the server page) ══ */
+  .bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .aur{position:absolute;border-radius:50%;filter:blur(90px);opacity:.42;animation:drift 26s ease-in-out infinite}
+  .a1{width:600px;height:600px;background:#5a2bd8;top:-230px;left:-150px}
+  .a2{width:500px;height:500px;background:#0e6b8f;top:-100px;right:-150px;animation-delay:-9s}
+  .a3{width:460px;height:460px;background:#c9421f;top:52%;left:40%;animation-delay:-17s;opacity:.26}
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,50px) scale(1.12)}66%{transform:translate(-50px,30px) scale(.92)}}
+  .grid{position:absolute;inset:0;opacity:.24;
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+    background-size:56px 56px;
+    mask-image:radial-gradient(1000px 560px at 50% 0%,#000 0%,transparent 78%);
+    -webkit-mask-image:radial-gradient(1000px 560px at 50% 0%,#000 0%,transparent 78%)}
+  .grain{position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
+  @media (prefers-reduced-motion:reduce){.aur{animation:none}}
+
+  /* ══ nav ══ */
+  nav{position:fixed;top:0;left:0;right:0;z-index:60;border-bottom:1px solid transparent;
+      transition:background .25s,border-color .25s}
+  nav.stuck{background:rgba(7,5,12,.86);backdrop-filter:blur(14px);border-bottom-color:var(--edge)}
+  nav .wrap{display:flex;align-items:center;gap:20px;height:70px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:900;font-size:18px;letter-spacing:-.4px;
          text-decoration:none;color:var(--ink)}
-  .brand .mark{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:14px;
-    background:linear-gradient(145deg,var(--gold),var(--ember));color:#1a1206}
-  .brand .b2{color:var(--gold)}
+  .brand .mark{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;font-size:16px;
+    background:linear-gradient(145deg,var(--gold),var(--ember));color:#160c02;
+    box-shadow:0 0 22px -4px rgba(255,150,60,.75)}
+  .brand .b2{background:linear-gradient(135deg,var(--gold),var(--ember));-webkit-background-clip:text;
+             background-clip:text;-webkit-text-fill-color:transparent}
   nav .sp{margin-left:auto}
-  nav a.lnk{color:var(--dim);text-decoration:none;font-size:14.5px;transition:color .15s}
+  nav a.lnk{color:var(--dim);text-decoration:none;font-size:14.5px;font-weight:600;transition:color .15s}
   nav a.lnk:hover{color:var(--ink)}
+  nav a.lnk.on{color:var(--ink)}
+  .navcta{background:linear-gradient(135deg,var(--gold),var(--ember));color:#160c02;font-weight:800;
+          text-decoration:none;border-radius:10px;padding:9px 17px;font-size:14px;
+          box-shadow:0 8px 24px -10px rgba(255,150,60,.8);transition:transform .15s}
+  .navcta:hover{transform:translateY(-2px)}
 
-  header{padding:70px 0 40px}
-  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:3.5px;text-transform:uppercase;color:var(--faint)}
-  h1{font-size:clamp(34px,7vw,60px);font-weight:900;letter-spacing:-1.6px;line-height:1.04;margin:14px 0 16px}
-  h1 .g{background:linear-gradient(135deg,var(--violet),var(--teal));-webkit-background-clip:text;
-        background-clip:text;-webkit-text-fill-color:transparent}
-  .sub{color:var(--dim);font-size:clamp(15.5px,2.3vw,18px);max-width:640px}
+  /* ══ hero ══ */
+  header{padding:150px 0 62px;text-align:center}
+  .kicker{display:inline-block;font-family:var(--mono);font-size:11.5px;letter-spacing:3px;text-transform:uppercase;
+          color:var(--violet);background:rgba(167,123,255,.1);border:1px solid rgba(167,123,255,.26);
+          border-radius:999px;padding:5px 14px;margin-bottom:18px}
+  h1{font-size:clamp(40px,9vw,86px);font-weight:900;letter-spacing:-3.4px;line-height:.93;margin-bottom:20px}
+  h1 .l1{display:block;color:#fff}
+  h1 .l2{display:block;background:linear-gradient(100deg,var(--violet) 0%,var(--cyan) 55%,var(--lime) 100%);
+         -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+         filter:drop-shadow(0 6px 40px rgba(167,123,255,.42))}
+  .sub{color:var(--dim);font-size:clamp(16px,2.3vw,19px);max-width:600px;margin:0 auto}
+  .beats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+  .beats span{font-family:var(--mono);font-size:11.5px;letter-spacing:2.4px;text-transform:uppercase;
+              color:var(--faint);border:1px solid var(--edge);border-radius:999px;padding:6px 14px}
 
-  .games{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));padding-bottom:20px}
-  .game{background:var(--card);border:1px solid var(--edge);border-radius:18px;padding:26px;
-        display:flex;flex-direction:column;transition:transform .18s,border-color .18s;position:relative;overflow:hidden}
-  .game:hover{transform:translateY(-4px);border-color:var(--edge2)}
-  .game::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
-  .game.g1::before{background:linear-gradient(180deg,var(--ember),#8c2814)}
-  .game.g2::before{background:linear-gradient(180deg,var(--teal),#1e5f6b)}
-  .game.g3::before{background:linear-gradient(180deg,#4a5568,#2d3748)}
+  /* ══ game cards ══ */
+  .games{display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));padding-bottom:24px}
+  .game{background:linear-gradient(165deg,var(--panel),var(--deep));border:1px solid var(--edge);
+        border-radius:22px;overflow:hidden;display:flex;flex-direction:column;
+        transition:transform .24s cubic-bezier(.2,.8,.2,1),border-color .24s,box-shadow .24s}
+  .game:hover{transform:translateY(-7px);border-color:var(--edge2);box-shadow:0 30px 70px -34px rgba(0,0,0,.95)}
+  .game.lead{grid-column:1/-1}
 
-  .ghead{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
-  .game h2{font-size:21px;font-weight:800;letter-spacing:-.4px}
+  /* CSS-drawn cover art — no image assets */
+  .art{height:190px;position:relative;overflow:hidden;border-bottom:1px solid var(--edge)}
+  .game.lead .art{height:250px}
+  .art .sky{position:absolute;inset:0}
+  .art .sun{position:absolute;border-radius:50%;filter:blur(1px)}
+  .art .ground{position:absolute;left:-10%;right:-10%;bottom:-30px;height:120px;border-radius:50% 50% 0 0}
+  .art .g2{position:absolute;left:-20%;right:-20%;bottom:-46px;height:110px;border-radius:44% 56% 0 0;opacity:.85}
+  .art .veil{position:absolute;inset:0;
+             background:linear-gradient(180deg,transparent 40%,rgba(12,9,22,.42) 78%,var(--panel) 100%)}
+
+  /* Crash Site — red desert, broken rocket */
+  .art.desert .sky{background:linear-gradient(180deg,#2b1220 0%,#7d2c1e 55%,#c85a2a 100%)}
+  .art.desert .sun{width:96px;height:96px;background:#ffcf7a;box-shadow:0 0 90px 34px rgba(255,160,70,.55);
+                   left:50%;top:44%;transform:translate(-50%,-50%)}
+  .art.desert .ground{background:linear-gradient(180deg,#8a3a22,#3d1710)}
+  .art.desert .g2{background:linear-gradient(180deg,#6d2c1b,#2a0f0b)}
+  .art.desert .rocket{position:absolute;left:63%;bottom:44px;width:15px;height:62px;border-radius:8px 8px 2px 2px;
+                      background:linear-gradient(90deg,#6b7280,#cbd5e1 45%,#5b6472);transform:rotate(29deg);
+                      box-shadow:0 0 24px rgba(0,0,0,.6)}
+  .art.desert .rocket::after{content:"";position:absolute;left:-4px;bottom:-2px;width:23px;height:9px;
+                             background:#3f4753;border-radius:3px}
+  .art.desert .smoke{position:absolute;left:66%;bottom:96px;width:44px;height:44px;border-radius:50%;
+                     background:radial-gradient(circle,rgba(30,20,18,.65),transparent 68%);
+                     animation:rise 9s ease-in-out infinite}
+  @keyframes rise{0%,100%{transform:translateY(0) scale(1);opacity:.55}50%{transform:translateY(-16px) scale(1.22);opacity:.28}}
+
+  /* Last Train Café — warm brass light, rain on the window */
+  .art.cafe .sky{background:linear-gradient(180deg,#0b1220 0%,#152238 60%,#0e1626 100%)}
+  .art.cafe .sun{width:120px;height:78px;border-radius:14px;background:#ffbf63;
+                 box-shadow:0 0 90px 30px rgba(255,178,80,.42);left:50%;top:52%;transform:translate(-50%,-50%);
+                 filter:blur(2px);opacity:.85}
+  .art.cafe .win{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+                 width:150px;height:96px;border-radius:8px;border:3px solid #6b4a26;
+                 background:linear-gradient(180deg,rgba(255,196,110,.5),rgba(255,150,70,.24));
+                 box-shadow:0 0 44px rgba(255,180,90,.4)}
+  .art.cafe .win::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:3px;
+                        background:#6b4a26;transform:translateX(-50%)}
+  .art.cafe .rain{position:absolute;inset:0;opacity:.5;
+    background-image:repeating-linear-gradient(105deg,rgba(190,220,255,.42) 0 1px,transparent 1px 9px);
+    animation:pour .55s linear infinite}
+  @keyframes pour{to{background-position:44px 120px}}
+
+  /* Below the Sand — muted, unfinished */
+  .art.sand .sky{background:linear-gradient(180deg,#1a1a22 0%,#3a3630 60%,#5c5245 100%);filter:saturate(.55)}
+  .art.sand .sun{width:74px;height:74px;background:#b9ac91;opacity:.4;left:32%;top:40%;
+                 box-shadow:0 0 60px 22px rgba(185,172,145,.22)}
+  .art.sand .ground{background:linear-gradient(180deg,#6b5f4c,#2b2620)}
+  .art.sand .g2{background:linear-gradient(180deg,#544a3b,#1e1a16)}
+  .art.sand .veil{background:linear-gradient(180deg,transparent 30%,rgba(12,9,22,.6) 74%,var(--panel) 100%)}
+
+  @media (prefers-reduced-motion:reduce){.art .smoke,.art .rain{animation:none}}
+
+  .body{padding:26px;display:flex;flex-direction:column;flex:1}
+  .ghead{display:flex;align-items:center;gap:10px;margin-bottom:5px;flex-wrap:wrap}
+  .game h2{font-size:clamp(20px,3vw,26px);font-weight:900;letter-spacing:-.7px}
   .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;
-        padding:3px 9px;border-radius:999px;border:1px solid var(--edge2);color:var(--faint)}
-  .chip.done{color:var(--green);border-color:#1e4a33}
-  .chip.wip{color:var(--faint)}
-  .no{font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:1px;margin-bottom:12px}
-  .game p{color:var(--dim);font-size:14.8px;flex:1;margin-bottom:18px}
-  .meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
-  .meta span{background:var(--bg2);border:1px solid var(--edge);border-radius:999px;
-             padding:4px 11px;font-size:12.5px;color:var(--faint)}
+        padding:3px 10px;border-radius:999px;border:1px solid var(--edge2);color:var(--faint)}
+  .chip.done{color:var(--lime);border-color:rgba(125,240,125,.32);background:rgba(125,240,125,.07)}
+  .no{font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:1.4px;
+      text-transform:uppercase;margin-bottom:14px}
+  .quote{color:var(--ink);font-size:clamp(16px,2.4vw,19px);font-style:italic;line-height:1.45;
+         border-left:2px solid var(--gold);padding-left:15px;margin-bottom:14px}
+  .game p{color:var(--dim);font-size:15px;margin-bottom:18px}
+  .game .fill{flex:1}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .meta span{background:rgba(255,255,255,.04);border:1px solid var(--edge);border-radius:999px;
+             padding:5px 12px;font-size:12.5px;color:var(--faint)}
 
-  .play{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--violet),#7b5cf0);
-        color:#0c0818;font-weight:750;text-decoration:none;border-radius:10px;padding:11px 20px;font-size:14.5px;
-        transition:transform .15s,box-shadow .15s;align-self:flex-start}
-  .play:hover{transform:translateY(-2px);box-shadow:0 12px 28px -12px rgba(169,140,255,.65)}
-  .play.warm{background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a1206}
-  .play.warm:hover{box-shadow:0 12px 28px -12px rgba(232,184,102,.65)}
-  .play.mute{background:transparent;border:1px solid var(--edge2);color:var(--dim)}
-  .play.mute:hover{border-color:var(--faint);box-shadow:none;color:var(--ink)}
+  .chapters{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:20px}
+  .chapters a{text-decoration:none;background:rgba(255,255,255,.03);border:1px solid var(--edge);
+              border-radius:12px;padding:13px 15px;transition:.18s;display:block}
+  .chapters a:hover{border-color:var(--gold);background:rgba(255,201,92,.07);transform:translateY(-2px)}
+  .chapters .rn{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--gold);display:block}
+  .chapters .cn{font-weight:750;font-size:14.5px;color:var(--ink);display:block;margin:2px 0 3px}
+  .chapters .cd{font-size:12.5px;color:var(--faint);line-height:1.4;display:block}
 
-  .chapters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-  .chapters a{font-family:var(--mono);font-size:12.5px;text-decoration:none;color:var(--dim);
-              background:var(--bg2);border:1px solid var(--edge);border-radius:8px;padding:6px 12px;transition:.15s}
-  .chapters a:hover{color:var(--gold);border-color:var(--gold)}
+  .play{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,var(--gold),var(--ember));
+        color:#160c02;font-weight:800;text-decoration:none;border-radius:12px;padding:14px 26px;font-size:15px;
+        transition:transform .16s,box-shadow .16s;align-self:flex-start;
+        box-shadow:0 14px 34px -14px rgba(255,150,60,.85)}
+  .play:hover{transform:translateY(-3px)}
+  .play.cool{background:linear-gradient(135deg,var(--violet),#7b4dff);color:#fff;
+             box-shadow:0 14px 34px -14px rgba(167,123,255,.85)}
+  .play.mute{background:transparent;border:1px solid var(--edge2);color:var(--dim);box-shadow:none}
+  .play.mute:hover{border-color:var(--faint);color:var(--ink)}
 
-  .strip{margin:26px 0 60px;background:linear-gradient(150deg,#101a26,#0a1017);border:1px solid var(--edge2);
-         border-radius:20px;padding:28px;display:flex;gap:22px;align-items:center;flex-wrap:wrap}
-  .strip .txt{flex:1;min-width:250px}
-  .strip h3{font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px}
-  .strip p{color:var(--dim);font-size:14.8px}
-  .btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,var(--gold),var(--ember));
-       color:#1a1206;font-weight:750;text-decoration:none;border-radius:11px;padding:13px 24px;font-size:15px;
-       transition:transform .15s,box-shadow .15s;white-space:nowrap}
-  .btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px -12px rgba(232,184,102,.6)}
+  /* ══ server strip ══ */
+  section{padding:0 0 100px;position:relative;z-index:2}
+  .strip{margin-top:30px;background:linear-gradient(140deg,#1d1206,#0d0818);
+         border:1px solid rgba(255,201,92,.24);border-radius:24px;padding:38px;
+         display:flex;gap:28px;align-items:center;flex-wrap:wrap;
+         box-shadow:0 30px 80px -40px rgba(255,150,60,.45)}
+  .strip .tx{flex:1;min-width:260px}
+  .strip h3{font-size:clamp(24px,4vw,32px);font-weight:900;letter-spacing:-1px;margin-bottom:9px}
+  .strip p{color:var(--dim);font-size:15.5px}
+  .btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--gold),var(--ember));
+       color:#160c02;font-weight:800;text-decoration:none;border-radius:13px;padding:15px 28px;font-size:15.5px;
+       transition:transform .16s;white-space:nowrap;box-shadow:0 14px 36px -14px rgba(255,150,60,.85)}
+  .btn:hover{transform:translateY(-3px)}
 
-  footer{border-top:1px solid var(--edge);padding:34px 0 46px;color:var(--faint);font-size:13.5px}
-  footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}
+  footer{border-top:1px solid var(--edge);padding:40px 0 56px;position:relative;z-index:2}
+  footer .wrap{display:flex;gap:18px;justify-content:space-between;flex-wrap:wrap;color:var(--faint);font-size:13.5px}
   footer a{color:var(--dim);text-decoration:none} footer a:hover{color:var(--gold)}
+
+  @media(max-width:760px){
+    nav .wrap{gap:13px;height:62px}
+    nav a.lnk.sm{display:none}
+    .navcta{padding:8px 15px;font-size:13.5px}
+    .brand{font-size:16px} .brand .mark{width:28px;height:28px;font-size:15px}
+    header{padding:118px 0 50px}
+  }
+  @media(max-width:520px){ .art{height:150px} .game.lead .art{height:170px} .body{padding:22px} }
+  .rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
+  .rv.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 </style>
 </head>
 <body>
 
-<nav><div class="wrap">
+<div class="bg">
+  <div class="aur a1"></div><div class="aur a2"></div><div class="aur a3"></div>
+  <div class="grid"></div><div class="grain"></div>
+</div>
+
+<nav id="nav"><div class="wrap">
   <a class="brand" href="index.html"><span class="mark">⚒</span>Wayfarer <span class="b2">Forge</span></a>
   <span class="sp"></span>
   <a class="lnk" href="index.html">Server</a>
-  <a class="lnk" href="games.html" style="color:var(--ink)">Games</a>
+  <a class="lnk on sm" href="games.html">Games</a>
+  <a class="navcta" href="index.html#join">Play the server</a>
 </div></nav>
 
 <header><div class="wrap">
-  <div class="eyebrow">Free · plays in your browser</div>
-  <h1>Small games<br><span class="g">about wandering.</span></h1>
-  <p class="sub">Arrive · listen · choose · leave. One astronaut, pulled through a lot of different worlds,
-     landing somewhere new each time with no idea what happened there yet.</p>
+  <span class="kicker">Free · runs in your browser</span>
+  <h1><span class="l1">SMALL GAMES</span><span class="l2">ABOUT WANDERING</span></h1>
+  <p class="sub">One astronaut, pulled through a lot of different worlds — landing somewhere new each time
+     with no idea yet what happened there.</p>
+  <div class="beats"><span>Arrive</span><span>Listen</span><span>Choose</span><span>Leave</span></div>
 </div></header>
 
 <section><div class="wrap">
   <div class="games">
 
-    <div class="game g1">
-      <div class="ghead"><h2>Wounded, Never Wolves</h2><span class="chip done">Complete</span></div>
-      <div class="no">Game One · three kingdoms</div>
-      <p><em style="color:var(--ink)">"Both sides claim to be the wounded, never the wolves."</em><br><br>
-         Three kingdoms, one war, and a choice you live with at the end of it.</p>
-      <div class="meta"><span>Walking mystery</span><span>3 kingdoms</span><span>Choices carry</span></div>
-      <div class="chapters">
-        <a href="chapter1.html">I · Crash Site</a>
-        <a href="chapter2.html">II · The Artefact</a>
-        <a href="chapter3.html">III · The War</a>
+    <div class="game lead rv">
+      <div class="art desert">
+        <div class="sky"></div><div class="sun"></div>
+        <div class="g2"></div><div class="ground"></div>
+        <div class="rocket"></div><div class="smoke"></div>
+        <div class="veil"></div>
       </div>
-      <a class="play warm" href="chapter1.html">Start from the beginning →</a>
+      <div class="body">
+        <div class="ghead"><h2>Wounded, Never Wolves</h2><span class="chip done">Complete</span></div>
+        <div class="no">Game One · three kingdoms</div>
+        <p class="quote">"Both sides claim to be the wounded, never the wolves."</p>
+        <p>Three kingdoms, one long war, and a choice you have to live with at the end of it.</p>
+        <div class="chapters">
+          <a href="chapter1.html">
+            <span class="rn">Kingdom I</span><span class="cn">Crash Site</span>
+            <span class="cd">A red desert. Broken rocket. A signal nobody sent for.</span>
+          </a>
+          <a href="chapter2.html">
+            <span class="rn">Kingdom II</span><span class="cn">The Artefact</span>
+            <span class="cd">A crystal valley. A living machine. A village of exiles from both sides.</span>
+          </a>
+          <a href="chapter3.html">
+            <span class="rn">Kingdom III</span><span class="cn">The War</span>
+            <span class="cd">A valley between two old enemies. A battle stone. A choice you live with.</span>
+          </a>
+        </div>
+        <div class="fill"></div>
+        <a class="play" href="chapter1.html">Start from the beginning →</a>
+      </div>
     </div>
 
-    <div class="game g2">
-      <div class="ghead"><h2>The Last Train Café</h2><span class="chip done">Complete</span></div>
-      <div class="no">Wayfarer V · one sitting</div>
-      <p><em style="color:var(--ink)">"The light on the brass is warm. The window won't stop raining."</em><br><br>
-         A station stop, the last train, and somewhere warm to wait for it.</p>
-      <div class="meta"><span>Walking mystery</span><span>One sitting</span></div>
-      <a class="play" href="last-train-cafe.html">Play →</a>
+    <div class="game rv">
+      <div class="art cafe">
+        <div class="sky"></div><div class="sun"></div><div class="win"></div>
+        <div class="rain"></div><div class="veil"></div>
+      </div>
+      <div class="body">
+        <div class="ghead"><h2>The Last Train Café</h2><span class="chip done">Complete</span></div>
+        <div class="no">Wayfarer V · one sitting</div>
+        <p class="quote">"The light on the brass is warm. The window won't stop raining."</p>
+        <p>A station stop, the last train of the night, and somewhere warm to wait for it.</p>
+        <div class="meta"><span>Walking mystery</span><span>One sitting</span></div>
+        <div class="fill"></div>
+        <a class="play cool" href="last-train-cafe.html">Play →</a>
+      </div>
     </div>
 
-    <div class="game g3">
-      <div class="ghead"><h2>Below the Sand</h2><span class="chip wip">Scrapped</span></div>
-      <div class="no">Never finished · left up anyway</div>
-      <p>A prototype that never came together and got cut from the series. Left up anyway,
-         if you feel like poking at something unfinished.</p>
-      <div class="meta"><span>Prototype</span><span>Unfinished</span></div>
-      <a class="play mute" href="scrapped/below-the-sand.html">Have a look →</a>
+    <div class="game rv">
+      <div class="art sand">
+        <div class="sky"></div><div class="sun"></div>
+        <div class="g2"></div><div class="ground"></div><div class="veil"></div>
+      </div>
+      <div class="body">
+        <div class="ghead"><h2>Below the Sand</h2><span class="chip">Scrapped</span></div>
+        <div class="no">Never finished · left up anyway</div>
+        <p>A prototype that never quite came together and got cut from the series. Still here if you
+           feel like poking around something unfinished.</p>
+        <div class="meta"><span>Prototype</span><span>Unfinished</span></div>
+        <div class="fill"></div>
+        <a class="play mute" href="scrapped/below-the-sand.html">Have a look →</a>
+      </div>
     </div>
 
   </div>
 
-  <div class="strip">
-    <div class="txt">
+  <div class="strip rv">
+    <div class="tx">
       <h3>⚒ There's a Minecraft server too</h3>
-      <p>Crystal duels against a bot that learns your skill, seventeen crates, nine shops, and a scavenger
-         hunt hidden across spawn. Java Edition, no mods needed.</p>
+      <p>Crystal duels against a bot that re-tunes itself to your skill, seventeen crates, nine shops and a
+         scavenger hunt hidden across spawn. Java Edition, no mods needed.</p>
     </div>
     <a class="btn" href="index.html">See the server →</a>
   </div>
@@ -164,5 +308,17 @@
   <div><a href="index.html">Server</a> &nbsp;·&nbsp; <a href="games.html">Games</a></div>
 </div></footer>
 
+<script>
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('stuck', scrollY > 24);
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  const io = new IntersectionObserver((es) => {
+    es.forEach((en, i) => {
+      if (en.isIntersecting) { setTimeout(() => en.target.classList.add('in'), i * 70); io.unobserve(en.target); }
+    });
+  }, { threshold: .1, rootMargin: '0px 0px -40px' });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+</script>
 </body>
 </html>
