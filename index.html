@@ -4,328 +4,304 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wayfarer Forge — Minecraft Server</title>
-<meta name="description" content="Wayfarer Forge — a hand-built Minecraft survival server. Crystal duels against an AI that learns you, 17 crates, nine shops and a scavenger hunt. Java 26.2, no mods.">
+<meta name="description" content="Wayfarer Forge — a hand-built Minecraft survival server. Crystal duels against a bot that learns you, 17 crates, nine shops and a scavenger hunt. Java 26.2, no mods.">
 <meta property="og:title" content="Wayfarer Forge — Minecraft Server">
 <meta property="og:description" content="Crystal duels, 17 crates, nine shops, a scavenger hunt. play.wayfarerforge.games">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#0a0710">
+<meta name="theme-color" content="#0a0a10">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚒️</text></svg>">
+<script>document.documentElement.className+=' js'</script>
 <style>
   :root{
-    --void:#07050c; --deep:#0c0916; --panel:#130f22; --panel2:#181231;
-    --edge:rgba(255,255,255,.07); --edge2:rgba(255,255,255,.14);
-    --ink:#f2eefc; --dim:#a99fc4; --faint:#6e6690;
-    --gold:#ffc95c; --ember:#ff7a3d; --lime:#7df07d; --cyan:#4fd8ff; --violet:#a77bff; --pink:#ff5f9e;
+    --bg:#0a0a10; --tile:#15151f; --tile2:#1b1b28;
+    --edge:rgba(255,255,255,.08); --edge2:rgba(255,255,255,.16);
+    --ink:#fff; --dim:#a6a3bd; --faint:#6f6c88;
+    --gold:#ffc23d; --ember:#ff6b2c; --lime:#5ee07a; --cyan:#38d0ff; --violet:#9d6bff; --pink:#ff4f8b;
+    --r:22px;
     --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{
-    background:var(--void); color:var(--ink);
+  body{background:var(--bg);color:var(--ink);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    line-height:1.6; overflow-x:hidden; -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:1140px;margin:0 auto;padding:0 24px;position:relative;z-index:2}
-
-  /* ══ ambient background: aurora + grain + grid ══ */
-  .bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-  .aur{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;animation:drift 26s ease-in-out infinite}
-  .a1{width:620px;height:620px;background:#5a2bd8;top:-220px;left:-140px}
-  .a2{width:540px;height:540px;background:#c9421f;top:-120px;right:-160px;animation-delay:-9s}
-  .a3{width:480px;height:480px;background:#0e6b8f;top:44%;left:36%;animation-delay:-17s;opacity:.35}
-  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,50px) scale(1.12)}66%{transform:translate(-50px,30px) scale(.92)}}
-  .grid{position:absolute;inset:0;opacity:.28;
-    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
-                     linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
-    background-size:56px 56px;
-    mask-image:radial-gradient(1000px 620px at 50% 0%,#000 0%,transparent 78%);
-    -webkit-mask-image:radial-gradient(1000px 620px at 50% 0%,#000 0%,transparent 78%)}
-  .grain{position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E")}
-
-  /* ══ floating voxel cubes (pure CSS 3D — no assets) ══ */
-  /* opacity lives on the CONTAINER, never on .cube: any opacity < 1 forces
-     transform-style back to `flat`, which collapses all six faces into one plane. */
-  .cubes{position:absolute;inset:0;opacity:.9;z-index:1;overflow:hidden;pointer-events:none}
-  .cube{position:absolute;width:var(--s);height:var(--s);transform-style:preserve-3d;
-        animation:spin var(--dur) ease-in-out infinite,bob var(--bdur) ease-in-out infinite}
-  /* 4×4 pixel grid + hard edge — reads as a block rather than coloured paper */
-  .cube i{position:absolute;inset:0;display:block;border:1px solid rgba(0,0,0,.4);
-    background-image:
-      repeating-linear-gradient(0deg,rgba(0,0,0,.11) 0 25%,rgba(255,255,255,.05) 25% 50%),
-      repeating-linear-gradient(90deg,rgba(0,0,0,.09) 0 25%,rgba(255,255,255,.04) 25% 50%),
-      var(--skin);
-    background-blend-mode:overlay,overlay,normal}
-  .cube .f{transform:translateZ(calc(var(--s)/2))}
-  .cube .bk{transform:rotateY(180deg) translateZ(calc(var(--s)/2))}
-  .cube .r{transform:rotateY(90deg) translateZ(calc(var(--s)/2));filter:brightness(.72)}
-  .cube .l{transform:rotateY(-90deg) translateZ(calc(var(--s)/2));filter:brightness(.72)}
-  .cube .t{transform:rotateX(90deg) translateZ(calc(var(--s)/2));filter:brightness(1.3)}
-  .cube .bt{transform:rotateX(-90deg) translateZ(calc(var(--s)/2));filter:brightness(.45)}
-  /* Locked near the isometric angle so top + two sides are always visible — that
-     three-face silhouette is what reads as "Minecraft block". A full 360° spin
-     spends most of its time edge-on, which just looks like flat shapes.
-     perspective() must live in the transform; without it the projection is
-     orthographic and the cubes collapse to slivers. */
-  @keyframes spin{
-    0%,100%{transform:perspective(1000px) rotateX(-26deg) rotateY(-54deg)}
-    50%    {transform:perspective(1000px) rotateX(-26deg) rotateY(-28deg)}}
-  @keyframes bob{0%,100%{margin-top:0}50%{margin-top:-26px}}
-  @media (prefers-reduced-motion:reduce){.cube,.aur{animation:none}}
+    line-height:1.55;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+  a{text-decoration:none;color:inherit}
 
   /* ══ nav ══ */
-  nav{position:fixed;top:0;left:0;right:0;z-index:60;transition:background .25s,border-color .25s,backdrop-filter .25s;
-      border-bottom:1px solid transparent}
-  nav.stuck{background:rgba(7,5,12,.86);backdrop-filter:blur(14px);border-bottom-color:var(--edge)}
-  nav .wrap{display:flex;align-items:center;gap:20px;height:70px}
-  .brand{display:flex;align-items:center;gap:11px;font-weight:900;font-size:18px;letter-spacing:-.4px;
-         text-decoration:none;color:var(--ink)}
-  .brand .mark{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;font-size:16px;
-    background:linear-gradient(145deg,var(--gold),var(--ember));color:#160c02;
-    box-shadow:0 0 22px -4px rgba(255,150,60,.75)}
-  .brand .b2{background:linear-gradient(135deg,var(--gold),var(--ember));-webkit-background-clip:text;
-             background-clip:text;-webkit-text-fill-color:transparent}
+  nav{position:sticky;top:0;z-index:60;background:rgba(10,10,16,.82);backdrop-filter:blur(14px);
+      border-bottom:1px solid var(--edge)}
+  nav .wrap{display:flex;align-items:center;gap:20px;height:66px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:900;font-size:18px;letter-spacing:-.4px}
+  .brand .mark{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:17px;
+    background:linear-gradient(145deg,var(--gold),var(--ember));color:#160c02}
+  .brand .b2{color:var(--gold)}
   nav .sp{margin-left:auto}
-  nav a.lnk{color:var(--dim);text-decoration:none;font-size:14.5px;font-weight:600;transition:color .15s}
+  nav a.lnk{color:var(--dim);font-size:14.5px;font-weight:600;transition:color .15s}
   nav a.lnk:hover{color:var(--ink)}
-  .navcta{background:linear-gradient(135deg,var(--gold),var(--ember));color:#160c02;font-weight:800;
-          text-decoration:none;border-radius:10px;padding:9px 17px;font-size:14px;
-          box-shadow:0 8px 24px -10px rgba(255,150,60,.8);transition:transform .15s}
+  .navcta{background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a0d02;font-weight:800;
+          border-radius:11px;padding:10px 18px;font-size:14px;transition:transform .15s}
   .navcta:hover{transform:translateY(-2px)}
 
   /* ══ hero ══ */
-  header{min-height:100svh;display:grid;place-items:center;text-align:center;padding:110px 0 60px;
-         position:relative;overflow:hidden}
-  .live{display:inline-flex;align-items:center;gap:9px;background:rgba(125,240,125,.09);
-        border:1px solid rgba(125,240,125,.28);border-radius:999px;padding:7px 16px;font-size:13px;
-        font-weight:700;color:var(--lime);margin-bottom:26px;font-family:var(--mono)}
-  .live .dot{width:8px;height:8px;border-radius:50%;background:var(--lime);
-             box-shadow:0 0 0 0 rgba(125,240,125,.6);animation:ping 2.2s infinite}
-  .live.off{background:rgba(224,106,106,.09);border-color:rgba(224,106,106,.3);color:#ff8b8b}
-  .live.off .dot{background:#ff8b8b;animation:none;box-shadow:none}
-  .live.unk{background:rgba(255,255,255,.05);border-color:var(--edge2);color:var(--dim)}
-  .live.unk .dot{background:var(--faint);animation:none;box-shadow:none}
-  @keyframes ping{70%{box-shadow:0 0 0 11px rgba(125,240,125,0)}100%{box-shadow:0 0 0 0 rgba(125,240,125,0)}}
+  header{padding:70px 0 38px;text-align:center;position:relative;overflow:hidden}
+  .floaters{position:absolute;inset:0;pointer-events:none}
+  .floaters svg{position:absolute;animation:bob var(--d,9s) ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0) rotate(var(--rot,0deg))}
+                 50%{transform:translateY(-22px) rotate(var(--rot,0deg))}}
+  @media (prefers-reduced-motion:reduce){.floaters svg{animation:none}}
 
-  h1{font-size:clamp(46px,11vw,116px);font-weight:900;letter-spacing:-4px;line-height:.9;margin-bottom:22px}
-  h1 .l1{display:block;color:#fff;text-shadow:0 0 60px rgba(255,255,255,.18)}
-  h1 .l2{display:block;background:linear-gradient(100deg,var(--gold) 0%,var(--ember) 45%,var(--pink) 100%);
-         -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-         filter:drop-shadow(0 6px 40px rgba(255,122,61,.45))}
-  .sub{color:var(--dim);font-size:clamp(16px,2.3vw,20px);max-width:600px;margin:0 auto 40px}
+  .pill{display:inline-flex;align-items:center;gap:9px;background:rgba(94,224,122,.1);
+        border:1px solid rgba(94,224,122,.3);border-radius:999px;padding:7px 17px;font-size:13.5px;
+        font-weight:800;color:var(--lime);margin-bottom:22px;font-family:var(--mono)}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--lime);animation:ping 2.2s infinite}
+  .pill.off{background:rgba(255,110,110,.1);border-color:rgba(255,110,110,.3);color:#ff8b8b}
+  .pill.off .dot{background:#ff8b8b;animation:none}
+  .pill.unk{background:rgba(255,255,255,.05);border-color:var(--edge2);color:var(--dim)}
+  .pill.unk .dot{background:var(--faint);animation:none}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(94,224,122,.55)}70%{box-shadow:0 0 0 10px rgba(94,224,122,0)}
+                  100%{box-shadow:0 0 0 0 rgba(94,224,122,0)}}
 
-  /* ══ IP box — the centrepiece ══ */
-  .ipbox{display:inline-flex;align-items:center;gap:0;border-radius:16px;overflow:hidden;
-         background:rgba(19,15,34,.9);border:1px solid var(--edge2);backdrop-filter:blur(10px);
-         box-shadow:0 26px 70px -24px rgba(0,0,0,.95),0 0 0 1px rgba(255,201,92,.12) inset;
-         max-width:100%;flex-wrap:wrap}
-  .ipbox .ipl{padding:17px 24px;font-family:var(--mono);font-size:clamp(16px,3.4vw,25px);font-weight:800;
-              letter-spacing:-.6px;color:#fff;white-space:nowrap}
-  .ipbox button{border:0;cursor:pointer;padding:17px 26px;font-size:15px;font-weight:800;font-family:inherit;
-                background:linear-gradient(135deg,var(--gold),var(--ember));color:#160c02;
-                transition:filter .15s;align-self:stretch;white-space:nowrap}
-  .ipbox button:hover{filter:brightness(1.1)}
-  .ipbox button.done{background:linear-gradient(135deg,var(--lime),#3fbf6a);color:#04240f}
-  .vline{margin-top:20px;font-family:var(--mono);font-size:13px;color:var(--faint);letter-spacing:.5px}
+  h1{font-size:clamp(44px,10vw,104px);font-weight:900;letter-spacing:-4px;line-height:.88;margin-bottom:18px}
+  h1 .l1{display:block}
+  h1 .l2{display:block;background:linear-gradient(100deg,var(--gold),var(--ember) 55%,var(--pink));
+         -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .tag{color:var(--dim);font-size:clamp(15.5px,2.2vw,18.5px);max-width:560px;margin:0 auto}
 
-  .scroll{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);color:var(--faint);
-          font-family:var(--mono);font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
-          animation:bounce 2.4s ease-in-out infinite}
-  @keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0);opacity:.5}50%{transform:translateX(-50%) translateY(8px);opacity:1}}
+  /* ══ bento grid ══ */
+  .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;padding:14px 0 40px}
+  .t{background:var(--tile);border:1px solid var(--edge);border-radius:var(--r);padding:26px;
+     position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s}
+  .t:hover{transform:translateY(-5px);border-color:var(--edge2)}
+  .t h3{font-size:20px;font-weight:850;letter-spacing:-.4px;margin-bottom:8px;position:relative;z-index:2}
+  .t p{color:var(--dim);font-size:14.6px;position:relative;z-index:2}
+  .t .cmd{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:13px;color:var(--gold);
+          background:rgba(255,194,61,.1);border:1px solid rgba(255,194,61,.24);border-radius:8px;
+          padding:3px 9px;position:relative;z-index:2}
+  .art{position:absolute;pointer-events:none;z-index:1}
 
-  /* ══ stats bar ══ */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
-         background:var(--edge);border:1px solid var(--edge);border-radius:18px;overflow:hidden;margin:0 0 90px}
-  .stat{background:var(--deep);padding:26px 20px;text-align:center}
-  .stat .n{font-size:clamp(28px,5vw,40px);font-weight:900;letter-spacing:-1.5px;line-height:1;
+  /* address tile */
+  .t.addr{grid-column:span 7;background:linear-gradient(135deg,#241605,#140d05);
+          border-color:rgba(255,194,61,.3);display:flex;flex-direction:column;justify-content:center}
+  .t.addr .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:2.6px;text-transform:uppercase;
+               color:var(--gold);margin-bottom:12px}
+  .ipline{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .ipline .ip{font-family:var(--mono);font-size:clamp(18px,3.4vw,32px);font-weight:800;letter-spacing:-1px}
+  .ipline button{border:0;cursor:pointer;font-family:inherit;font-weight:850;font-size:14.5px;
+                 background:linear-gradient(135deg,var(--gold),var(--ember));color:#1a0d02;
+                 border-radius:12px;padding:13px 22px;transition:filter .15s,transform .15s;white-space:nowrap}
+  .ipline button:hover{filter:brightness(1.08);transform:translateY(-2px)}
+  .ipline button.done{background:linear-gradient(135deg,var(--lime),#31b558);color:#04240f}
+
+  /* counters */
+  .t.count{grid-column:span 5;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:22px}
+  .cbox{background:var(--tile2);border:1px solid var(--edge);border-radius:15px;padding:16px;text-align:center}
+  .cbox .n{font-size:clamp(24px,3.6vw,34px);font-weight:900;letter-spacing:-1.4px;line-height:1.1;
            background:linear-gradient(135deg,var(--gold),var(--ember));-webkit-background-clip:text;
            background-clip:text;-webkit-text-fill-color:transparent}
-  .stat .k{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;
-           color:var(--faint);margin-top:8px}
+  .cbox .k{font-family:var(--mono);font-size:10.5px;letter-spacing:1.8px;text-transform:uppercase;
+           color:var(--faint);margin-top:5px}
 
-  /* ══ sections ══ */
-  section{padding:0 0 100px;position:relative;z-index:2}
-  .shead{text-align:center;margin-bottom:44px}
-  .kicker{display:inline-block;font-family:var(--mono);font-size:11.5px;letter-spacing:3px;text-transform:uppercase;
-          color:var(--gold);background:rgba(255,201,92,.09);border:1px solid rgba(255,201,92,.22);
-          border-radius:999px;padding:5px 14px;margin-bottom:14px}
-  h2{font-size:clamp(30px,5.5vw,50px);font-weight:900;letter-spacing:-1.8px;line-height:1.05;margin-bottom:14px}
-  .lede{color:var(--dim);max-width:600px;margin:0 auto;font-size:16.5px}
-
-  .feat{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-  .f{position:relative;background:linear-gradient(160deg,var(--panel),var(--deep));
-     border:1px solid var(--edge);border-radius:20px;padding:28px;overflow:hidden;
-     transition:transform .22s cubic-bezier(.2,.8,.2,1),border-color .22s}
-  .f::after{content:"";position:absolute;inset:0;opacity:0;transition:opacity .25s;pointer-events:none;
-            background:radial-gradient(420px 200px at var(--mx,50%) var(--my,0%),rgba(255,201,92,.13),transparent 70%)}
-  .f:hover{transform:translateY(-6px);border-color:var(--edge2)}
-  .f:hover::after{opacity:1}
-  .f .em{font-size:30px;display:block;margin-bottom:14px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.6))}
-  .f h3{font-size:19px;font-weight:800;margin-bottom:9px;letter-spacing:-.3px}
-  .f p{color:var(--dim);font-size:14.8px}
-  .f code{font-family:var(--mono);font-size:13px;color:var(--gold);background:rgba(255,201,92,.1);
-          border:1px solid rgba(255,201,92,.2);border-radius:6px;padding:2px 7px}
-  .f.wide{grid-column:1/-1;display:flex;gap:26px;align-items:center;flex-wrap:wrap}
-  .f.wide .em{font-size:46px;margin:0}
-  .f.wide .tx{flex:1;min-width:250px}
-
-  /* ══ join steps ══ */
-  .steps{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));counter-reset:s}
-  .st{counter-increment:s;background:linear-gradient(160deg,var(--panel),var(--deep));
-      border:1px solid var(--edge);border-radius:18px;padding:26px 22px;position:relative}
-  .st::before{content:"0" counter(s);position:absolute;top:16px;right:20px;font-family:var(--mono);
-    font-size:32px;font-weight:900;color:rgba(255,255,255,.05);letter-spacing:-2px}
-  .st h4{font-size:16px;font-weight:800;margin-bottom:7px}
-  .st p{color:var(--dim);font-size:14.3px}
-  .st code{font-family:var(--mono);font-size:13.5px;color:var(--gold)}
-
-  /* ══ games strip ══ */
-  .gstrip{background:linear-gradient(140deg,#1a1030,#0d0818);border:1px solid rgba(167,123,255,.24);
-          border-radius:24px;padding:38px;display:flex;gap:28px;align-items:center;flex-wrap:wrap;
-          box-shadow:0 30px 80px -40px rgba(167,123,255,.5)}
-  .gstrip .tx{flex:1;min-width:260px}
-  .gstrip h2{font-size:clamp(26px,4vw,36px);margin-bottom:10px}
-  .gstrip p{color:var(--dim);font-size:15.5px}
-  .btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--violet),#7b4dff);
-       color:#fff;font-weight:800;text-decoration:none;border-radius:13px;padding:15px 28px;font-size:15.5px;
-       transition:transform .16s,box-shadow .16s;white-space:nowrap;
-       box-shadow:0 14px 36px -14px rgba(167,123,255,.85)}
+  /* feature tiles */
+  .t.duel{grid-column:span 7;min-height:246px;background:linear-gradient(135deg,#2a0f1c,#12070d);
+          border-color:rgba(255,79,139,.28)}
+  .t.duel .in{position:relative;z-index:2;max-width:66%}
+  .t.duel h3{font-size:clamp(21px,3vw,28px)}
+  .t.join{grid-column:span 5;background:linear-gradient(150deg,#0f1a24,#0a0f16);border-color:rgba(56,208,255,.24)}
+  .t.sm{grid-column:span 3;min-height:198px}
+  .t.sm h3{font-size:17.5px}
+  .t.sm p{font-size:13.8px}
+  .t.games{grid-column:span 12;background:linear-gradient(135deg,#1c1033,#0c0716);
+           border-color:rgba(157,107,255,.3);display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+  .t.games .in{flex:1;min-width:250px}
+  .btn{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(135deg,var(--violet),#6f3dff);
+       color:#fff;font-weight:850;border-radius:13px;padding:14px 26px;font-size:15px;
+       transition:transform .16s;white-space:nowrap;position:relative;z-index:2}
   .btn:hover{transform:translateY(-3px)}
 
-  footer{border-top:1px solid var(--edge);padding:40px 0 56px;position:relative;z-index:2}
-  footer .wrap{display:flex;gap:18px;justify-content:space-between;flex-wrap:wrap;
-               color:var(--faint);font-size:13.5px}
-  footer a{color:var(--dim);text-decoration:none} footer a:hover{color:var(--gold)}
+  /* minecraft add-server panel */
+  .mc{background:#101018;border:2px solid #2f2f42;border-radius:10px;padding:16px;margin-top:6px;
+      position:relative;z-index:2}
+  .mc .fl{font-family:var(--mono);font-size:11px;letter-spacing:1.4px;color:var(--faint);
+          text-transform:uppercase;margin-bottom:6px}
+  .mc .fi{background:#05050a;border:2px solid #3a3a52;border-radius:5px;padding:10px 12px;
+          font-family:var(--mono);font-size:13.5px;color:#fff;margin-bottom:13px;overflow:hidden;
+          text-overflow:ellipsis;white-space:nowrap}
+  .mc .fi.on{border-color:#fff}
+  .mc .go{background:linear-gradient(180deg,#4f8f3f,#356b28);border:2px solid #1e3d17;border-radius:6px;
+          text-align:center;padding:9px;font-weight:800;font-size:14px;letter-spacing:.4px}
 
-  /* ══ scroll reveal ══ */
-  .rv{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
-  .rv.in{opacity:1;transform:none}
-  @media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
-  @media(max-width:1080px){ .cubes{opacity:.55} }
-  @media(max-width:760px){
-    .cubes{display:none}                /* pure decoration — not worth the paint cost on phones */
-    nav .wrap{gap:13px;height:62px}
-    nav a.lnk.sm{display:none}          /* secondary links go first; CTA always survives */
-    .navcta{padding:8px 15px;font-size:13.5px}
-    .brand{font-size:16px} .brand .mark{width:28px;height:28px;font-size:15px}
-    header{padding:100px 0 70px}
+  /* ══ steps ══ */
+  section{padding:0 0 74px}
+  .shead{text-align:center;margin:34px 0 26px}
+  .kick{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;
+        color:var(--gold);background:rgba(255,194,61,.1);border:1px solid rgba(255,194,61,.24);
+        border-radius:999px;padding:5px 14px;margin-bottom:12px}
+  h2{font-size:clamp(28px,5vw,44px);font-weight:900;letter-spacing:-1.6px;line-height:1.05}
+  .steps{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+  .st{background:var(--tile);border:1px solid var(--edge);border-radius:18px;padding:22px}
+  .st .sn{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--gold);margin-bottom:7px}
+  .st h4{font-size:16px;font-weight:800;margin-bottom:5px}
+  .st p{color:var(--dim);font-size:14px}
+  .st code{font-family:var(--mono);font-size:13px;color:var(--gold)}
+
+  footer{border-top:1px solid var(--edge);padding:32px 0 46px;color:var(--faint);font-size:13.5px}
+  footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap}
+  footer a{color:var(--dim)} footer a:hover{color:var(--gold)}
+
+  .js .rv{opacity:0;transform:translateY(20px);transition:opacity .6s cubic-bezier(.2,.8,.2,1),transform .6s cubic-bezier(.2,.8,.2,1)}
+  .js .rv.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}}
+
+  @media(max-width:1180px){ .floaters{display:none} }
+  @media(max-width:980px){
+    .t.addr,.t.duel{grid-column:span 12}
+    .t.count,.t.join{grid-column:span 6}
+    .t.sm{grid-column:span 6}
+    .t.duel .in{max-width:100%}
+    .t.duel .art{opacity:.35!important}
   }
-  @media(max-width:520px){
-    .ipbox{flex-direction:column;align-items:stretch}
-    .ipbox .ipl{text-align:center;padding:15px 18px}
-    .stats{grid-template-columns:repeat(2,1fr)}
-    .f.wide{gap:16px} .f.wide .em{font-size:36px}
-    .scroll{display:none}
+  @media(max-width:640px){
+    .t.count,.t.join,.t.sm{grid-column:span 12}
+    nav a.lnk{display:none}
+    .floaters{display:none}
+    header{padding:44px 0 22px}
+    .t{padding:22px}
+    .t.duel{min-height:0}
   }
 </style>
 </head>
 <body>
 
-<div class="bg">
-  <div class="aur a1"></div><div class="aur a2"></div><div class="aur a3"></div>
-  <div class="grid"></div>
-  <div class="grain"></div>
-</div>
-
-<nav id="nav"><div class="wrap">
+<nav><div class="wrap">
   <a class="brand" href="index.html"><span class="mark">⚒</span>Wayfarer <span class="b2">Forge</span></a>
   <span class="sp"></span>
-  <a class="lnk sm" href="#feat">Features</a>
-  <a class="lnk sm" href="#join">How to join</a>
+  <a class="lnk" href="#feat">Features</a>
+  <a class="lnk" href="#join">How to join</a>
   <a class="lnk" href="games.html">Games</a>
   <a class="navcta" href="#join">Play now</a>
 </div></nav>
 
-<header><div class="cubes" id="cubes"></div><div class="wrap">
-  <div class="live unk" id="live"><span class="dot"></span><span id="ltxt">Checking server…</span></div>
-  <h1><span class="l1">WAYFARER</span><span class="l2">FORGE</span></h1>
-  <p class="sub">Crystal duels against a bot that learns your skill. Seventeen crates.
-     Nine shops. A hunt hidden across spawn. Built from scratch, one system at a time.</p>
-
-  <div class="ipbox">
-    <span class="ipl" id="ip">play.wayfarerforge.games</span>
-    <button id="cp">COPY IP</button>
+<header>
+  <div class="floaters" id="floaters"></div>
+  <div class="wrap">
+    <div class="pill unk" id="pill"><span class="dot"></span><span id="ptxt">Checking server…</span></div>
+    <h1><span class="l1">WAYFARER</span><span class="l2">FORGE</span></h1>
+    <p class="tag">A survival server built one system at a time — crystal duels against a bot that
+       learns your skill, seventeen crates, nine shops, and a hunt hidden across spawn.</p>
   </div>
-  <div class="vline">JAVA EDITION 26.2 · NO MODS REQUIRED · FREE TO JOIN</div>
-</div><div class="scroll">scroll</div></header>
+</header>
 
-<section><div class="wrap">
-  <div class="stats rv">
-    <div class="stat"><div class="n" id="s-players">—</div><div class="k">Online now</div></div>
-    <div class="stat"><div class="n">17</div><div class="k">Crates</div></div>
-    <div class="stat"><div class="n">9</div><div class="k">Shops</div></div>
-    <div class="stat"><div class="n">16</div><div class="k">Custom plugins</div></div>
-  </div>
-</div></section>
+<div class="wrap">
+  <div class="bento">
 
-<section id="feat"><div class="wrap">
-  <div class="shead rv">
-    <span class="kicker">What's on it</span>
-    <h2>Things to actually do</h2>
-    <p class="lede">Not a stock world with a permissions plugin bolted on. These are custom systems,
-       written and debugged one at a time.</p>
-  </div>
-
-  <div class="feat">
-    <div class="f wide rv">
-      <span class="em">⚔️</span>
-      <div class="tx">
-        <h3>Crystal duels — against something that learns you</h3>
-        <p>1v1 in a protected arena with a full netherite kit. Nobody else queued? A practice bot fills the
-           slot, pillars after you, pearls, eats gapples and pops totems — and after every fight it
-           <b>re-tunes its own difficulty</b> toward an even match. Your gear is stashed and handed back
-           whatever happens. <code>/duel</code></p>
+    <div class="t addr rv">
+      <div class="lbl">Java Edition · 26.2 · No mods</div>
+      <div class="ipline">
+        <span class="ip" id="ip">play.wayfarerforge.games</span>
+        <button id="cp">COPY</button>
       </div>
     </div>
 
-    <div class="f rv"><span class="em">🎁</span><h3>Seventeen crates</h3>
-      <p>One per shulker colour, Starter up to Immortal, each with its own loot table and the win odds
-         printed on every prize. Free daily and vote keys. <code>/crates</code></p></div>
+    <div class="t count rv">
+      <div class="cbox"><div class="n" id="c-on">—</div><div class="k">Online</div></div>
+      <div class="cbox"><div class="n">17</div><div class="k">Crates</div></div>
+      <div class="cbox"><div class="n">9</div><div class="k">Shops</div></div>
+      <div class="cbox"><div class="n">16</div><div class="k">Plugins</div></div>
+    </div>
 
-    <div class="f rv"><span class="em">🏪</span><h3>Nine NPC shops</h3>
+    <div class="t duel rv" id="feat">
+      <div class="in">
+        <h3>Crystal duels — against something that learns you</h3>
+        <p>1v1 in a protected arena with a full netherite kit. Nobody else queued? A practice bot fills the
+           slot — it pillars after you, pearls, eats gapples and pops totems, then re-tunes its own
+           difficulty toward an even match. Your gear is stashed and handed back whatever happens.</p>
+        <span class="cmd">/duel</span>
+      </div>
+      <svg class="art" style="right:-30px;bottom:-34px;opacity:.85" width="250" height="250" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#ff8fb4"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#c9436e"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#8f2749"/>
+      </svg>
+    </div>
+
+    <div class="t join rv">
+      <h3>How to join</h3>
+      <div class="mc">
+        <div class="fl">Server Name</div>
+        <div class="fi">Wayfarer Forge</div>
+        <div class="fl">Server Address</div>
+        <div class="fi on">play.wayfarerforge.games</div>
+        <div class="go">Done</div>
+      </div>
+    </div>
+
+    <div class="t sm rv">
+      <h3>Seventeen crates</h3>
+      <p>One per shulker colour, Starter up to Immortal — each with its own loot table and the win odds
+         printed on every prize.</p>
+      <span class="cmd">/crates</span>
+      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#ffd76b"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#e0a02c"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#a86f14"/>
+      </svg>
+    </div>
+
+    <div class="t sm rv">
+      <h3>Nine NPC shops</h3>
       <p>Mining, redstone, building, farming, storage, combat, brewing, food and curiosities — real
-         currency, real prices, no chest shops to hunt for.</p></div>
+         currency, real prices.</p>
+      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#7ff0a8"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#33bf6b"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#1d8449"/>
+      </svg>
+    </div>
 
-    <div class="f rv"><span class="em">🔍</span><h3>Scavenger hunt</h3>
+    <div class="t sm rv">
+      <h3>Scavenger hunt</h3>
       <p>Eight critters hidden around spawn — a frog, a dolphin, a bee and five more. Find them all for a
-         one-of-a-kind trophy. <code>/hunt progress</code></p></div>
+         one-of-a-kind trophy.</p>
+      <span class="cmd">/hunt</span>
+      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#8ce4ff"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#31b4e0"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#1c7ba0"/>
+      </svg>
+    </div>
 
-    <div class="f rv"><span class="em">📊</span><h3>Hall of Records</h3>
-      <p>A floating monument of counter-rotating rings that shows <b>your</b> stats in mid-air — or anyone
-         else's, if you ask for them by name. <code>/hof</code></p></div>
+    <div class="t sm rv">
+      <h3>Hall of Records</h3>
+      <p>A floating monument of counter-rotating rings showing <b>your</b> stats in mid-air — or anyone
+         else's, by name.</p>
+      <span class="cmd">/hof</span>
+      <svg class="art" style="right:-20px;bottom:-20px;opacity:.5" width="118" height="118" viewBox="0 0 100 100" aria-hidden="true">
+        <polygon points="50,8 92,32 50,56 8,32" fill="#c9a6ff"/>
+        <polygon points="8,32 50,56 50,96 8,72" fill="#8f5cf0"/>
+        <polygon points="92,32 50,56 50,96 92,72" fill="#5f36ad"/>
+      </svg>
+    </div>
 
-    <div class="f rv"><span class="em">🌍</span><h3>Into the wild</h3>
-      <p>Walk through the portal at spawn and land somewhere random within 50,000 blocks. Claim it,
-         build on it, keep it. <code>/rtp</code></p></div>
+    <div class="t games rv">
+      <div class="in">
+        <h3>There are browser games too</h3>
+        <p>Before the server there were short walking-mysteries about one astronaut pulled through a lot of
+           different worlds. Free, and they run in your browser.</p>
+      </div>
+      <a class="btn" href="games.html">Play them →</a>
+    </div>
 
-    <div class="f rv"><span class="em">🛡️</span><h3>Genuinely protected</h3>
-      <p>Land claims, rollback logging on every block placed or broken, anti-xray, seed protection and a
-         real anticheat. Grief gets undone, not argued about.</p></div>
   </div>
-</div></section>
+</div>
 
 <section id="join"><div class="wrap">
-  <div class="shead rv">
-    <span class="kicker">Getting in</span>
-    <h2>Join in four steps</h2>
-  </div>
+  <div class="shead rv"><span class="kick">Getting in</span><h2>Four steps and you're on</h2></div>
   <div class="steps">
-    <div class="st rv"><h4>Open Minecraft</h4><p>Java Edition, version <code>26.2</code>.</p></div>
-    <div class="st rv"><h4>Multiplayer</h4><p>Hit <b>Add Server</b> on the multiplayer screen.</p></div>
-    <div class="st rv"><h4>Paste the address</h4><p><code>play.wayfarerforge.games</code> — copy it from the top of this page.</p></div>
-    <div class="st rv"><h4>You're in</h4><p>Type <code>/help</code> once you spawn. Everything's listed there.</p></div>
-  </div>
-</div></section>
-
-<section><div class="wrap">
-  <div class="gstrip rv">
-    <div class="tx">
-      <span class="kicker" style="color:var(--violet);background:rgba(167,123,255,.1);border-color:rgba(167,123,255,.25)">Also from the forge</span>
-      <h2>Small games about wandering</h2>
-      <p>Before the server there were short walking-mysteries about one astronaut pulled through a lot of
-         different worlds. Free, and they run in your browser.</p>
-    </div>
-    <a class="btn" href="games.html">Play them →</a>
+    <div class="st rv"><div class="sn">01</div><h4>Open Minecraft</h4><p>Java Edition, version <code>26.2</code>.</p></div>
+    <div class="st rv"><div class="sn">02</div><h4>Multiplayer</h4><p>Hit <b>Add Server</b> on the multiplayer screen.</p></div>
+    <div class="st rv"><div class="sn">03</div><h4>Paste the address</h4><p><code>play.wayfarerforge.games</code></p></div>
+    <div class="st rv"><div class="sn">04</div><h4>You're in</h4><p>Type <code>/help</code> once you spawn.</p></div>
   </div>
 </div></section>
 
@@ -337,82 +313,80 @@
 <script>
   const ADDR = 'play.wayfarerforge.games';
 
-  /* ── floating voxel cubes ─────────────────────────────────────────────
-     Built in JS rather than markup so the palette/scatter stays in one place.
-     Kept few and large: dozens of animated 3D nodes is how you tank a phone. */
+  /* ── floating blocks ──
+     Flat SVG polygons, not CSS 3D cubes. Six transformed faces each carrying
+     their own filter/blend get promoted to separate GPU layers that rasterise
+     out of sync, leaving a rounded ghost over the front face. Three polygons
+     have no such failure mode, and they stay crisp at any size. */
   (function () {
-    const host = document.getElementById('cubes');
+    const host = document.getElementById('floaters');
     if (!host || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const skins = [
-      ['#6dbf4b','#8fd96a'],  // grass
-      ['#8f8f8f','#a8a8a8'],  // stone
-      ['#4fd8ff','#8ceaff'],  // diamond
-      ['#ffc95c','#ffe09a'],  // gold
-      ['#a77bff','#c6a8ff'],  // amethyst
-      ['#ff7a3d','#ff9e6e']   // ember
+      ['#8fd96a', '#5aa63c', '#3c7526'],  // grass
+      ['#b8b8c4', '#8a8a99', '#5f5f6e'],  // stone
+      ['#8ce4ff', '#31b4e0', '#1c7ba0'],  // diamond
+      ['#ffd76b', '#e0a02c', '#a86f14'],  // gold
+      ['#c9a6ff', '#8f5cf0', '#5f36ad'],  // amethyst
+      ['#ffab7a', '#f0703a', '#ad441c']   // ember
     ];
-    const spots = [
-      [7, 20, 78], [89, 15, 60], [13, 71, 54], [84, 66, 68], [5, 46, 42], [93, 40, 46]
-    ];
-    spots.forEach(([x, y, s], i) => {
-      const [c1, c2] = skins[i % skins.length];
-      const d = document.createElement('div');
-      d.className = 'cube';
-      d.style.cssText = `--s:${s}px;left:${x}%;top:${y}%;--dur:${14 + i * 3}s;--bdur:${7 + i}s;
-                         --skin:linear-gradient(158deg,${c2},${c1});animation-delay:-${i * 2.5}s`;
-      d.innerHTML = ['f','bk','r','l','t','bt'].map(f => `<i class="${f}"></i>`).join('');
-      host.appendChild(d);
+    // [left%, top%, px, tilt°] — confined to the far left/right gutters
+    const spots = [[2, 12, 74, -8], [91, 7, 58, 7], [5, 55, 50, 10],
+                   [93, 48, 66, -6], [1, 84, 40, 12], [88, 82, 44, -11]];
+    spots.forEach(([x, y, s, rot], i) => {
+      const [top, left, right] = skins[i % skins.length];
+      host.insertAdjacentHTML('beforeend',
+        `<svg width="${s}" height="${s}" viewBox="0 0 100 100" aria-hidden="true"
+              style="left:${x}%;top:${y}%;--d:${8 + i * 1.4}s;--rot:${rot}deg;
+                     animation-delay:-${i * 1.3}s;opacity:.9">
+           <polygon points="50,8 92,32 50,56 8,32" fill="${top}"/>
+           <polygon points="8,32 50,56 50,96 8,72" fill="${left}"/>
+           <polygon points="92,32 50,56 50,96 92,72" fill="${right}"/>
+         </svg>`);
     });
   })();
 
-  /* ── nav shadow on scroll ── */
-  const nav = document.getElementById('nav');
-  const onScroll = () => nav.classList.toggle('stuck', scrollY > 24);
-  addEventListener('scroll', onScroll, { passive: true }); onScroll();
-
-  /* ── cursor-follow glow on feature cards ── */
-  document.querySelectorAll('.f').forEach(el => {
-    el.addEventListener('pointermove', e => {
-      const r = el.getBoundingClientRect();
-      el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-      el.style.setProperty('--my', (e.clientY - r.top) + 'px');
-    });
-  });
-
-  /* ── scroll reveal ── */
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((en, i) => {
-      if (en.isIntersecting) { setTimeout(() => en.target.classList.add('in'), i * 55); io.unobserve(en.target); }
-    });
-  }, { threshold: .12, rootMargin: '0px 0px -40px' });
-  document.querySelectorAll('.rv').forEach(el => io.observe(el));
-
-  /* ── copy IP ── */
+  /* ── copy address ── */
   const cp = document.getElementById('cp');
   cp.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(ADDR); }
     catch (_) {
       const t = document.createElement('textarea');
-      t.value = ADDR; t.style.position = 'fixed'; t.style.opacity = '0';
+      t.value = ADDR; t.style.cssText = 'position:fixed;opacity:0';
       document.body.appendChild(t); t.select();
       try { document.execCommand('copy'); } catch (e) {}
       t.remove();
     }
     cp.textContent = 'COPIED ✓'; cp.classList.add('done');
-    setTimeout(() => { cp.textContent = 'COPY IP'; cp.classList.remove('done'); }, 1900);
+    setTimeout(() => { cp.textContent = 'COPY'; cp.classList.remove('done'); }, 1900);
   });
 
+  /* ── scroll reveal ── */
+  const reveal = el => el.classList.add('in');
+  // Nothing may stay invisible: if IntersectionObserver is missing, throws, or
+  // simply never fires, this shows everything anyway.
+  const failsafe = setTimeout(() => document.querySelectorAll('.rv').forEach(reveal), 2000);
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.rv').forEach(reveal);
+  } else {
+  const io = new IntersectionObserver((es) => {
+    es.forEach((en, i) => {
+      if (en.isIntersecting) { setTimeout(() => en.target.classList.add('in'), i * 50); io.unobserve(en.target); }
+    });
+  }, { threshold: .08, rootMargin: '0px 0px -30px' });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+  }
+
   /* ── live status ──
-     Every failure path must land on a definite label; it can never sit on
-     "Checking…" if the API is slow, blocked, or down. */
-  const live = document.getElementById('live'),
-        ltxt = document.getElementById('ltxt'),
-        sPl  = document.getElementById('s-players');
+     Every failure path lands on a definite label; this can never sit on
+     "Checking…" if the API is slow, blocked or down. */
+  const pill = document.getElementById('pill'),
+        ptxt = document.getElementById('ptxt'),
+        cOn  = document.getElementById('c-on');
 
   function countUp(el, to) {
     const t = Math.max(0, to | 0);
     if (t === 0) { el.textContent = '0'; return; }
-    let n = 0; const step = Math.max(1, Math.ceil(t / 26));
+    let n = 0; const step = Math.max(1, Math.ceil(t / 24));
     const iv = setInterval(() => { n += step; if (n >= t) { n = t; clearInterval(iv); } el.textContent = n; }, 28);
   }
 
@@ -426,19 +400,15 @@
       const d = await r.json();
       if (d && d.online) {
         const on = (d.players && typeof d.players.online === 'number') ? d.players.online : 0;
-        live.className = 'live';
-        ltxt.textContent = on === 1 ? '1 player online' : on + ' players online';
-        countUp(sPl, on);
+        pill.className = 'pill';
+        ptxt.textContent = on === 1 ? '1 player online' : on + ' players online';
+        countUp(cOn, on);
       } else {
-        live.className = 'live off';
-        ltxt.textContent = 'Server offline — back shortly';
-        sPl.textContent = '0';
+        pill.className = 'pill off'; ptxt.textContent = 'Server offline — back shortly'; cOn.textContent = '0';
       }
     } catch (_) {
       clearTimeout(timer);
-      live.className = 'live unk';
-      ltxt.textContent = 'Status unavailable';
-      sPl.textContent = '—';
+      pill.className = 'pill unk'; ptxt.textContent = 'Status unavailable'; cOn.textContent = '—';
     }
   })();
 </script>
